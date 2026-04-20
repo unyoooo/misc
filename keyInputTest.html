@@ -172,7 +172,7 @@
     直接開いた後、ゲームパッドの<b>いずれかのボタンを1回押す</b>と認識されます。
   </div>
 
-  <div class="hint">
+  <div class="hint" data-nocapture="1">
     <b>対応:</b> キーボード / マウス / ホイール / ポインタ / タッチ / ゲームパッド。<br>
     ページスクロールを抑止するため、テキストボックスがフォーカスを保持します。<br>
     <b>フォーカス状態:</b> <span id="focusState">-</span> &nbsp; <b>ゲームパッド:</b> <span id="gamepadState">未接続</span>
@@ -182,7 +182,7 @@
 
   <div style="margin-bottom:16px;">
     <div style="display:flex;gap:8px;">
-      <button id="clearInputBtn" style="padding:0 16px;">入力クリア</button>
+      <button id="clearInputBtn" data-nocapture="1" style="padding:0 16px;">入力クリア</button>
       <input id="capture" type="text" autofocus placeholder="ここにフォーカスしてキー入力をおこなってください"
         style="flex:1;padding:14px 16px;font-size:18px;border-radius:8px;border:2px solid #89b4fa;background:#181825;color:#cdd6f4;font-family:Consolas,monospace;" />
     </div>
@@ -205,7 +205,7 @@
     <div id="gpLiveBody" style="font-family:Consolas,monospace;font-size:13px;"></div>
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" data-nocapture="1">
     <button id="clearBtn">ログをクリア</button>
     <button id="saveBtn">テキストで保存</button>
     <span id="count">イベント数: 0</span>
@@ -215,7 +215,7 @@
     <span style="margin-left:8px;font-size:12px;color:#a6adc8;">※ 古いログは自動で捨てられます（描画を軽くするため）。「テキストで保存」は表示中のログのみ対象です。</span>
   </div>
 
-  <div class="filters" id="filters">
+  <div class="filters" id="filters" data-nocapture="1">
     <span class="label">表示:</span>
     <button class="filter-btn on" data-cat="keyboard">キーボード</button>
     <button class="filter-btn on" data-cat="mouse">マウス</button>
