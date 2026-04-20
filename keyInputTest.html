@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>キー入力イベントチェッカー</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  .hint {
+    background: #313244;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .current {
+    background: #181825;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #89b4fa;
+    margin-bottom: 20px;
+    min-height: 120px;
+  }
+  .current .big {
+    font-size: 48px;
+    font-weight: bold;
+    color: #a6e3a1;
+    font-family: "Consolas", monospace;
+    margin: 8px 0;
+    word-break: break-all;
+  }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+  .chip {
+    background: #45475a;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: "Consolas", monospace;
+    font-size: 14px;
+  }
+  .chip b { color: #f5c2e7; }
+  .log {
+    background: #181825;
+    padding: 16px;
+    border-radius: 12px;
+    max-height: 50vh;
+    overflow-y: auto;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+  }
+  .log-row {
+    padding: 6px 8px;
+    border-bottom: 1px solid #313244;
+    display: grid;
+    grid-template-columns: 130px 140px 160px minmax(160px, 1fr) 140px 140px 120px;
+    gap: 8px;
+    align-items: start;
+  }
+  .log-row > div {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    white-space: pre-wrap;
+    min-width: 0;
+  }
+  .log-row .time { color: #94e2d5; }
+  .log-row.keydown { color: #a6e3a1; }
+  .log-row.keyup { color: #f38ba8; }
+  .log-row.header {
+    color: #89b4fa;
+    font-weight: bold;
+    border-bottom: 2px solid #89b4fa;
+    position: sticky;
+    top: 0;
+    background: #181825;
+  }
+  button {
+    background: #89b4fa;
+    color: #1e1e2e;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-right: 8px;
+  }
+  button:hover { background: #74c7ec; }
+  .toolbar { margin-bottom: 12px; }
+  .mods { color: #f9e2af; }
+  .iframe-warn {
+    display: none;
+    background: #45302e;
+    color: #fab387;
+    border: 2px solid #fab387;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .iframe-warn.show { display: block; }
+  .iframe-warn b { color: #f9e2af; }
+  .iframe-warn .path {
+    display: inline-block;
+    background: #1e1e2e;
+    color: #a6e3a1;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    margin: 4px 0;
+    user-select: all;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #313244;
+    border-radius: 8px;
+    align-items: center;
+  }
+  .filters .label { color: #a6adc8; font-size: 13px; margin-right: 4px; }
+  .filter-btn {
+    background: #45475a;
+    color: #cdd6f4;
+    border: 2px solid transparent;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0;
+  }
+  .filter-btn.on { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; }
+  .filter-btn.off { opacity: 0.45; text-decoration: line-through; }
+  .log.hide-keyboard .log-row[data-cat="keyboard"],
+  .log.hide-mouse    .log-row[data-cat="mouse"],
+  .log.hide-pointer  .log-row[data-cat="pointer"],
+  .log.hide-wheel    .log-row[data-cat="wheel"],
+  .log.hide-touch    .log-row[data-cat="touch"],
+  .log.hide-scroll   .log-row[data-cat="scroll"],
+  .log.hide-input    .log-row[data-cat="input"],
+  .log.hide-gamepad  .log-row[data-cat="gamepad"] { display: none; }
+</style>
+</head>
+<body>
+  <h1>⌨ キー入力イベントチェッカー</h1>
+
+  <details id="gamepadHelp" style="display:none;background:#2a2a3e;color:#cdd6f4;border:2px solid #89b4fa;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:14px;line-height:1.7;">
+    <summary style="color:#89b4fa;font-size:16px;font-weight:bold;cursor:pointer;user-select:none;">🎮 ゲームパッドが認識されない場合のチェックリスト（クリックで展開）</summary>
+    <ol style="margin:8px 0 0 20px;padding:0;">
+      <li>このページにフォーカスを当てたまま、<b>ゲームパッドのボタンをどれか1回押す</b>（Chromeの仕様で、ボタン押下があるまで認識されません）</li>
+      <li><b>USBケーブルで接続しなおすか、Bluetooth再接続</b>すれば治ることが多い</li>
+      <li>Windowsのコントロールパネル → デバイスマネージャー →「ヒューマンインターフェイスデバイス」に<b>HID準拠ゲームコントローラー</b>が出ているか確認</li>
+      <li>出ていない場合、DualSenseが「オーディオデバイス」や「HIDキーボード」として誤認識されている可能性。いったんWindowsから削除してペアリングし直す</li>
+    </ol>
+  </details>
+
+  <div class="iframe-warn" id="iframeWarn">
+    ⚠ <b>このページは iframe 内で動作しています。</b><br>
+    iframe 内ではブラウザのセキュリティ仕様により <b>Gamepad API が使えません</b>。<br>
+    ゲームパッドを検出するには、下記のパスをエクスプローラーに貼り付けて、<b>Chrome等のブラウザで直接ファイルを開いて</b>ください：<br>
+    <span class="path" id="iframeWarnPath">C:\Users\unyoo\cloude_code\KeyInputTest\index.html</span><br>
+    直接開いた後、ゲームパッドの<b>いずれかのボタンを1回押す</b>と認識されます。
+  </div>
+
+  <div class="hint">
+    <b>対応:</b> キーボード / マウス / ホイール / ポインタ / タッチ / ゲームパッド。<br>
+    ページスクロールを抑止するため、テキストボックスがフォーカスを保持します。<br>
+    <b>フォーカス状態:</b> <span id="focusState">-</span> &nbsp; <b>ゲームパッド:</b> <span id="gamepadState">未接続</span>
+    <button id="gamepadDetectBtn" style="margin-left:8px;padding:2px 10px;font-size:12px;">再検出</button>
+    <div id="gamepadDiag" style="margin-top:6px;font-size:12px;color:#a6adc8;"></div>
+  </div>
+
+  <div style="margin-bottom:16px;">
+    <div style="display:flex;gap:8px;">
+      <button id="clearInputBtn" style="padding:0 16px;">入力クリア</button>
+      <input id="capture" type="text" autofocus placeholder="ここにフォーカスしてキー入力をおこなってください"
+        style="flex:1;padding:14px 16px;font-size:18px;border-radius:8px;border:2px solid #89b4fa;background:#181825;color:#cdd6f4;font-family:Consolas,monospace;" />
+    </div>
+    <div style="margin-top:6px;font-size:12px;color:#a6adc8;">入力された文字列がそのまま表示されます。ゲームパッドは接続後、一度いずれかのボタンを押すと認識されます（ブラウザで直接ページを開く必要あり）。</div>
+  </div>
+
+  <div class="current" id="current" data-nocapture="1">
+    <div>
+      <button id="copyEventBtn" data-nocapture="1" style="padding:4px 12px;font-size:12px;">内容をコピー</button>
+    </div>
+    <div style="margin-top:8px;">最後のイベント：</div>
+    <div class="big" id="bigKey">（入力を待機中…）</div>
+    <div class="row" id="details"></div>
+    <div id="progInfo" style="margin-top:12px;padding:12px 14px;background:#11111b;border-radius:8px;border-left:3px solid #fab387;font-family:Consolas,monospace;font-size:13px;color:#cdd6f4;white-space:pre-wrap;display:none;"></div>
+    <div id="copyEventStatus" data-nocapture="1" style="margin-top:8px;font-size:12px;color:#a6e3a1;display:none;"></div>
+  </div>
+
+  <div id="gpLive" style="display:none;background:#181825;border:2px solid #a6e3a1;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+    <div style="color:#a6e3a1;font-weight:bold;margin-bottom:8px;">🎮 ゲームパッド ライブ状態</div>
+    <div id="gpLiveBody" style="font-family:Consolas,monospace;font-size:13px;"></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="clearBtn">ログをクリア</button>
+    <button id="saveBtn">テキストで保存</button>
+    <span id="count">イベント数: 0</span>
+    <span style="margin-left:12px;">最大表示件数:
+      <input id="maxRows" type="number" min="10" max="10000" step="10" value="100" style="width:90px;padding:4px 6px;background:#181825;color:#cdd6f4;border:1px solid #45475a;border-radius:4px;" />
+    </span>
+    <span style="margin-left:8px;font-size:12px;color:#a6adc8;">※ 古いログは自動で捨てられます（描画を軽くするため）。「テキストで保存」は表示中のログのみ対象です。</span>
+  </div>
+
+  <div class="filters" id="filters">
+    <span class="label">表示:</span>
+    <button class="filter-btn on" data-cat="keyboard">キーボード</button>
+    <button class="filter-btn on" data-cat="mouse">マウス</button>
+    <button class="filter-btn on" data-cat="pointer">ポインタ</button>
+    <button class="filter-btn on" data-cat="wheel">ホイール</button>
+    <button class="filter-btn on" data-cat="touch">タッチ</button>
+    <button class="filter-btn on" data-cat="scroll">スクロール</button>
+    <button class="filter-btn on" data-cat="input">入力</button>
+    <button class="filter-btn on" data-cat="gamepad">ゲームパッド</button>
+    <button class="filter-btn" id="filterAll" style="margin-left:auto;">全てON</button>
+    <button class="filter-btn" id="filterNone">全てOFF</button>
+  </div>
+
+  <div class="log" id="log">
+    <div class="log-row header">
+      <div>time</div>
+      <div>type</div>
+      <div>key/btn</div>
+      <div>code/detail</div>
+      <div>val1</div>
+      <div>val2</div>
+      <div>mods</div>
+    </div>
+  </div>
+
+<script>
+  const bigKey = document.getElementById('bigKey');
+  const details = document.getElementById('details');
+  const log = document.getElementById('log');
+  const countEl = document.getElementById('count');
+  let count = 0;
+  const rows = [];
+
+  function fmtMods(e) {
+    const m = [];
+    if (e.ctrlKey) m.push('Ctrl');
+    if (e.shiftKey) m.push('Shift');
+    if (e.altKey) m.push('Alt');
+    if (e.metaKey) m.push('Meta');
+    return m.join('+') || '-';
+  }
+
+  const progInfoEl = document.getElementById('progInfo');
+  function setProgInfo(text) {
+    progInfoEl.style.display = 'block';
+    progInfoEl.textContent = text;
+  }
+
+  function jsQ(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
+
+  function progInfoForKey(e) {
+    const mods = [];
+    if (e.ctrlKey) mods.push('e.ctrlKey');
+    if (e.shiftKey) mods.push('e.shiftKey');
+    if (e.altKey) mods.push('e.altKey');
+    if (e.metaKey) mods.push('e.metaKey');
+    const modExpr = mods.length ? ' && ' + mods.join(' && ') : '';
+    return `■ KeyboardEvent (${e.type})
+  e.key      = ${jsQ(e.key)}    ← 文字/意味ベース（日本語配列/Shift状態を反映）
+  e.code     = ${jsQ(e.code)}   ← 物理キー位置（配列に依存しない、推奨）
+  e.keyCode  = ${e.keyCode}         ← レガシー数値（非推奨だが互換のため残る）
+  e.repeat   = ${e.repeat}          ← 長押しリピート中なら true
+  e.location = ${e.location}          ← 0=標準, 1=左, 2=右, 3=テンキー
+
+判定例:
+  if (e.code === ${jsQ(e.code)}${modExpr}) { ... }
+  window.addEventListener(${jsQ(e.type)}, handler);`;
+  }
+
+  function showCurrent(e) {
+    bigKey.textContent = e.key === ' ' ? 'Space' : (e.key || '(empty)');
+    details.innerHTML = `
+      <div class="chip">type: <b>${e.type}</b></div>
+      <div class="chip">key: <b>${e.key}</b></div>
+      <div class="chip">code: <b>${e.code}</b></div>
+      <div class="chip">keyCode: <b>${e.keyCode}</b></div>
+      <div class="chip">which: <b>${e.which}</b></div>
+      <div class="chip mods">修飾: <b>${fmtMods(e)}</b></div>
+      <div class="chip">repeat: <b>${e.repeat}</b></div>
+      <div class="chip">location: <b>${e.location}</b></div>
+    `;
+    setProgInfo(progInfoForKey(e));
+  }
+
+  function nowStr() {
+    const d = new Date();
+    const pad = (n, w=2) => String(n).padStart(w, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(),3)}`;
+  }
+
+  const CATEGORY_OF = {
+    keydown: 'keyboard', keyup: 'keyboard',
+    mousedown: 'mouse', mouseup: 'mouse', click: 'mouse', auxclick: 'mouse', contextmenu: 'mouse', dblclick: 'mouse',
+    pointerdown: 'pointer', pointerup: 'pointer',
+    wheel: 'wheel',
+    touchstart: 'touch', touchend: 'touch',
+    'scroll(throttled)': 'scroll',
+    input: 'input',
+    'gp-btn-down': 'gamepad', 'gp-btn-up': 'gamepad', 'gp-btn-analog': 'gamepad', 'gp-axis': 'gamepad',
+    'gamepad-connected': 'gamepad', 'gamepad-disconnected': 'gamepad',
+  };
+
+  const maxRowsInput = document.getElementById('maxRows');
+  function getMaxRows() {
+    const v = parseInt(maxRowsInput.value, 10);
+    return isNaN(v) || v < 1 ? 500 : v;
+  }
+
+  function trimLog() {
+    const max = getMaxRows();
+    const children = log.querySelectorAll('.log-row:not(.header)');
+    for (let i = children.length - 1; i >= max; i--) {
+      children[i].remove();
+    }
+    if (rows.length > max) rows.splice(0, rows.length - max);
+  }
+
+  maxRowsInput.addEventListener('change', trimLog);
+
+  function prependRow(row) {
+    const header = log.querySelector('.log-row.header');
+    if (header && header.nextSibling) {
+      log.insertBefore(row, header.nextSibling);
+    } else {
+      log.appendChild(row);
+    }
+    const max = getMaxRows();
+    while (log.children.length - 1 > max) {
+      log.lastElementChild.remove();
+    }
+    if (rows.length > max) rows.splice(0, rows.length - max);
+  }
+
+  function addLog(e) {
+    count++;
+    countEl.textContent = `イベント数: ${count}`;
+    const t = nowStr();
+    const row = document.createElement('div');
+    row.className = 'log-row ' + e.type;
+    row.dataset.cat = CATEGORY_OF[e.type] || 'other';
+    row.innerHTML = `
+      <div class="time">${t}</div>
+      <div>${e.type}</div>
+      <div>${e.key === ' ' ? '␣' : escapeHtml(e.key)}</div>
+      <div>${escapeHtml(e.code)}</div>
+      <div>${e.keyCode}</div>
+      <div>${e.which}</div>
+      <div>${fmtMods(e)}</div>
+    `;
+    prependRow(row);
+    rows.push(`${t}\t${e.type}\t${e.key}\t${e.code}\t${e.keyCode}\t${e.which}\t${fmtMods(e)}`);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function addGenericLog(type, col1, col2, col3, col4, mods) {
+    count++;
+    countEl.textContent = `イベント数: ${count}`;
+    const t = nowStr();
+    const row = document.createElement('div');
+    row.className = 'log-row keydown';
+    row.dataset.cat = CATEGORY_OF[type] || 'other';
+    row.innerHTML = `
+      <div class="time">${t}</div>
+      <div>${escapeHtml(type)}</div>
+      <div>${escapeHtml(col1)}</div>
+      <div>${escapeHtml(col2)}</div>
+      <div>${escapeHtml(col3)}</div>
+      <div>${escapeHtml(col4)}</div>
+      <div>${escapeHtml(mods)}</div>
+    `;
+    prependRow(row);
+    rows.push(`${t}\t${type}\t${col1}\t${col2}\t${col3}\t${col4}\t${mods}`);
+  }
+
+  const captureInput = document.getElementById('capture');
+  captureInput.focus();
+  captureInput.addEventListener('blur', () => setTimeout(() => captureInput.focus(), 0));
+  document.body.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') captureInput.focus();
+  });
+
+  const SCROLL_KEYS = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Home','End',' ','Space']);
+
+  window.addEventListener('keydown', (e) => {
+    if (SCROLL_KEYS.has(e.key)) e.preventDefault();
+    showCurrent(e);
+    addLog(e);
+  }, true);
+
+  window.addEventListener('keyup', (e) => {
+    addLog(e);
+  }, true);
+
+  function isNocapture(e) {
+    return e.target && e.target.closest && e.target.closest('[data-nocapture]');
+  }
+
+  const MOUSE_BTN_NAMES = { 0: '左', 1: '中(ホイール)', 2: '右', 3: '戻る(X1)', 4: '進む(X2)' };
+  ['mousedown','mouseup','click','auxclick','contextmenu','dblclick'].forEach(t => {
+    window.addEventListener(t, (e) => {
+      if (isNocapture(e)) return;
+      bigKey.textContent = `${t} button=${e.button}`;
+      addGenericLog(t, `button=${e.button}`, `buttons=${e.buttons}`, `x=${e.clientX}`, `y=${e.clientY}`, fmtMods(e));
+      setProgInfo(`■ MouseEvent (${e.type})
+  e.button  = ${e.button}           ← 押されたボタン (${MOUSE_BTN_NAMES[e.button] || '?'})
+  e.buttons = ${e.buttons}           ← ビットマスク (1=左, 2=右, 4=中, 8=X1, 16=X2)
+  e.clientX = ${e.clientX}
+  e.clientY = ${e.clientY}
+
+判定例:
+  if (e.type === ${jsQ(e.type)} && e.button === ${e.button}) { ... }
+  element.addEventListener(${jsQ(e.type)}, handler);`);
+    }, true);
+  });
+
+  window.addEventListener('wheel', (e) => {
+    bigKey.textContent = `wheel dY=${e.deltaY}`;
+    addGenericLog('wheel', `dX=${e.deltaX}`, `dY=${e.deltaY}`, `dZ=${e.deltaZ}`, `mode=${e.deltaMode}`, fmtMods(e));
+    const dir = e.deltaY > 0 ? '下方向スクロール' : e.deltaY < 0 ? '上方向スクロール' : '横スクロール等';
+    const modeName = { 0: 'pixel', 1: 'line', 2: 'page' }[e.deltaMode] || '?';
+    setProgInfo(`■ WheelEvent
+  e.deltaX    = ${e.deltaX}
+  e.deltaY    = ${e.deltaY}   ← ${dir}
+  e.deltaZ    = ${e.deltaZ}
+  e.deltaMode = ${e.deltaMode}     ← ${modeName}
+
+判定例:
+  element.addEventListener("wheel", e => {
+    if (e.deltaY > 0) { /* 下 */ } else if (e.deltaY < 0) { /* 上 */ }
+  }, { passive: false });  // preventDefault するなら passive:false`);
+  }, { capture: true, passive: true });
+
+  ['pointerdown','pointerup'].forEach(t => {
+    window.addEventListener(t, (e) => {
+      if (isNocapture(e)) return;
+      addGenericLog(t, `type=${e.pointerType}`, `btn=${e.button}`, `id=${e.pointerId}`, `pressure=${e.pressure}`, fmtMods(e));
+      setProgInfo(`■ PointerEvent (${e.type})
+  e.pointerType = ${jsQ(e.pointerType)}   ← "mouse" | "pen" | "touch"
+  e.pointerId   = ${e.pointerId}
+  e.button      = ${e.button}
+  e.pressure    = ${e.pressure}         ← 筆圧 (0.0〜1.0)
+  e.isPrimary   = ${e.isPrimary}
+
+判定例:
+  element.addEventListener(${jsQ(e.type)}, e => {
+    if (e.pointerType === "pen") { /* タッチペン */ }
+  });`);
+    }, true);
+  });
+
+  ['touchstart','touchend'].forEach(t => {
+    window.addEventListener(t, (e) => {
+      if (isNocapture(e)) return;
+      addGenericLog(t, `touches=${e.touches.length}`, '', '', '', '');
+    }, true);
+  });
+
+  let lastScroll = 0;
+  window.addEventListener('scroll', () => {
+    const now = performance.now();
+    if (now - lastScroll < 300) return;
+    lastScroll = now;
+    addGenericLog('scroll(throttled)', `x=${window.scrollX}`, `y=${window.scrollY}`, '', '', '');
+  }, true);
+
+  window.addEventListener('input', (e) => {
+    addGenericLog('input', `data=${e.data}`, `inputType=${e.inputType}`, '', '', '');
+  }, true);
+
+  const gamepadStateEl = document.getElementById('gamepadState');
+  const gamepadDiagEl = document.getElementById('gamepadDiag');
+  const gpPrevButtons = new Map();
+  const gpPrevAxes = new Map();
+  const AXIS_THRESHOLD = 0.5;
+
+  const iframeWarnEl = document.getElementById('iframeWarn');
+  const iframeWarnPathEl = document.getElementById('iframeWarnPath');
+  try { iframeWarnPathEl.textContent = decodeURIComponent(location.pathname.replace(/^\//, '').replace(/\//g, '\\')); } catch (_) {}
+
+  function chip(label, value, color) {
+    return `<span style="display:inline-block;background:#1e1e2e;padding:3px 10px;border-radius:6px;margin-right:6px;margin-top:4px;font-family:Consolas,monospace;font-size:12px;color:${color};"><b style="color:#a6adc8;font-family:inherit;">${label}:</b> ${value}</span>`;
+  }
+
+  function updateGamepadDiag() {
+    const hasApi = typeof navigator.getGamepads === 'function';
+    const inIframe = window.self !== window.top;
+    let slotsText = '-';
+    try {
+      const pads = hasApi ? navigator.getGamepads() : [];
+      const slots = pads.length;
+      const filled = Array.from(pads).filter(p => p).length;
+      slotsText = `${filled}/${slots}`;
+    } catch (e) {
+      slotsText = `error: ${e.message}`;
+    }
+    const parts = [
+      chip('API', hasApi ? '✓ 利用可' : '✗ 非対応', hasApi ? '#a6e3a1' : '#f38ba8'),
+      chip('iframe', inIframe ? '⚠ はい' : '✓ いいえ（直接起動）', inIframe ? '#fab387' : '#a6e3a1'),
+      chip('スロット', slotsText, '#cdd6f4'),
+      chip('SecureContext', window.isSecureContext ? '✓' : '✗', window.isSecureContext ? '#a6e3a1' : '#f38ba8'),
+    ];
+    gamepadDiagEl.innerHTML = parts.join('');
+    iframeWarnEl.classList.toggle('show', inIframe);
+
+    const helpEl = document.getElementById('gamepadHelp');
+    const noPad = hasApi && !inIframe && slotsText.startsWith('0/');
+    helpEl.style.display = noPad ? 'block' : 'none';
+  }
+  updateGamepadDiag();
+  setInterval(updateGamepadDiag, 1500);
+
+  document.getElementById('gamepadDetectBtn').addEventListener('click', () => {
+    updateGamepadDiag();
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const found = Array.from(pads).filter(p => p);
+    if (found.length) {
+      found.forEach(gp => {
+        addGenericLog('gamepad-detect', `idx=${gp.index}`, `id=${gp.id}`, `buttons=${gp.buttons.length}`, `axes=${gp.axes.length}`, '');
+      });
+    } else {
+      addGenericLog('gamepad-detect', 'none', 'ゲームパッドのボタンを一度押してください', '', '', '');
+    }
+    captureInput.focus();
+  });
+
+  window.addEventListener('gamepadconnected', (e) => {
+    addGenericLog('gamepad-connected', `idx=${e.gamepad.index}`, `id=${e.gamepad.id}`, `buttons=${e.gamepad.buttons.length}`, `axes=${e.gamepad.axes.length}`, '');
+  });
+  window.addEventListener('gamepaddisconnected', (e) => {
+    addGenericLog('gamepad-disconnected', `idx=${e.gamepad.index}`, `id=${e.gamepad.id}`, '', '', '');
+    gpPrevButtons.delete(e.gamepad.index);
+    gpPrevAxes.delete(e.gamepad.index);
+  });
+
+  const gpLiveEl = document.getElementById('gpLive');
+  const gpLiveBodyEl = document.getElementById('gpLiveBody');
+  const gpAnalogSeen = new Map();
+
+  function markAnalogIfNeeded(gp) {
+    let set = gpAnalogSeen.get(gp.index);
+    if (!set) { set = new Set(); gpAnalogSeen.set(gp.index, set); }
+    if (gp.mapping === 'standard') { set.add(6); set.add(7); }
+    gp.buttons.forEach((b, i) => {
+      if (b.value > 0 && b.value < 1) set.add(i);
+    });
+    return set;
+  }
+
+  function renderGamepadLive(pads) {
+    const active = Array.from(pads).filter(p => p);
+    if (!active.length) { gpLiveEl.style.display = 'none'; return; }
+    gpLiveEl.style.display = 'block';
+
+    const digitalBtn = (b, i) => {
+      const bg = b.pressed ? '#a6e3a1' : '#45475a';
+      const fg = b.pressed ? '#1e1e2e' : '#cdd6f4';
+      return `<span style="display:inline-block;min-width:46px;text-align:center;padding:4px 6px;margin:2px;border-radius:4px;background:${bg};color:${fg};font-weight:bold;font-family:Consolas,monospace;">B${i}</span>`;
+    };
+
+    const analogBtn = (b, i) => {
+      const pct = Math.round(b.value * 100);
+      const fillColor = b.pressed ? '#f38ba8' : '#89b4fa';
+      return `
+        <div style="display:inline-block;width:180px;margin:3px 4px;vertical-align:top;">
+          <div style="display:flex;justify-content:space-between;font-family:Consolas,monospace;font-size:12px;color:#cdd6f4;margin-bottom:2px;">
+            <span><b>B${i}</b> (analog)${b.pressed ? ' <span style="color:#f38ba8;">●</span>' : ''}</span>
+            <span style="color:#f9e2af;">${b.value.toFixed(3)}</span>
+          </div>
+          <div style="position:relative;height:14px;background:#313244;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${fillColor};transition:width 30ms linear;"></div>
+          </div>
+        </div>`;
+    };
+
+    const axisBar = (v, i) => {
+      const mag = Math.min(1, Math.abs(v));
+      const pct = Math.round(mag * 50);
+      const active = mag > 0.12;
+      const color = active ? '#89b4fa' : '#585b70';
+      const leftPct = v < 0 ? (50 - pct) : 50;
+      return `
+        <div style="display:inline-block;width:220px;margin:3px 4px;vertical-align:top;">
+          <div style="display:flex;justify-content:space-between;font-family:Consolas,monospace;font-size:12px;color:#cdd6f4;margin-bottom:2px;">
+            <span><b>Axis ${i}</b></span>
+            <span style="color:${active ? '#a6e3a1' : '#6c7086'};">${v >= 0 ? '+' : ''}${v.toFixed(3)}</span>
+          </div>
+          <div style="position:relative;height:14px;background:#313244;border-radius:3px;overflow:hidden;">
+            <div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:#6c7086;"></div>
+            <div style="position:absolute;top:0;bottom:0;left:${leftPct}%;width:${pct}%;background:${color};transition:left 30ms linear, width 30ms linear;"></div>
+          </div>
+        </div>`;
+    };
+
+    const html = active.map(gp => {
+      const analogSet = markAnalogIfNeeded(gp);
+      const digitals = gp.buttons.map((b, i) => ({ b, i })).filter(x => !analogSet.has(x.i));
+      const analogs = gp.buttons.map((b, i) => ({ b, i })).filter(x => analogSet.has(x.i));
+      const digitalHtml = digitals.map(x => digitalBtn(x.b, x.i)).join('');
+      const analogHtml = analogs.map(x => analogBtn(x.b, x.i)).join('');
+      const axesHtml = gp.axes.map((v, i) => axisBar(v, i)).join('');
+      return `
+        <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed #45475a;">
+          <div style="color:#f9e2af;margin-bottom:8px;font-family:Consolas,monospace;">#${gp.index} ${gp.id} [${gp.mapping || 'non-standard'}]</div>
+          <div style="margin-bottom:6px;"><div style="color:#a6adc8;font-size:11px;margin-bottom:2px;">デジタルボタン（押下中は緑）</div>${digitalHtml || '<span style="color:#6c7086;font-size:12px;">（なし）</span>'}</div>
+          ${analogHtml ? `<div style="margin-bottom:6px;"><div style="color:#a6adc8;font-size:11px;margin-bottom:2px;">アナログトリガー（L2/R2 など）</div>${analogHtml}</div>` : ''}
+          <div><div style="color:#a6adc8;font-size:11px;margin-bottom:2px;">スティック軸（中央=ニュートラル、左右/上下が +/−）</div>${axesHtml}</div>
+        </div>`;
+    }).join('');
+    gpLiveBodyEl.innerHTML = html;
+  }
+
+  function pollGamepads() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    renderGamepadLive(pads);
+    const connected = [];
+    for (const gp of pads) {
+      if (!gp) continue;
+      connected.push(`#${gp.index} ${gp.id}`);
+      const prevBtn = gpPrevButtons.get(gp.index) || [];
+      gp.buttons.forEach((btn, i) => {
+        const was = prevBtn[i] || { pressed: false, value: 0 };
+        if (btn.pressed && !was.pressed) {
+          bigKey.textContent = `Gamepad #${gp.index} Button ${i} ↓`;
+          addGenericLog('gp-btn-down', `#${gp.index}`, `btn=${i}`, `value=${btn.value.toFixed(2)}`, '', '');
+          setProgInfo(`■ Gamepad Button Down
+  gamepad.index          = ${gp.index}
+  gamepad.id             = ${jsQ(gp.id)}
+  gamepad.mapping        = ${jsQ(gp.mapping || '')}   ← "standard" なら配置固定
+  button index           = ${i}
+  gamepad.buttons[${i}].value = ${btn.value.toFixed(3)}
+
+ポーリング例 (requestAnimationFrame内):
+  const gp = navigator.getGamepads()[${gp.index}];
+  if (gp && gp.buttons[${i}].pressed) { /* 押下中 */ }
+
+Standard mapping参考: 0=A/✕ 1=B/○ 2=X/□ 3=Y/△ 4=LB 5=RB
+  6=LT(analog) 7=RT(analog) 8=Back 9=Start 10=LS押込 11=RS押込
+  12=↑ 13=↓ 14=← 15=→ 16=Home/PS`);
+        } else if (!btn.pressed && was.pressed) {
+          addGenericLog('gp-btn-up', `#${gp.index}`, `btn=${i}`, `value=${btn.value.toFixed(2)}`, '', '');
+        } else if (btn.value !== was.value && Math.abs(btn.value - was.value) > 0.05 && !btn.pressed === !was.pressed) {
+          addGenericLog('gp-btn-analog', `#${gp.index}`, `btn=${i}`, `value=${btn.value.toFixed(2)}`, '', '');
+          setProgInfo(`■ Gamepad Button Analog (トリガーなど)
+  gamepad.index               = ${gp.index}
+  button index                = ${i}
+  gamepad.buttons[${i}].value = ${btn.value.toFixed(3)}   ← 0.0〜1.0 の連続値
+  gamepad.buttons[${i}].pressed = ${btn.pressed}
+
+判定例:
+  const v = navigator.getGamepads()[${gp.index}].buttons[${i}].value;
+  if (v > 0.5) { /* 半押し以上 */ }`);
+        }
+      });
+      gpPrevButtons.set(gp.index, gp.buttons.map(b => ({ pressed: b.pressed, value: b.value })));
+
+      const prevAx = gpPrevAxes.get(gp.index) || [];
+      gp.axes.forEach((v, i) => {
+        const was = prevAx[i] ?? 0;
+        const crossedPos = v > AXIS_THRESHOLD && was <= AXIS_THRESHOLD;
+        const crossedNeg = v < -AXIS_THRESHOLD && was >= -AXIS_THRESHOLD;
+        const returned = Math.abs(v) < AXIS_THRESHOLD && Math.abs(was) >= AXIS_THRESHOLD;
+        if (crossedPos || crossedNeg) {
+          bigKey.textContent = `Gamepad #${gp.index} Axis ${i}=${v.toFixed(2)}`;
+          addGenericLog('gp-axis', `#${gp.index}`, `axis=${i}`, `value=${v.toFixed(2)}`, crossedPos ? '+' : '-', '');
+          const axisHint = { 0: 'L-Stick X (左右)', 1: 'L-Stick Y (上下, 上=-)', 2: 'R-Stick X (左右)', 3: 'R-Stick Y (上下, 上=-)' }[i] || '';
+          setProgInfo(`■ Gamepad Axis
+  gamepad.index       = ${gp.index}
+  axis index          = ${i}   ${axisHint ? '← ' + axisHint : ''}
+  gamepad.axes[${i}]   = ${v.toFixed(3)}   ← 範囲 -1.0〜+1.0
+
+ポーリング例:
+  const gp = navigator.getGamepads()[${gp.index}];
+  const v = gp.axes[${i}];
+  if (Math.abs(v) > 0.15) { /* デッドゾーンを越えた */ }
+
+Standard mapping の軸:
+  axes[0]=L-Stick X (左=-1 / 右=+1)
+  axes[1]=L-Stick Y (上=-1 / 下=+1)
+  axes[2]=R-Stick X
+  axes[3]=R-Stick Y`);
+        } else if (returned) {
+          addGenericLog('gp-axis', `#${gp.index}`, `axis=${i}`, `value=${v.toFixed(2)}`, 'neutral', '');
+        }
+      });
+      gpPrevAxes.set(gp.index, gp.axes.slice());
+    }
+    gamepadStateEl.textContent = connected.length ? connected.join(' / ') : '未接続';
+    gamepadStateEl.style.color = connected.length ? '#a6e3a1' : '#f38ba8';
+    requestAnimationFrame(pollGamepads);
+  }
+  requestAnimationFrame(pollGamepads);
+
+  const focusState = document.getElementById('focusState');
+  function updateFocus() {
+    focusState.textContent = document.hasFocus() ? 'ウィンドウにフォーカスあり ✓' : 'フォーカスなし ✗（ここをクリック）';
+    focusState.style.color = document.hasFocus() ? '#a6e3a1' : '#f38ba8';
+  }
+  updateFocus();
+  window.addEventListener('focus', updateFocus);
+  window.addEventListener('blur', updateFocus);
+  setInterval(updateFocus, 500);
+
+  const filterBtns = document.querySelectorAll('.filter-btn[data-cat]');
+  function applyFilterBtn(btn) {
+    const cat = btn.dataset.cat;
+    const on = btn.classList.contains('on');
+    log.classList.toggle('hide-' + cat, !on);
+    btn.classList.toggle('off', !on);
+  }
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('on');
+      applyFilterBtn(btn);
+      captureInput.focus();
+    });
+  });
+  document.getElementById('filterAll').addEventListener('click', () => {
+    filterBtns.forEach(btn => { btn.classList.add('on'); applyFilterBtn(btn); });
+    captureInput.focus();
+  });
+  document.getElementById('filterNone').addEventListener('click', () => {
+    filterBtns.forEach(btn => { btn.classList.remove('on'); applyFilterBtn(btn); });
+    captureInput.focus();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.querySelectorAll('.log-row:not(.header)').forEach(n => n.remove());
+    rows.length = 0;
+    count = 0;
+    countEl.textContent = 'イベント数: 0';
+    captureInput.focus();
+  });
+
+  document.getElementById('clearInputBtn').addEventListener('click', () => {
+    captureInput.value = '';
+    captureInput.focus();
+  });
+
+  document.getElementById('copyEventBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('copyEventStatus');
+    const chipsText = Array.from(details.querySelectorAll('.chip'))
+      .map(c => c.textContent.trim()).join('\n');
+    const parts = [];
+    parts.push('■ 最後のイベント: ' + bigKey.textContent);
+    if (chipsText) parts.push('\n[詳細]\n' + chipsText);
+    if (progInfoEl.style.display !== 'none' && progInfoEl.textContent) {
+      parts.push('\n[プログラミング情報]\n' + progInfoEl.textContent);
+    }
+    const text = parts.join('\n');
+    let ok = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } else {
+        throw new Error('clipboard API unavailable');
+      }
+    } catch (_) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.setAttribute('data-nocapture', '1');
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (_) {}
+    }
+    statusEl.textContent = ok ? '✓ クリップボードにコピーしました' : '✗ コピーに失敗しました';
+    statusEl.style.color = ok ? '#a6e3a1' : '#f38ba8';
+    statusEl.style.display = 'block';
+    clearTimeout(copyEventBtn._t);
+    copyEventBtn._t = setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+    captureInput.focus();
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const header = 'time\ttype\tkey\tcode\tkeyCode\twhich\tmods';
+    const text = [header, ...rows].join('\r\n') + '\r\n';
+    const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const d = new Date();
+    const pad = (n, w=2) => String(n).padStart(w, '0');
+    const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `input-log-${stamp}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => captureInput.focus(), 0);
+  });
+</script>
+</body>
+</html>
