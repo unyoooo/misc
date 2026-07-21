@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEDチカチカ回路（マルチバイブレータ）の作り方 / リファレンス</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  h3 { color: #89b4fa; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono {
+    font-family: "Consolas", monospace;
+    background: #11111b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #a6e3a1;
+  }
+
+  /* 比較表 */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 8px;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  th, td {
+    border: 1px solid #45475a;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+  td .pn, .pn { color: #a6e3a1; font-family: Consolas, monospace; }
+
+  /* 計算機 */
+  .calc {
+    background: #181825;
+    border: 2px solid #a6e3a1;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .calc h3 { margin: 0 0 4px; color: #a6e3a1; font-size: 18px; }
+  .calc .sub { color: #a6adc8; font-size: 13px; margin-bottom: 12px; }
+  .calc .inputs { display: flex; flex-wrap: wrap; gap: 14px; }
+  .calc .field { display: flex; flex-direction: column; gap: 4px; }
+  .calc .field label { font-size: 12px; color: #a6adc8; font-weight: bold; }
+  .calc .field input, .calc .field select {
+    width: 150px;
+    padding: 8px 10px;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+    font-size: 15px;
+  }
+  .calc .field .unit { color: #a6adc8; font-size: 11px; }
+  .calc .result {
+    margin-top: 14px;
+    background: #11111b;
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-left: 4px solid #f9e2af;
+  }
+  .calc .result .big {
+    font-family: Consolas, monospace;
+    font-size: 30px;
+    font-weight: bold;
+    color: #a6e3a1;
+    margin: 2px 0 6px;
+  }
+  .calc .result .detail { font-family: Consolas, monospace; font-size: 13px; color: #cdd6f4; }
+  .calc .result .detail span { color: #f9e2af; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+  .presets .label { font-size: 12px; color: #a6adc8; font-weight: bold; margin-right: 2px; }
+  .preset-btn {
+    background: #11111b; color: #cdd6f4; border: 1px solid #585b70;
+    border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  .preset-btn:hover { background: #313244; border-color: #89b4fa; color: #89b4fa; }
+
+  /* 手順・ガイド */
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item {
+    background: #232334; border-radius: 8px;
+    padding: 12px 14px; border-left: 3px solid #a6e3a1;
+  }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .circuit {
+    background: #181825; border: 1px solid #45475a; border-radius: 10px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+  .schem {
+    display: block; max-width: 600px; width: 100%; height: auto;
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 8px; margin-bottom: 12px;
+  }
+  .schem text { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  .warnbox {
+    background: #45302e; color: #fab387; border: 2px solid #fab387;
+    border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+  }
+  .warnbox b { color: #f9e2af; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>💡 LEDチカチカ回路（マルチバイブレータ）の作り方</h1>
+
+  <div class="lead">
+    2つの状態を交互に行き来して、LEDを<b>チカチカ点滅</b>させる回路を<b>アステーブル（非安定）マルチバイブレータ</b>と呼びます。
+    マイコンを使わず、<b>部品だけ</b>で点滅が作れるのが魅力。ここでは <b>トランジスタ / MOSFET / 555タイマー</b> の3通りの作り方と、
+    点滅の速さ（周波数）を求める<b>計算機</b>をまとめます。
+    <span class="note">※ 本ページの値・式は一般的な目安です。実機では部品のばらつきにより前後します。</span>
+  </div>
+
+  <h2>🔧 3つの作り方くらべ</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>方式</th><th>部品数</th><th>特徴</th><th>向いている用途</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>トランジスタ(BJT) 2石</b></td>
+          <td>多め（Tr2・LED2・C2・R4）</td>
+          <td>定番の教材回路。2つのLEDが<b>交互</b>に点滅。仕組みが見えて勉強になる</td>
+          <td>学習・2灯の交互点滅・電子工作の入門</td>
+        </tr>
+        <tr>
+          <td><b>MOSFET 2石</b></td>
+          <td>多め（同上＋ゲート抵抗）</td>
+          <td>BJT版のMOSFET置き換え。ゲート電流が要らない。タイミングはしきい値依存で<b>目安</b></td>
+          <td>大電流LED・テープLEDの点滅（パワー段）</td>
+        </tr>
+        <tr>
+          <td><b>555タイマー</b></td>
+          <td>少なめ（IC1・C1・R2）</td>
+          <td>もっとも<b>安定・手軽</b>。周波数の計算どおりに出やすい。1灯点滅が基本</td>
+          <td>確実に点滅させたい・周期を正確にしたい</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">迷ったら <b style="color:#cdd6f4;">555</b> が一番確実。<b style="color:#cdd6f4;">2灯の交互点滅</b>や仕組みの学習なら <b style="color:#cdd6f4;">トランジスタ2石</b>。大きなLED負荷を点滅させるなら <b style="color:#cdd6f4;">MOSFET</b> を使う。</p>
+
+  <h2>🔴 トランジスタ（BJT）2石マルチバイブレータ</h2>
+  <p class="note">2個のトランジスタが「片方ON・片方OFF」を交互に繰り返し、2つのLEDが<b style="color:#cdd6f4;">かわりばんこ</b>に光る、いちばん有名な回路。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 520 330" xmlns="http://www.w3.org/2000/svg">
+      <!-- Vcc / GND レール -->
+      <line x1="40" y1="28" x2="480" y2="28" stroke="#f38ba8" stroke-width="2"/>
+      <text x="34" y="32" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">+V</text>
+      <line x1="40" y1="302" x2="480" y2="302" stroke="#a6adc8" stroke-width="2"/>
+      <text x="34" y="306" text-anchor="end" fill="#a6adc8" font-size="12">GND</text>
+
+      <!-- ===== 左 コレクタ枝（LED1 + Rc1） ===== -->
+      <line x1="150" y1="28" x2="150" y2="46" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="28" r="3.5" fill="#cdd6f4"/>
+      <!-- LED1 -->
+      <polygon points="140,48 160,48 150,66" fill="#f38ba8"/>
+      <line x1="140" y1="66" x2="160" y2="66" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="162" y1="46" x2="170" y2="40" stroke="#f38ba8" stroke-width="1.5"/>
+      <line x1="166" y1="52" x2="174" y2="46" stroke="#f38ba8" stroke-width="1.5"/>
+      <text x="178" y="58" fill="#f38ba8" font-size="11" font-weight="bold">LED1</text>
+      <line x1="150" y1="66" x2="150" y2="86" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- Rc1 -->
+      <rect x="135" y="86" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="130" y="104" text-anchor="end" fill="#f9e2af" font-size="10">Rc1</text>
+      <text x="130" y="116" text-anchor="end" fill="#a6adc8" font-size="9">470Ω</text>
+      <line x1="150" y1="126" x2="150" y2="215" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="180" r="3.5" fill="#cdd6f4"/>
+
+      <!-- ===== 右 コレクタ枝（LED2 + Rc2） ===== -->
+      <line x1="370" y1="28" x2="370" y2="46" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="370" cy="28" r="3.5" fill="#cdd6f4"/>
+      <polygon points="360,48 380,48 370,66" fill="#f38ba8"/>
+      <line x1="360" y1="66" x2="380" y2="66" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="382" y1="46" x2="390" y2="40" stroke="#f38ba8" stroke-width="1.5"/>
+      <line x1="386" y1="52" x2="394" y2="46" stroke="#f38ba8" stroke-width="1.5"/>
+      <text x="398" y="58" fill="#f38ba8" font-size="11" font-weight="bold">LED2</text>
+      <line x1="370" y1="66" x2="370" y2="86" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="355" y="86" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="390" y="104" fill="#f9e2af" font-size="10">Rc2</text>
+      <text x="390" y="116" fill="#a6adc8" font-size="9">470Ω</text>
+      <line x1="370" y1="126" x2="370" y2="215" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="370" cy="160" r="3.5" fill="#cdd6f4"/>
+
+      <!-- ===== ベース抵抗 Rb1 / Rb2 ===== -->
+      <line x1="230" y1="28" x2="230" y2="90" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="230" cy="28" r="3.5" fill="#cdd6f4"/>
+      <rect x="215" y="90" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="186" y="108" fill="#f9e2af" font-size="10">Rb1</text>
+      <text x="183" y="120" fill="#a6adc8" font-size="9">47k</text>
+      <line x1="230" y1="130" x2="230" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+
+      <line x1="290" y1="28" x2="290" y2="90" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="290" cy="28" r="3.5" fill="#cdd6f4"/>
+      <rect x="275" y="90" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="310" y="108" fill="#f9e2af" font-size="10">Rb2</text>
+      <text x="310" y="120" fill="#a6adc8" font-size="9">47k</text>
+      <line x1="290" y1="130" x2="290" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+
+      <!-- ===== トランジスタ Q1 / Q2 ===== -->
+      <rect x="120" y="215" width="60" height="48" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="150" y="249" text-anchor="middle" fill="#89b4fa" font-size="12" font-weight="bold">Q1</text>
+      <text x="150" y="228" text-anchor="middle" fill="#a6e3a1" font-size="9">C</text>
+      <text x="174" y="234" text-anchor="end" fill="#89b4fa" font-size="9">B</text>
+      <text x="150" y="259" text-anchor="middle" fill="#f38ba8" font-size="9">E</text>
+      <!-- E to GND -->
+      <line x1="150" y1="263" x2="150" y2="302" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="302" r="3.5" fill="#cdd6f4"/>
+      <!-- B node -->
+      <line x1="180" y1="238" x2="230" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="210" cy="238" r="3.5" fill="#cdd6f4"/>
+
+      <rect x="340" y="215" width="60" height="48" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="370" y="249" text-anchor="middle" fill="#89b4fa" font-size="12" font-weight="bold">Q2</text>
+      <text x="370" y="228" text-anchor="middle" fill="#a6e3a1" font-size="9">C</text>
+      <text x="346" y="234" fill="#89b4fa" font-size="9">B</text>
+      <text x="370" y="259" text-anchor="middle" fill="#f38ba8" font-size="9">E</text>
+      <line x1="370" y1="263" x2="370" y2="302" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="370" cy="302" r="3.5" fill="#cdd6f4"/>
+      <line x1="290" y1="238" x2="340" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="290" cy="238" r="3.5" fill="#cdd6f4"/>
+
+      <!-- ===== 結合コンデンサ C1: Q1コレクタ→Q2ベース ===== -->
+      <line x1="150" y1="180" x2="255" y2="180" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="255" y1="180" x2="255" y2="198" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="245" y1="198" x2="265" y2="198" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="245" y1="205" x2="265" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <text x="270" y="195" fill="#94e2d5" font-size="10">C1</text>
+      <line x1="255" y1="205" x2="255" y2="238" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="255" y1="238" x2="290" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="255" cy="238" r="3.5" fill="#cdd6f4"/>
+
+      <!-- ===== 結合コンデンサ C2: Q2コレクタ→Q1ベース ===== -->
+      <line x1="370" y1="160" x2="210" y2="160" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="210" y1="160" x2="210" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="200" y1="205" x2="220" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="200" y1="212" x2="220" y2="212" stroke="#94e2d5" stroke-width="2"/>
+      <text x="196" y="213" text-anchor="end" fill="#94e2d5" font-size="10">C2</text>
+      <line x1="210" y1="212" x2="210" y2="238" stroke="#94e2d5" stroke-width="2"/>
+    </svg>
+    <p class="note">対称（Rb1=Rb2, C1=C2）なら、2つのLEDが同じ速さで交互に点滅。<b style="color:#cdd6f4;">片方のLEDが光っている時間 ≒ 0.693 × Rb × C</b>、点滅の1周期 ≒ その2倍。</p>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">なぜ交互に光る？</div><div class="a">片方のTrがON（そのLED点灯）の間、結合コンデンサがもう片方のベースをゆっくり充電。しきい値に達すると形勢が<b style="color:#cdd6f4;">逆転</b>し、ON/OFFが入れ替わる。これを延々繰り返す。</div></div>
+    <div class="guide-item"><div class="q">速さの決め方</div><div class="a">タイミングは <b style="color:#cdd6f4;">ベース抵抗Rbと結合コンデンサC</b> で決まる。RやCを大きくするとゆっくり、小さくすると速くなる（下の計算機で確認）。</div></div>
+    <div class="guide-item"><div class="q">部品の目安</div><div class="a">Rc（コレクタ側）= 470Ω〜1kΩ、Rb（ベース側）= 10k〜100k、C = 1〜100µF。トランジスタは <span class="pn">2N3904</span> <span class="pn">2SC1815</span> <span class="pn">BC547</span> など定番のNPNで。</div></div>
+    <div class="guide-item"><div class="q">電解コンデンサの向き</div><div class="a">極性ありの電解Cを使うときは <b style="color:#cdd6f4;">＋をコレクタ側</b>（電圧が高い側）に向ける。逆だと劣化・破損のもと。</div></div>
+  </div>
+
+  <h2>⚡ MOSFET 2石マルチバイブレータ</h2>
+  <p class="note">上のBJT版をMOSFETに置き換えたもの。考え方は同じで、<b style="color:#cdd6f4;">ベース抵抗→ゲート抵抗</b>に変わる。MOSFETはゲート電流がほぼ要らないが、点滅の速さは<b style="color:#cdd6f4;">しきい値電圧Vgs(th)に依存</b>するため計算は「目安」になる。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 520 330" xmlns="http://www.w3.org/2000/svg">
+      <line x1="40" y1="28" x2="480" y2="28" stroke="#f38ba8" stroke-width="2"/>
+      <text x="34" y="32" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">+V</text>
+      <line x1="40" y1="302" x2="480" y2="302" stroke="#a6adc8" stroke-width="2"/>
+      <text x="34" y="306" text-anchor="end" fill="#a6adc8" font-size="12">GND</text>
+
+      <!-- 左 ドレイン枝 -->
+      <line x1="150" y1="28" x2="150" y2="46" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="28" r="3.5" fill="#cdd6f4"/>
+      <polygon points="140,48 160,48 150,66" fill="#f38ba8"/>
+      <line x1="140" y1="66" x2="160" y2="66" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="162" y1="46" x2="170" y2="40" stroke="#f38ba8" stroke-width="1.5"/>
+      <line x1="166" y1="52" x2="174" y2="46" stroke="#f38ba8" stroke-width="1.5"/>
+      <text x="178" y="58" fill="#f38ba8" font-size="11" font-weight="bold">LED1</text>
+      <line x1="150" y1="66" x2="150" y2="86" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="135" y="86" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="130" y="104" text-anchor="end" fill="#f9e2af" font-size="10">Rd1</text>
+      <text x="130" y="116" text-anchor="end" fill="#a6adc8" font-size="9">470Ω</text>
+      <line x1="150" y1="126" x2="150" y2="215" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="180" r="3.5" fill="#cdd6f4"/>
+
+      <!-- 右 ドレイン枝 -->
+      <line x1="370" y1="28" x2="370" y2="46" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="370" cy="28" r="3.5" fill="#cdd6f4"/>
+      <polygon points="360,48 380,48 370,66" fill="#f38ba8"/>
+      <line x1="360" y1="66" x2="380" y2="66" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="382" y1="46" x2="390" y2="40" stroke="#f38ba8" stroke-width="1.5"/>
+      <line x1="386" y1="52" x2="394" y2="46" stroke="#f38ba8" stroke-width="1.5"/>
+      <text x="398" y="58" fill="#f38ba8" font-size="11" font-weight="bold">LED2</text>
+      <line x1="370" y1="66" x2="370" y2="86" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="355" y="86" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="390" y="104" fill="#f9e2af" font-size="10">Rd2</text>
+      <text x="390" y="116" fill="#a6adc8" font-size="9">470Ω</text>
+      <line x1="370" y1="126" x2="370" y2="215" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="370" cy="160" r="3.5" fill="#cdd6f4"/>
+
+      <!-- ゲート抵抗 Rg1 / Rg2 -->
+      <line x1="230" y1="28" x2="230" y2="90" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="230" cy="28" r="3.5" fill="#cdd6f4"/>
+      <rect x="215" y="90" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="186" y="108" fill="#f9e2af" font-size="10">Rg1</text>
+      <text x="183" y="120" fill="#a6adc8" font-size="9">100k</text>
+      <line x1="230" y1="130" x2="230" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="290" y1="28" x2="290" y2="90" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="290" cy="28" r="3.5" fill="#cdd6f4"/>
+      <rect x="275" y="90" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="310" y="108" fill="#f9e2af" font-size="10">Rg2</text>
+      <text x="310" y="120" fill="#a6adc8" font-size="9">100k</text>
+      <line x1="290" y1="130" x2="290" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+
+      <!-- MOSFET Q1 / Q2 -->
+      <rect x="120" y="215" width="60" height="48" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="150" y="249" text-anchor="middle" fill="#cba6f7" font-size="10" font-weight="bold">N-ch</text>
+      <text x="150" y="228" text-anchor="middle" fill="#a6e3a1" font-size="9">D</text>
+      <text x="174" y="234" text-anchor="end" fill="#cba6f7" font-size="9">G</text>
+      <text x="150" y="259" text-anchor="middle" fill="#f38ba8" font-size="9">S</text>
+      <line x1="150" y1="263" x2="150" y2="302" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="302" r="3.5" fill="#cdd6f4"/>
+      <line x1="180" y1="238" x2="230" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="210" cy="238" r="3.5" fill="#cdd6f4"/>
+
+      <rect x="340" y="215" width="60" height="48" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="370" y="249" text-anchor="middle" fill="#cba6f7" font-size="10" font-weight="bold">N-ch</text>
+      <text x="370" y="228" text-anchor="middle" fill="#a6e3a1" font-size="9">D</text>
+      <text x="346" y="234" fill="#cba6f7" font-size="9">G</text>
+      <text x="370" y="259" text-anchor="middle" fill="#f38ba8" font-size="9">S</text>
+      <line x1="370" y1="263" x2="370" y2="302" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="370" cy="302" r="3.5" fill="#cdd6f4"/>
+      <line x1="290" y1="238" x2="340" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="290" cy="238" r="3.5" fill="#cdd6f4"/>
+
+      <!-- 結合C1: Q1ドレイン→Q2ゲート -->
+      <line x1="150" y1="180" x2="255" y2="180" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="255" y1="180" x2="255" y2="198" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="245" y1="198" x2="265" y2="198" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="245" y1="205" x2="265" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <text x="270" y="195" fill="#94e2d5" font-size="10">C1</text>
+      <line x1="255" y1="205" x2="255" y2="238" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="255" y1="238" x2="290" y2="238" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="255" cy="238" r="3.5" fill="#cdd6f4"/>
+
+      <!-- 結合C2: Q2ドレイン→Q1ゲート -->
+      <line x1="370" y1="160" x2="210" y2="160" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="210" y1="160" x2="210" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="200" y1="205" x2="220" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="200" y1="212" x2="220" y2="212" stroke="#94e2d5" stroke-width="2"/>
+      <text x="196" y="213" text-anchor="end" fill="#94e2d5" font-size="10">C2</text>
+      <line x1="210" y1="212" x2="210" y2="238" stroke="#94e2d5" stroke-width="2"/>
+    </svg>
+    <p class="note">構造はBJT版と同じ。ベース抵抗が<b style="color:#cdd6f4;">ゲート抵抗Rg</b>になり、しきい値が低めでロジックレベルの品（例 <span class="pn">2N7000</span>）が使いやすい。</p>
+  </div>
+  <div class="warnbox" style="border-color:#89b4fa;background:#1e2433;color:#89b4fa;">
+    💡 <b style="color:#cdd6f4;">MOSFETの本領は「大電流スイッチ」</b>。1個のLEDをチカらせるだけならBJTや555で十分。<b style="color:#cdd6f4;">テープLEDや高輝度LEDを大量に点滅</b>させたいときは、555やトランジスタで作った点滅信号で<b style="color:#cdd6f4;">パワーMOSFETをON/OFF</b>するのが定番（→ mosfetGuide.html 参照）。
+  </div>
+
+  <h2>⏱ 555タイマー版（いちばん安定）</h2>
+  <p class="note">タイマーIC <b style="color:#cdd6f4;">NE555</b> を非安定モードで使う、もっとも手軽で安定した点滅回路。出力(3番ピン)にLEDをつなぐだけ。詳しい仕組みは <a href="ne555Guide.html">ne555Guide.html</a> を参照。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 500 280" xmlns="http://www.w3.org/2000/svg">
+      <rect x="190" y="70" width="120" height="150" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="250" y="150" text-anchor="middle" fill="#89b4fa" font-size="18" font-weight="bold">555</text>
+      <line x1="60" y1="30" x2="440" y2="30" stroke="#f38ba8" stroke-width="2"/>
+      <text x="50" y="34" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">+V</text>
+      <!-- 8/4 to V -->
+      <line x1="220" y1="70" x2="220" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="210" y="64" text-anchor="end" fill="#cdd6f4" font-size="10">8/4</text>
+      <circle cx="220" cy="30" r="3.5" fill="#cdd6f4"/>
+      <!-- R1 V->7 -->
+      <line x1="120" y1="30" x2="120" y2="58" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="120" cy="30" r="3.5" fill="#cdd6f4"/>
+      <rect x="105" y="58" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="140" y="82" fill="#f9e2af" font-size="10">R1</text>
+      <line x1="120" y1="98" x2="120" y2="118" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="190" y1="108" x2="120" y2="108" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="104" text-anchor="end" fill="#94e2d5" font-size="9">7</text>
+      <circle cx="120" cy="108" r="3.5" fill="#cdd6f4"/>
+      <!-- R2 7->6/2 -->
+      <rect x="105" y="118" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="140" y="142" fill="#f9e2af" font-size="10">R2</text>
+      <line x1="120" y1="158" x2="120" y2="182" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="190" y1="182" x2="120" y2="182" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="178" text-anchor="end" fill="#f9e2af" font-size="9">6+2</text>
+      <circle cx="120" cy="182" r="3.5" fill="#cdd6f4"/>
+      <!-- C ->GND -->
+      <line x1="120" y1="182" x2="120" y2="200" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="108" y1="200" x2="132" y2="200" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="113" y1="207" x2="127" y2="207" stroke="#94e2d5" stroke-width="2"/>
+      <text x="140" y="208" fill="#94e2d5" font-size="10">C</text>
+      <line x1="120" y1="207" x2="120" y2="248" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="60" y1="248" x2="460" y2="248" stroke="#a6adc8" stroke-width="2"/>
+      <text x="50" y="252" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <circle cx="120" cy="248" r="3.5" fill="#cdd6f4"/>
+      <line x1="250" y1="220" x2="250" y2="248" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="244" y="236" text-anchor="end" fill="#a6adc8" font-size="10">1</text>
+      <circle cx="250" cy="248" r="3.5" fill="#cdd6f4"/>
+      <!-- OUT 3 -> R -> LED -> GND -->
+      <line x1="310" y1="150" x2="350" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="315" y="144" fill="#a6e3a1" font-size="10">3</text>
+      <rect x="350" y="135" width="30" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="365" y="128" text-anchor="middle" fill="#f9e2af" font-size="9">470Ω</text>
+      <line x1="380" y1="150" x2="410" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon points="410,140 410,160 428,150" fill="#f38ba8"/>
+      <line x1="428" y1="140" x2="428" y2="160" stroke="#f38ba8" stroke-width="2"/>
+      <text x="406" y="180" fill="#f38ba8" font-size="11" font-weight="bold">LED</text>
+      <line x1="428" y1="150" x2="450" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="450" y1="150" x2="450" y2="248" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="450" cy="248" r="3.5" fill="#cdd6f4"/>
+    </svg>
+    <p class="note">点滅の速さは <b style="color:#cdd6f4;">f = 1.44 / ((R1+2R2)×C)</b>。R1・R2・C を変えるだけ。LEDには必ず電流制限抵抗（470Ω等）を直列に。</p>
+    <p class="note">図の「6+2」は <b style="color:#cdd6f4;">6番ピン(THRES)と2番ピン(TRIG)を結線（ショート）して同じ点につなぐ</b>という意味。この2つを<b style="color:#cdd6f4;">同じコンデンサ電圧で監視</b>させることで、⅓Vcc〜⅔Vcc の間を自動で充放電し続ける＝<b style="color:#cdd6f4;">発振</b>になります。</p>
+    <p class="note">図の「8/4」は <b style="color:#cdd6f4;">8番ピン(Vcc)と4番ピン(RESET)を両方とも電源プラス(+V)につなぐ</b>という意味。8番は電源そのもの、4番(RESET)は<b style="color:#cdd6f4;">Lowにすると発振が止まる</b>ピンなので、使わないときは必ず+Vに固定する（開放だとノイズで誤動作する）。</p>
+  </div>
+
+  <h2>🔁 シュミットインバータ発振（74HC14）＋α</h2>
+  <p class="note">論理IC <b style="color:#cdd6f4;">74HC14（シュミットトリガ・インバータ）</b>を使うと、<b style="color:#cdd6f4;">インバータ1個＋抵抗1本＋コンデンサ1個</b>だけで発振が作れる、いちばん部品が少ない方法。1個のICに6回路入っているので、まとめて使える。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- 帰還抵抗 R (上) -->
+      <line x1="120" y1="100" x2="120" y2="55" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="120" y1="55" x2="200" y2="55" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="200" y="40" width="40" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="220" y="34" text-anchor="middle" fill="#f9e2af" font-size="10">R</text>
+      <line x1="240" y1="55" x2="290" y2="55" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="290" y1="55" x2="290" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="290" cy="100" r="3.5" fill="#cdd6f4"/>
+      <!-- 入力ノード -->
+      <circle cx="120" cy="100" r="3.5" fill="#cdd6f4"/>
+      <line x1="120" y1="100" x2="170" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- C 入力→GND -->
+      <line x1="120" y1="100" x2="120" y2="135" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="108" y1="135" x2="132" y2="135" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="113" y1="142" x2="127" y2="142" stroke="#94e2d5" stroke-width="2"/>
+      <text x="138" y="143" fill="#94e2d5" font-size="10">C</text>
+      <line x1="120" y1="142" x2="120" y2="170" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- インバータ -->
+      <polygon points="170,72 170,128 218,100" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <circle cx="224" cy="100" r="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="191" y="98" text-anchor="middle" fill="#89b4fa" font-size="8" font-weight="bold">74HC14</text>
+      <text x="191" y="114" text-anchor="middle" fill="#a6adc8" font-size="8">シュミット</text>
+      <line x1="230" y1="100" x2="290" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- 出力→LED -->
+      <line x1="290" y1="100" x2="330" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="330" y="85" width="30" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="345" y="78" text-anchor="middle" fill="#f9e2af" font-size="9">470Ω</text>
+      <line x1="360" y1="100" x2="390" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon points="390,90 390,110 408,100" fill="#f38ba8"/>
+      <line x1="408" y1="90" x2="408" y2="110" stroke="#f38ba8" stroke-width="2"/>
+      <text x="404" y="128" fill="#f38ba8" font-size="11" font-weight="bold">LED</text>
+      <line x1="408" y1="100" x2="430" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="430" y1="100" x2="430" y2="170" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- GND -->
+      <line x1="60" y1="170" x2="450" y2="170" stroke="#a6adc8" stroke-width="2"/>
+      <text x="50" y="174" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <circle cx="120" cy="170" r="3.5" fill="#cdd6f4"/>
+      <circle cx="430" cy="170" r="3.5" fill="#cdd6f4"/>
+    </svg>
+    <p class="note">出力からRでコンデンサを充放電し、シュミットの2つのしきい値で反転を繰り返す。点滅の速さは <b style="color:#cdd6f4;">T ≒ 0.8 × R × C</b>（f ≒ 1 / (0.8RC)）が目安。※ICには別途 電源(Vcc)とGNDの接続が必要。</p>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">利点</div><div class="a">部品が最少（IC1・R1・C1）。1個のICで<b style="color:#cdd6f4;">6回路</b>使えるので、複数の点滅やセンサ回路の波形整形も同時にこなせる。</div></div>
+    <div class="guide-item"><div class="q">注意</div><div class="a">未使用の入力ピンは<b style="color:#cdd6f4;">開放にせず</b>GNDかVccへ。CMOSなので静電気に注意。出力電流は小さめ（大きい負荷はMOSFETで）。</div></div>
+    <div class="guide-item"><div class="q">部品の目安</div><div class="a">R = 10k〜1MΩ、C = 0.1〜100µF。<span class="pn">74HC14</span>（CMOS）が定番。古い <span class="pn">CD40106</span> でも同様。</div></div>
+  </div>
+
+  <h2>🧮 チカチカ頻度（周波数）の計算機</h2>
+  <div class="calc">
+    <h3>🧮 点滅の速さを計算</h3>
+    <div class="sub">回路の種類を選び、抵抗とコンデンサの値を入れると、点滅の速さ（周波数）・周期・点灯時間を計算します。</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="mode">回路の種類</label>
+        <select id="mode" style="width:250px;">
+          <option value="bjt">トランジスタ(BJT) 2石</option>
+          <option value="mos">MOSFET 2石（目安）</option>
+          <option value="ne555">555 タイマー</option>
+        </select>
+      </div>
+    </div>
+    <div class="inputs" id="rcInputs" style="margin-top:12px;">
+      <div class="field">
+        <label for="bR">抵抗 R（Rb / Rg）</label>
+        <input id="bR" type="number" step="0.1" min="0" value="47">
+        <span class="unit">kΩ</span>
+      </div>
+      <div class="field">
+        <label for="bC">コンデンサ C</label>
+        <input id="bC" type="number" step="0.01" min="0" value="10">
+        <span class="unit">µF</span>
+      </div>
+    </div>
+    <div class="inputs" id="ne555Inputs" style="margin-top:12px; display:none;">
+      <div class="field">
+        <label for="bR1">R1</label>
+        <input id="bR1" type="number" step="0.1" min="0" value="10">
+        <span class="unit">kΩ</span>
+      </div>
+      <div class="field">
+        <label for="bR2">R2</label>
+        <input id="bR2" type="number" step="0.1" min="0" value="68">
+        <span class="unit">kΩ</span>
+      </div>
+      <div class="field">
+        <label for="bC2">C</label>
+        <input id="bC2" type="number" step="0.01" min="0" value="10">
+        <span class="unit">µF</span>
+      </div>
+    </div>
+    <div class="presets" id="bPresets">
+      <span class="label">よく使う例:</span>
+      <button class="preset-btn" data-r="68" data-c="10">約1Hz ゆっくり</button>
+      <button class="preset-btn" data-r="47" data-c="10">約1.5Hz 標準</button>
+      <button class="preset-btn" data-r="22" data-c="10">約3Hz 速い</button>
+      <button class="preset-btn" data-r="10" data-c="10">約7Hz とても速い</button>
+    </div>
+    <div class="presets" id="bPresets555" style="display:none;">
+      <span class="label">よく使う例:</span>
+      <button class="preset-btn" data-r1="10" data-r2="68" data-c="10">約1Hz</button>
+      <button class="preset-btn" data-r1="10" data-r2="33" data-c="10">約2Hz</button>
+      <button class="preset-btn" data-r1="4.7" data-r2="12" data-c="10">約5Hz</button>
+      <button class="preset-btn" data-r1="1" data-r2="6.8" data-c="0.1">約1kHz トーン</button>
+    </div>
+    <div class="result" id="bResult">
+      <div>点滅の速さ:</div>
+      <div class="big" id="bBig">-</div>
+      <div class="detail" id="bDetail"></div>
+    </div>
+  </div>
+  <p class="note">💡 速さは<b style="color:#cdd6f4;">原理的には電源電圧にほぼ依存しません</b>（だからV数の入力が無く R・C だけで決まる）。しきい値が電源電圧に比例して動くためで、特に<b style="color:#cdd6f4;">555は電圧が変わっても安定</b>。ただし<b style="color:#cdd6f4;">トランジスタ2石</b>では、Vbe(約0.6Vで電圧に比例しない)や飽和電圧の影響が無視できず、<b style="color:#cdd6f4;">電源電圧で周期やデューティ比が変わりやすい</b>（低電圧ほど顕著）。電源電圧で大きく変わるのは<b style="color:#cdd6f4;">明るさ（電流）と消費電力</b>。<br>※表示される周波数・周期は計算式による<b style="color:#cdd6f4;">およその値</b>。実際は部品のばらつきで前後します。</p>
+  <div class="guide">
+    <div class="guide-item"><div class="q">トランジスタ2石</div><div class="a">点滅の1周期 T ≒ <b style="color:#cdd6f4;">1.386 × R × C</b>（対称時）。各LEDが光る時間はその半分。RはベースのRb、Cは結合コンデンサ。</div></div>
+    <div class="guide-item"><div class="q">MOSFET 2石</div><div class="a">式はBJTと同じ形だが、しきい値Vgs(th)で前後するため<b style="color:#cdd6f4;">あくまで目安</b>。正確さが要るなら555を。</div></div>
+    <div class="guide-item"><div class="q">555タイマー</div><div class="a">f = <b style="color:#cdd6f4;">1.44 / ((R1+2R2)×C)</b>。計算どおりに出やすい。デューティ比（点灯の割合）も表示。</div></div>
+    <div class="guide-item"><div class="q">人がチカチカと感じる範囲</div><div class="a">およそ <b style="color:#cdd6f4;">1〜10Hz</b> が「点滅」。30Hzを超えると点滅に見えず<b style="color:#cdd6f4;">点きっぱなし</b>に感じる（明るさ調整=PWMの領域）。</div></div>
+  </div>
+
+  <h2>📊 点滅速度の早見表</h2>
+  <p class="note">トランジスタ/MOSFET 2石（T ≒ 1.386×R×C）での、R と C の組み合わせと点滅の速さの目安。計算機を開かずパッと確認用。<b style="color:#cdd6f4;">上段=周波数(Hz)／下段=周期(秒)</b>（周期＝1回の点滅にかかる時間）。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>R ＼ C</th><th>1µF</th><th>10µF</th><th>47µF</th><th>100µF</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>10kΩ</b></td>
+          <td>72 Hz<br><span style="color:#a6adc8;font-size:12px;">0.014 秒</span></td>
+          <td>7.2 Hz<br><span style="color:#a6adc8;font-size:12px;">0.14 秒</span></td>
+          <td>1.5 Hz<br><span style="color:#a6adc8;font-size:12px;">0.65 秒</span></td>
+          <td>0.72 Hz<br><span style="color:#a6adc8;font-size:12px;">1.4 秒</span></td></tr>
+        <tr><td><b>22kΩ</b></td>
+          <td>33 Hz<br><span style="color:#a6adc8;font-size:12px;">0.03 秒</span></td>
+          <td>3.3 Hz<br><span style="color:#a6adc8;font-size:12px;">0.31 秒</span></td>
+          <td>0.70 Hz<br><span style="color:#a6adc8;font-size:12px;">1.4 秒</span></td>
+          <td>0.33 Hz<br><span style="color:#a6adc8;font-size:12px;">3.0 秒</span></td></tr>
+        <tr><td><b>47kΩ</b></td>
+          <td>15 Hz<br><span style="color:#a6adc8;font-size:12px;">0.065 秒</span></td>
+          <td>1.5 Hz<br><span style="color:#a6adc8;font-size:12px;">0.65 秒</span></td>
+          <td>0.33 Hz<br><span style="color:#a6adc8;font-size:12px;">3.1 秒</span></td>
+          <td>0.15 Hz<br><span style="color:#a6adc8;font-size:12px;">6.5 秒</span></td></tr>
+        <tr><td><b>100kΩ</b></td>
+          <td>7.2 Hz<br><span style="color:#a6adc8;font-size:12px;">0.14 秒</span></td>
+          <td>0.72 Hz<br><span style="color:#a6adc8;font-size:12px;">1.4 秒</span></td>
+          <td>0.15 Hz<br><span style="color:#a6adc8;font-size:12px;">6.5 秒</span></td>
+          <td>0.072 Hz<br><span style="color:#a6adc8;font-size:12px;">14 秒</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">周波数(Hz)は1秒あたりの点滅回数、周期(秒)は1回の点滅にかかる時間（f＝1/秒）。<b style="color:#cdd6f4;">1〜10Hz あたりが「ちょうど良いチカチカ」</b>。0.7Hz以下はゆっくり、30Hz超は点滅に見えなくなる。555版は <code>f = 1.44/((R1+2R2)×C)</code> で別計算（上の計算機で）。</p>
+
+  <h2>🎚 速さ・明るさの調整</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">速さを変える</div><div class="a">タイミングのR か C を変える。<b style="color:#cdd6f4;">大きく→ゆっくり</b>、小さく→速い。Rを半固定抵抗(ボリューム)にするとつまみで可変にできる。</div></div>
+    <div class="guide-item"><div class="q">明るさを変える</div><div class="a">LED直列の電流制限抵抗（Rc/Rd/出力抵抗）の値で決まる。大きく→暗い、小さく→明るい。下限は<b style="color:#cdd6f4;">(V−Vf)/許容電流</b>で計算（→ diodeGuide.html のLED計算機）。</div></div>
+    <div class="guide-item"><div class="q">点灯/消灯の比を変えたい</div><div class="a">BJT/MOSFET版は左右のRやCを<b style="color:#cdd6f4;">非対称</b>にすると、点灯時間に差がつく。555は基本Hiが長め（R2に並列ダイオードで調整）。</div></div>
+    <div class="guide-item"><div class="q">LEDをたくさん光らせたい</div><div class="a">電流が足りないときは、点滅信号で<b style="color:#cdd6f4;">トランジスタ/MOSFET</b>を駆動して大電流を別に流す（→ mosfetGuide.html）。</div></div>
+  </div>
+
+  <h2>🌟 じんわり点滅・ホタル / フェード</h2>
+  <p class="note">カクッとON/OFFではなく、<b style="color:#cdd6f4;">ふわっと明るくなって暗くなる</b>「呼吸（ブリージング）」点滅。コツは、急な信号を<b style="color:#cdd6f4;">コンデンサでなまらせて</b>ゆっくりした電圧変化を作り、それでLEDの明るさを連続的に変えること。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg">
+      <line x1="40" y1="26" x2="430" y2="26" stroke="#f38ba8" stroke-width="2"/>
+      <text x="34" y="30" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">+V</text>
+      <line x1="40" y1="215" x2="430" y2="215" stroke="#a6adc8" stroke-width="2"/>
+      <text x="34" y="219" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <!-- 発振器 -->
+      <rect x="40" y="80" width="90" height="46" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="85" y="100" text-anchor="middle" fill="#89b4fa" font-size="10" font-weight="bold">ゆっくり発振</text>
+      <text x="85" y="115" text-anchor="middle" fill="#a6adc8" font-size="9">555 / 2石</text>
+      <!-- R -->
+      <line x1="130" y1="103" x2="150" y2="103" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="150" y="88" width="40" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="170" y="82" text-anchor="middle" fill="#f9e2af" font-size="10">R</text>
+      <line x1="190" y1="103" x2="240" y2="103" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="225" cy="103" r="3.5" fill="#cdd6f4"/>
+      <!-- C なまらせ -->
+      <line x1="225" y1="103" x2="225" y2="150" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="213" y1="150" x2="237" y2="150" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="218" y1="157" x2="232" y2="157" stroke="#94e2d5" stroke-width="2"/>
+      <text x="243" y="158" fill="#94e2d5" font-size="10">C</text>
+      <line x1="225" y1="157" x2="225" y2="215" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="225" cy="215" r="3.5" fill="#cdd6f4"/>
+      <!-- Tr エミッタフォロワ -->
+      <line x1="240" y1="103" x2="300" y2="103" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="300" y="80" width="56" height="46" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="330" y="107" text-anchor="middle" fill="#89b4fa" font-size="10" font-weight="bold">Tr</text>
+      <text x="305" y="107" fill="#89b4fa" font-size="8">B</text>
+      <text x="328" y="93" text-anchor="middle" fill="#a6e3a1" font-size="8">C</text>
+      <text x="328" y="122" text-anchor="middle" fill="#f38ba8" font-size="8">E</text>
+      <line x1="328" y1="80" x2="328" y2="26" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="328" cy="26" r="3.5" fill="#cdd6f4"/>
+      <!-- emitter -> R -> LED -> GND -->
+      <line x1="328" y1="126" x2="328" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="313" y="140" width="30" height="28" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="348" y="158" fill="#f9e2af" font-size="9">470Ω</text>
+      <line x1="328" y1="168" x2="328" y2="178" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon points="318,178 338,178 328,194" fill="#f38ba8"/>
+      <line x1="318" y1="194" x2="338" y2="194" stroke="#f38ba8" stroke-width="2"/>
+      <text x="344" y="190" fill="#f38ba8" font-size="10" font-weight="bold">LED</text>
+      <line x1="328" y1="194" x2="328" y2="215" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="328" cy="215" r="3.5" fill="#cdd6f4"/>
+    </svg>
+    <p class="note">発振の矩形波を <b style="color:#cdd6f4;">R＋C</b> でなまらせ、三角波に近いゆっくりした電圧に。それを<b style="color:#cdd6f4;">エミッタフォロワ(Tr)</b>でLEDに渡すと、明るさがじわっと上下＝ホタルのような点滅になる。</p>
+    <p class="note"><b style="color:#cdd6f4;">Trは必須？</b> → きれいにフェードさせたいなら実質必要。Trは<b style="color:#cdd6f4;">バッファ（緩衝役）</b>として、①なまらせ用Cを乱さずに（LEDが直結だとCの電気を吸って波形が崩れる）、②LEDを光らせる電流を供給する、2つの役割をもつ。</p>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">Trが無いとどうなる？</div><div class="a">LEDと並列/直列に大きめのCを足すだけでも角は取れるが、LEDは<b style="color:#cdd6f4;">Vf(約2V)以下で光らない</b>ため、消える手前でプツッと切れる＝下半分が欠けたフェードになりがち。</div></div>
+    <div class="guide-item"><div class="q">いちばん楽できれいなのは</div><div class="a">マイコンの<b style="color:#cdd6f4;">PWM</b>(ledcWrite等)でデューティを徐々に上下。Tr不要で完全な明滅が自在。</div></div>
+    <div class="guide-item"><div class="q">Tr以外のバッファ</div><div class="a">オペアンプのボルテージフォロワでも同じことができる（部品は増える）。ホタル/キャンドル専用ICなら1個で自然な明滅。</div></div>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">手早く試すなら</div><div class="a">LEDと並列・直列に<b style="color:#cdd6f4;">大きめのコンデンサ</b>を足すだけでも、点滅のカドが取れてやわらかくなる。Cを大きくするほどゆっくり。</div></div>
+    <div class="guide-item"><div class="q">マイコンなら簡単</div><div class="a">ESP32/Arduinoの<b style="color:#cdd6f4;">PWM(analogWrite/ledcWrite)</b>でデューティを徐々に上下させれば、きれいなフェードが自在。専用回路より楽。</div></div>
+    <div class="guide-item"><div class="q">専用IC</div><div class="a">「キャンドル/ロウソク風」「ホタル風」のゆらぎLED用ICやモジュールも市販。1個で自然な明滅が得られる。</div></div>
+  </div>
+
+  <h2>➡ 流れる光（LEDチェイサー）</h2>
+  <p class="note">複数のLEDを<b style="color:#cdd6f4;">順番に</b>点灯させて、光が流れて見える回路（ナイトライダー風）。<b style="color:#cdd6f4;">555でクロックを作り、カウンタIC 4017</b> で出力を1つずつ順に切り替えるのが定番。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg">
+      <!-- 555 クロック -->
+      <rect x="24" y="105" width="86" height="70" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="67" y="135" text-anchor="middle" fill="#89b4fa" font-size="13" font-weight="bold">555</text>
+      <text x="67" y="153" text-anchor="middle" fill="#a6adc8" font-size="9">クロック</text>
+      <line x1="110" y1="140" x2="150" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="130" y="132" text-anchor="middle" fill="#a6e3a1" font-size="9">CLK</text>
+      <!-- 4017 -->
+      <rect x="150" y="50" width="110" height="200" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="205" y="142" text-anchor="middle" fill="#89b4fa" font-size="14" font-weight="bold">4017</text>
+      <text x="205" y="160" text-anchor="middle" fill="#a6adc8" font-size="9">10進カウンタ</text>
+      <!-- 出力 Q0..Q5 -> LED -> 共通バス -->
+      <!-- 各行 y -->
+      <!-- Q0 -->
+      <line x1="260" y1="70" x2="300" y2="70" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="266" y="65" fill="#a6adc8" font-size="8">Q0</text>
+      <polygon points="300,62 300,78 316,70" fill="#f38ba8"/>
+      <line x1="316" y1="62" x2="316" y2="78" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="316" y1="70" x2="400" y2="70" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- Q1 -->
+      <line x1="260" y1="100" x2="300" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="266" y="95" fill="#a6adc8" font-size="8">Q1</text>
+      <polygon points="300,92 300,108 316,100" fill="#f38ba8"/>
+      <line x1="316" y1="92" x2="316" y2="108" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="316" y1="100" x2="400" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- Q2 -->
+      <line x1="260" y1="130" x2="300" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="266" y="125" fill="#a6adc8" font-size="8">Q2</text>
+      <polygon points="300,122 300,138 316,130" fill="#f38ba8"/>
+      <line x1="316" y1="122" x2="316" y2="138" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="316" y1="130" x2="400" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- Q3 -->
+      <line x1="260" y1="160" x2="300" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="266" y="155" fill="#a6adc8" font-size="8">Q3</text>
+      <polygon points="300,152 300,168 316,160" fill="#f38ba8"/>
+      <line x1="316" y1="152" x2="316" y2="168" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="316" y1="160" x2="400" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- Q4 -->
+      <line x1="260" y1="190" x2="300" y2="190" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="266" y="185" fill="#a6adc8" font-size="8">Q4</text>
+      <polygon points="300,182 300,198 316,190" fill="#f38ba8"/>
+      <line x1="316" y1="182" x2="316" y2="198" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="316" y1="190" x2="400" y2="190" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- Q5 -->
+      <line x1="260" y1="220" x2="300" y2="220" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="266" y="215" fill="#a6adc8" font-size="8">Q5</text>
+      <polygon points="300,212 300,228 316,220" fill="#f38ba8"/>
+      <line x1="316" y1="212" x2="316" y2="228" stroke="#f38ba8" stroke-width="2"/>
+      <line x1="316" y1="220" x2="400" y2="220" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- 共通バス -> R -> GND -->
+      <line x1="400" y1="70" x2="400" y2="240" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="400" y1="240" x2="440" y2="240" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="440" y="225" width="34" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="457" y="218" text-anchor="middle" fill="#f9e2af" font-size="9">470Ω</text>
+      <line x1="457" y1="255" x2="457" y2="270" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="60" y1="270" x2="474" y2="270" stroke="#a6adc8" stroke-width="2"/>
+      <text x="50" y="274" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <circle cx="457" cy="270" r="3.5" fill="#cdd6f4"/>
+    </svg>
+    <p class="note">555のクロックが1回来るたびに、点灯するLEDが Q0→Q1→Q2… と<b style="color:#cdd6f4;">1つずつ移動</b>。流れる速さは555の周波数で決まる。一度に1個しか点かないので、電流制限抵抗は<b style="color:#cdd6f4;">共通1本</b>でOK。</p>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">LEDの数を変える</div><div class="a">4017のリセット(15番)を、使う最後の次の出力につなぐと、そこで先頭に戻る。例：6個なら Q6 を 15番へ。</div></div>
+    <div class="guide-item"><div class="q">往復させたい（ナイトライダー）</div><div class="a">配線の工夫やダイオードで折り返す方法もあるが、複雑になる。<b style="color:#cdd6f4;">マイコン</b>を使うとパターンは自由自在。</div></div>
+    <div class="guide-item"><div class="q">部品</div><div class="a"><span class="pn">555</span>（クロック）＋ <span class="pn">CD4017</span>（カウンタ）＋ LED×数個＋抵抗。クロックを速くすると光が速く流れる。</div></div>
+  </div>
+
+  <h2>⚠ 注意点</h2>
+  <div class="warnbox">
+    ⚠ LEDには<b>必ず電流制限抵抗</b>を直列に入れること。抵抗なしで電源に直結すると過電流でLEDが一瞬で壊れる。
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">電解コンデンサの極性</div><div class="a">向きを間違えると劣化・破裂のもと。＋を電圧の高い側へ。心配なら無極性(フィルム/セラミック)を使う。</div></div>
+    <div class="guide-item"><div class="q">トランジスタ/MOSFETの足</div><div class="a">E/B/C や G/D/S の並びは品種でバラバラ。<b style="color:#cdd6f4;">必ずデータシートで確認</b>してから挿す。</div></div>
+    <div class="guide-item"><div class="q">起動しない・片方しか光らない</div><div class="a">BJT/MOSFETの2石は左右の部品差で<b style="color:#cdd6f4;">片側に固定</b>されることがある。電源を入れ直す、抵抗値を見直す、左右をできるだけそろえる。</div></div>
+    <div class="guide-item"><div class="q">電源は安定したものを</div><div class="a">電池が弱っていると周期がズレたり起動しないことも。555は電源変動に強いが、念のためパスコン(0.1µF)を。</div></div>
+  </div>
+
+  <h2>🔧 トラブルシューティング</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>症状</th><th>よくある原因</th><th>対処</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>まったく光らない</b></td>
+          <td>電源の入れ忘れ／配線ミス／LEDの向き逆／IC・Trの向き間違い</td>
+          <td>電源とGNDを確認。LEDの極性、IC/Trのピン配置をデータシートで確認</td>
+        </tr>
+        <tr>
+          <td><b>点滅しない（点きっぱなし）</b></td>
+          <td>結合コンデンサの未接続／555の6+2未結線・4番RESET開放／C容量ゼロ</td>
+          <td>タイミング用Cの接続を確認。555は6と2を結線、4番を+Vへ</td>
+        </tr>
+        <tr>
+          <td><b>片方のLEDしか光らない</b>（2石）</td>
+          <td>左右の部品ばらつきで片側に固定／起動の偏り</td>
+          <td>電源を入れ直す。左右のR・C・Trをできるだけそろえる。指で片方のベースを一瞬触れて起動のきっかけを与える</td>
+        </tr>
+        <tr>
+          <td><b>速すぎ / 遅すぎ</b></td>
+          <td>R・Cの値が想定と違う</td>
+          <td>早見表・計算機で再確認。Rを半固定抵抗にすると微調整できる</td>
+        </tr>
+        <tr>
+          <td><b>LEDが暗い / 明るすぎ</b></td>
+          <td>電流制限抵抗の値が大きすぎ / 小さすぎ</td>
+          <td>(電源−Vf)/電流 で計算（diodeGuide.htmlのLED計算機）。明るすぎは抵抗を大きく</td>
+        </tr>
+        <tr>
+          <td><b>だんだん遅くなる / 止まる</b></td>
+          <td>電池が消耗／電解コンデンサの劣化・極性ミス</td>
+          <td>電池・コンデンサを交換。電解Cの＋向きを確認</td>
+        </tr>
+        <tr>
+          <td><b>動作が不安定・たまに止まる</b></td>
+          <td>電源ノイズ／CMOS(74HC14等)の未使用入力が開放</td>
+          <td>電源に0.1µFのパスコン。未使用入力はGND/Vccへ固定</td>
+        </tr>
+        <tr>
+          <td><b>部品が熱い</b></td>
+          <td>電流制限抵抗なし／抵抗値が小さすぎ／配線の短絡</td>
+          <td>LEDには必ず抵抗を直列に。値と配線を見直す</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>📖 用語解説</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">マルチバイブレータ</div><div class="a">2つの状態を行き来する回路。点滅し続ける「非安定(アステーブル)」、トリガで一時反転する「単安定」、保持する「双安定」がある。LED点滅は非安定。</div></div>
+    <div class="guide-item"><div class="q">アステーブル（非安定）</div><div class="a">安定した状態が無く、ひとりでにON/OFFを繰り返す＝発振。LEDチカチカの正体。</div></div>
+    <div class="guide-item"><div class="q">結合コンデンサ</div><div class="a">片方の出力をもう片方の入力へ伝える橋渡しのC。これの充電にかかる時間が点滅の速さを決める。</div></div>
+    <div class="guide-item"><div class="q">周波数 / 周期</div><div class="a">周波数f[Hz]=1秒あたりの点滅回数。周期T[秒]=1回にかかる時間。f = 1/T。</div></div>
+    <div class="guide-item"><div class="q">デューティ比</div><div class="a">1周期のうち点灯している割合。50%なら点灯と消灯が同じ長さ。</div></div>
+    <div class="guide-item"><div class="q">電流制限抵抗</div><div class="a">LEDに流れる電流を抑える直列抵抗。R=(電源電圧−LEDのVf)/電流 で決める（→ diodeGuide.html）。</div></div>
+  </div>
+
+  <footer>
+    値・式は一般的な目安です。実際の部品はばらつきがあるため、周期は前後します。LEDには必ず電流制限抵抗を。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — ledBlinkGuide.html
+  </footer>
+
+<script>
+  function fmtFreq(f) {
+    if (!isFinite(f) || f <= 0) return '-';
+    if (f >= 1000) return (f / 1000).toFixed(2) + ' kHz';
+    if (f >= 1)    return f.toFixed(2) + ' Hz';
+    return f.toFixed(3) + ' Hz';
+  }
+  function fmtTime(ms) {
+    if (!isFinite(ms) || ms <= 0) return '-';
+    if (ms < 1)    return (ms * 1000).toFixed(1) + ' µs';
+    if (ms < 1000) return ms.toFixed(1) + ' ms';
+    return (ms / 1000).toFixed(2) + ' 秒';
+  }
+  function feel(f) {
+    if (f <= 0) return '';
+    if (f < 0.5)  return 'かなりゆっくりした点滅。';
+    if (f <= 10)  return '目で点滅が見える範囲。';
+    if (f <= 30)  return 'かなり速い点滅（チラつき）。';
+    return '点滅には見えず、点きっぱなしに感じる（PWM/明るさ調整の領域）。';
+  }
+
+  const mode = document.getElementById('mode');
+  const rcInputs = document.getElementById('rcInputs');
+  const ne555Inputs = document.getElementById('ne555Inputs');
+  const bPresets = document.getElementById('bPresets');
+  const bPresets555 = document.getElementById('bPresets555');
+  const bR = document.getElementById('bR');
+  const bC = document.getElementById('bC');
+  const bR1 = document.getElementById('bR1');
+  const bR2 = document.getElementById('bR2');
+  const bC2 = document.getElementById('bC2');
+  const bBig = document.getElementById('bBig');
+  const bDetail = document.getElementById('bDetail');
+
+  function calc() {
+    const m = mode.value;
+    if (m === 'ne555') {
+      const r1 = parseFloat(bR1.value), r2 = parseFloat(bR2.value), c = parseFloat(bC2.value);
+      if (isNaN(r1) || isNaN(r2) || isNaN(c) || r1 < 0 || r2 < 0 || c <= 0) {
+        bBig.textContent = '-'; bDetail.textContent = '数値を入力してください。'; return;
+      }
+      const f = 1440 / ((r1 + 2 * r2) * c);  // Hz
+      const tH = 0.693 * (r1 + r2) * c;       // ms
+      const tL = 0.693 * r2 * c;              // ms
+      const duty = (r1 + r2) / (r1 + 2 * r2) * 100;
+      bBig.textContent = fmtFreq(f);
+      bDetail.innerHTML =
+        `周期 T = <span>${fmtTime(tH + tL)}</span>（点灯: <span>${fmtTime(tH)}</span> / 消灯: <span>${fmtTime(tL)}</span>）<br>` +
+        `デューティ比: <span>${duty.toFixed(1)} %</span><br>` +
+        `式: f = 1.44 / ((${r1}k + 2×${r2}k) × ${c}µF)<br>${feel(f)}`;
+    } else {
+      const r = parseFloat(bR.value), c = parseFloat(bC.value);
+      if (isNaN(r) || isNaN(c) || r <= 0 || c <= 0) {
+        bBig.textContent = '-'; bDetail.textContent = '数値を入力してください。'; return;
+      }
+      const T = 1.386 * r * c;     // 周期 ms
+      const f = 1000 / T;          // Hz
+      const onEach = 0.693 * r * c; // 各LED点灯 ms
+      bBig.textContent = fmtFreq(f);
+      const approx = (m === 'mos') ? '（MOSFETはしきい値依存のため目安）' : '';
+      bDetail.innerHTML =
+        `周期 T = <span>${fmtTime(T)}</span>（各LEDの点灯 ≒ <span>${fmtTime(onEach)}</span>ずつ交互）<br>` +
+        `式: T = 1.386 × ${r}kΩ × ${c}µF ${approx}<br>${feel(f)}`;
+    }
+  }
+
+  function syncMode() {
+    const m = mode.value;
+    const is555 = (m === 'ne555');
+    rcInputs.style.display = is555 ? 'none' : 'flex';
+    ne555Inputs.style.display = is555 ? 'flex' : 'none';
+    bPresets.style.display = is555 ? 'none' : 'flex';
+    bPresets555.style.display = is555 ? 'flex' : 'none';
+    calc();
+  }
+
+  mode.addEventListener('change', syncMode);
+  [bR, bC, bR1, bR2, bC2].forEach(el => el.addEventListener('input', calc));
+
+  bPresets.addEventListener('click', (e) => {
+    const b = e.target.closest('.preset-btn'); if (!b) return;
+    bR.value = b.dataset.r; bC.value = b.dataset.c; calc();
+  });
+  bPresets555.addEventListener('click', (e) => {
+    const b = e.target.closest('.preset-btn'); if (!b) return;
+    bR1.value = b.dataset.r1; bR2.value = b.dataset.r2; bC2.value = b.dataset.c; calc();
+  });
+
+  syncMode();
+</script>
+</body>
+</html>

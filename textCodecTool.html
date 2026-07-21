@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>テキスト エンコード / デコード ツール</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono {
+    font-family: "Consolas", monospace;
+    background: #11111b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #a6e3a1;
+  }
+
+  textarea, select, input[type=text] {
+    width: 100%;
+    padding: 10px 12px;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 8px;
+    font-family: "Consolas", "Yu Gothic UI", monospace;
+    font-size: 15px;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  textarea:focus, input:focus, select:focus { outline: none; border-color: #89b4fa; }
+  select { width: auto; padding: 8px 10px; font-size: 14px; }
+
+  .btn {
+    background: #11111b; color: #cdd6f4; border: 1px solid #585b70;
+    border-radius: 6px; padding: 4px 12px; font-size: 12px;
+    cursor: pointer; font-family: inherit; font-weight: bold;
+  }
+  .btn:hover { border-color: #89b4fa; }
+
+  .panel {
+    background: #181825; border: 1px solid #45475a; border-radius: 10px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+  .panel h3 { color: #a6e3a1; margin: 0 0 10px; font-size: 17px; }
+
+  .out-grid { display: grid; gap: 10px; margin-top: 14px; }
+  .out-row { background: #232334; border-radius: 8px; padding: 10px 12px; }
+  .out-row .hd { display: flex; justify-content: flex-start; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .out-row .hd .lbl { color: #89b4fa; font-weight: bold; font-size: 13px; }
+  .out-row .hd .meta { color: #a6adc8; font-size: 11px; font-family: Consolas, monospace; margin-left: auto; }
+  .out-row .val {
+    font-family: "Consolas", monospace; font-size: 13px; color: #a6e3a1;
+    background: #11111b; border-radius: 6px; padding: 8px 10px;
+    word-break: break-all; white-space: pre-wrap;
+    min-height: 20px; max-height: 140px; overflow: auto;
+  }
+  .out-row .val.err { color: #f38ba8; }
+  .hint {
+    background: #1e2433; border-left: 3px solid #89b4fa; border-radius: 6px;
+    padding: 8px 12px; font-size: 13px; color: #cdd6f4; margin: 0 0 6px;
+  }
+  .hint b { color: #f9e2af; }
+  .hint-btn.active { border-color: #f9e2af; color: #f9e2af; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .stat {
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; color: #a6adc8;
+  }
+  .stat b { color: #f9e2af; font-family: Consolas, monospace; font-size: 15px; }
+
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item {
+    background: #232334; border-radius: 8px;
+    padding: 12px 14px; border-left: 3px solid #a6e3a1;
+  }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .drop {
+    border: 2px dashed #585b70; border-radius: 10px; padding: 24px;
+    text-align: center; color: #a6adc8; cursor: pointer; font-size: 14px;
+  }
+  .drop.over { border-color: #89b4fa; color: #89b4fa; background: #1e2433; }
+  .drop b { color: #cdd6f4; }
+
+  .table-wrap { overflow: auto; max-height: 340px; border-radius: 8px; }
+  table.insp { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .insp th, .insp td { border: 1px solid #45475a; padding: 4px 9px; text-align: left; }
+  .insp th { background: #181825; color: #89b4fa; position: sticky; top: 0; }
+  .insp td.ch { font-family: Consolas, monospace; font-size: 16px; color: #f9e2af; text-align: center; min-width: 44px; }
+  .insp td.bytes { font-family: Consolas, monospace; color: #a6e3a1; white-space: nowrap; }
+  .insp td.cnote { color: #fab387; font-size: 12px; }
+  .insp tr.w td { background: #45302e; }
+  .insp td.miss { color: #f38ba8; font-family: Consolas, monospace; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  .warn { color: #fab387; font-size: 13px; margin-top: 6px; }
+  .row-flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  .row-flex label { color: #a6adc8; font-size: 13px; font-weight: bold; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>🔤 テキスト エンコード / デコード ツール</h1>
+
+  <div class="lead">
+    テキストを入力すると、<b>URLエンコード・Base64・Hex（バイト列）・Unicodeコードポイント</b>などへ一括変換します。
+    <b>UTF-8 と Shift_JIS の両方</b>のバイト表現に対応（変換表はブラウザ内で生成・送信なし）。
+    下段では逆方向のデコードと、文字化けの再現もできます。
+  </div>
+
+  <h2>📝 エンコード（テキスト → 各形式）</h2>
+  <div class="panel">
+    <textarea id="src" spellcheck="false" placeholder="ここにテキストを入力">こんにちは、世界！ Hello 123</textarea>
+    <div class="stats">
+      <span class="stat">文字数 <b id="stChars">-</b></span>
+      <span class="stat">UTF-16要素 <b id="stU16">-</b></span>
+      <span class="stat">UTF-8 <b id="stU8">-</b> bytes</span>
+      <span class="stat">Shift_JIS <b id="stSjis">-</b> bytes</span>
+    </div>
+    <div class="warn" id="sjisWarn" style="display:none;"></div>
+
+    <div class="out-grid">
+      <div class="out-row">
+        <div class="hd"><span class="lbl">URLエンコード（UTF-8）</span><button class="btn" data-copy="oUrl">コピー</button><button class="btn hint-btn">💡 いつ使う？</button><span class="meta" id="mUrl"></span></div>
+        <div class="hint" hidden>URLには日本語・スペース・記号をそのまま書けないため、<b>%XX形式</b>に変換して埋め込む。検索クエリやAPIのパラメータ（<code>?q=%E3%81%82</code>）で毎日使われている、いまのWebの標準形式。JavaScriptでは <code>encodeURIComponent()</code>。</div>
+        <div class="val" id="oUrl"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">URLエンコード（Shift_JIS）</span><button class="btn" data-copy="oUrlS">コピー</button><button class="btn hint-btn">💡 いつ使う？</button><span class="meta" id="mUrlS"></span></div>
+        <div class="hint" hidden>昔のWebサイトやCGI（掲示板・検索フォーム）は<b>Shift_JISで動いていた</b>ため、URLエンコードもSJISバイト基準だった。レガシーなシステムへのリクエストの再現・デバッグ用で、新規に使うことはまず無い。同じ「あ」でも <code>%E3%81%82</code>（UTF-8）と <code>%82%A0</code>（SJIS）で別物になるのがポイント。</div>
+        <div class="val" id="oUrlS"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">Base64（UTF-8）</span><button class="btn" data-copy="oB64">コピー</button><button class="btn hint-btn">💡 いつ使う？</button><span class="meta" id="mB64"></span></div>
+        <div class="hint" hidden>どんなバイト列も<b>英数字と+/=だけ</b>の文字列にする仕組み。「テキストしか通せない場所」にデータを通すために使う：メールの添付ファイル（MIME）、画像をHTML/CSSに直接埋め込むデータURI（<code>data:image/png;base64,…</code>）、Basic認証、JSONへのバイナリ埋め込みなど。<b>⚠ 暗号化ではない</b>（誰でも元に戻せる）ので秘密情報の保護には使えない。</div>
+        <div class="val" id="oB64"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">Base64（Shift_JIS）</span><button class="btn" data-copy="oB64S">コピー</button><button class="btn hint-btn">💡 いつ使う？</button><span class="meta" id="mB64S"></span></div>
+        <div class="hint" hidden>中身のバイト列がShift_JISになっているBase64。古いメールシステムやレガシーな業務システムとのデータ交換で登場する。「Base64をデコードしたのに化ける」ときは、<b>中身がUTF-8ではなくSJISだった</b>というパターンの可能性が高く、その確認に使える。</div>
+        <div class="val" id="oB64S"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">Hex（UTF-8バイト）</span><button class="btn" data-copy="oHex">コピー</button><button class="btn hint-btn">💡 いつ使う？</button><span class="meta" id="mHex"></span></div>
+        <div class="hint" hidden>1バイトを16進数2桁で表した、<b>「実際に並んでいるバイトそのもの」</b>。バイナリエディタ・デバッガ・通信ログ（シリアルモニタ等）に出てくるのがこの形式で、文字化け調査の最終確認に使う。プログラムでバイト列を直接書くとき（<code>0xE3, 0x81, 0x82</code>）にも。先頭が <code>EF BB BF</code> ならBOM付きUTF-8。</div>
+        <div class="val" id="oHex"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">Hex（Shift_JISバイト）</span><button class="btn" data-copy="oHexS">コピー</button><button class="btn hint-btn">💡 いつ使う？</button><span class="meta" id="mHexS"></span></div>
+        <div class="hint" hidden>Shift_JISでのバイト列。<b>組み込み機器・レシートプリンタ・古い計測器・LCDモジュール</b>などは今でもSJISでテキストを受け取ることが多く、マイコンからシリアル通信で送るバイト列の確認・デバッグに使う。半角カナが1バイト（<code>B1</code>＝ｱ）で済むのもSJISの特徴。</div>
+        <div class="val" id="oHexS"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">Unicodeコードポイント</span><button class="btn" data-copy="oCp">コピー</button><button class="btn hint-btn">💡 いつ使う？</button></div>
+        <div class="hint" hidden>文字に1つずつ割り当てられた<b>「世界共通の背番号」</b>（あ＝U+3042）。見た目がそっくりな別文字（ー長音とU+2212マイナス、〜波ダッシュとU+FF5E全角チルダ等）を確実に区別できるので、「この文字の正体は何？」の調査に使う。プログラムで文字を指定するとき（<code>'あ'</code>）の基礎情報でもある。</div>
+        <div class="val" id="oCp"></div>
+      </div>
+      <div class="out-row">
+        <div class="hd"><span class="lbl">HTML数値文字参照（&amp;#x…;）</span><button class="btn" data-copy="oRef">コピー</button><button class="btn hint-btn">💡 いつ使う？</button></div>
+        <div class="hint" hidden>HTMLの中に文字を<b>番号で書く記法</b>（<code>&amp;#x3042;</code> → あ）。ページの文字コードが何であっても壊れないので、SJISのページにSJISに無い文字（絵文字や特殊記号）を入れたいときや、©・→ などの記号を確実に表示したいときに使う。</div>
+        <div class="val" id="oRef"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>🔬 文字インスペクタ（1文字ずつ分解）</h2>
+  <div class="panel">
+    <p class="note" style="margin-top:0;">上のエンコード欄のテキストを1文字ずつ分解します。<b style="color:#cdd6f4;">全角スペース・ゼロ幅スペース・見た目が同じ別文字</b>などの「見えない罠」はオレンジ色でハイライトされます。</p>
+    <div class="table-wrap">
+      <table class="insp">
+        <thead>
+          <tr><th>#</th><th>文字</th><th>コードポイント</th><th>UTF-8</th><th>Shift_JIS</th><th>メモ</th></tr>
+        </thead>
+        <tbody id="inspBody"></tbody>
+      </table>
+    </div>
+    <div class="note" id="inspNote"></div>
+  </div>
+
+  <h2>🔓 デコード（各形式 → テキスト）</h2>
+  <div class="panel">
+    <div class="row-flex">
+      <label for="decFmt">形式</label>
+      <select id="decFmt">
+        <option value="auto" selected>自動判定</option>
+        <option value="url">URLエンコード</option>
+        <option value="b64">Base64</option>
+        <option value="hex">Hex（バイト列）</option>
+      </select>
+      <label for="decCs">文字コード</label>
+      <select id="decCs">
+        <option value="auto" selected>自動（UTF-8 → Shift_JIS の順に試す）</option>
+        <option value="utf-8">UTF-8</option>
+        <option value="shift_jis">Shift_JIS</option>
+      </select>
+    </div>
+    <textarea id="decIn" spellcheck="false" placeholder="%E3%81%82 ／ 44GC ／ E3 81 82 などを貼り付け"></textarea>
+    <div class="note" id="decInfo"></div>
+    <div class="out-grid">
+      <div class="out-row">
+        <div class="hd"><span class="lbl">デコード結果</span><button class="btn" data-copy="decOut">コピー</button></div>
+        <div class="val" id="decOut"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>👻 文字化けを再現する（しくみの理解に）</h2>
+  <div class="panel">
+    <p class="note" style="margin-top:0;">上のエンコード欄のテキストを、<b style="color:#cdd6f4;">わざと違う文字コードで読む</b>とどうなるかを表示します。見覚えのある化け方が出てくるはず。</p>
+    <div class="row-flex">
+      <label for="mojiMode">パターン</label>
+      <select id="mojiMode">
+        <option value="u2s" selected>UTF-8 のデータを Shift_JIS として読む</option>
+        <option value="s2u">Shift_JIS のデータを UTF-8 として読む</option>
+        <option value="u2l">UTF-8 のデータを Latin-1(Windows-1252) として読む</option>
+        <option value="s2l">Shift_JIS のデータを Latin-1(Windows-1252) として読む</option>
+      </select>
+    </div>
+    <div class="out-grid">
+      <div class="out-row">
+        <div class="hd"><span class="lbl">文字化け結果</span><button class="btn" data-copy="mojiOut">コピー</button></div>
+        <div class="val" id="mojiOut"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>🩹 文字化け修復（化けたテキストを貼る）</h2>
+  <div class="panel">
+    <p class="note" style="margin-top:0;">文字化けしたテキストを貼ると、<b style="color:#cdd6f4;">誤読パターンの逆変換を総当たり</b>して復元候補を表示します。例：<code>縺薙ｓ縺ｫ縺｡縺ｯ</code> や <code>ã“ã‚“ã«ã¡ã¯</code> を貼ってみてください。</p>
+    <textarea id="fixIn" spellcheck="false" placeholder="化けたテキストをここに貼り付け"></textarea>
+    <div class="note" id="fixInfo"></div>
+    <div class="out-grid" id="fixOut"></div>
+  </div>
+
+  <h2>📁 ファイルの文字コード変換（txt / csv）</h2>
+  <div class="panel">
+    <div class="drop" id="fDrop">
+      ここにファイルをドロップ、またはクリックして選択<br>
+      <span style="font-size:12px;">文字コードを自動判定（UTF-8／Shift_JIS／EUC-JP／UTF-16・BOM検出）して変換・保存できます。<b>処理はすべてブラウザ内</b>で、どこにも送信されません。</span>
+      <input type="file" id="fIn" accept=".txt,.csv,.log,.md,.json,.tsv,text/*" style="display:none;">
+    </div>
+    <div class="stats" id="fInfo" style="display:none;">
+      <span class="stat">ファイル <b id="fName">-</b></span>
+      <span class="stat">サイズ <b id="fSize">-</b></span>
+      <span class="stat">判定 <b id="fEnc">-</b></span>
+      <span class="stat">改行 <b id="fNl">-</b></span>
+    </div>
+    <div class="warn" id="fDetWarn" style="display:none;"></div>
+    <div class="out-grid" id="fPrevWrap" style="display:none;">
+      <div class="out-row">
+        <div class="hd"><span class="lbl">プレビュー（読み取り結果）</span></div>
+        <div class="val" id="fPrev"></div>
+      </div>
+    </div>
+    <div class="row-flex" id="fSaveRow" style="display:none;">
+      <label for="fOutEnc">保存する文字コード</label>
+      <select id="fOutEnc">
+        <option value="utf8" selected>UTF-8（BOMなし・標準）</option>
+        <option value="utf8bom">UTF-8（BOM付き・ExcelでCSVを開く用）</option>
+        <option value="sjis">Shift_JIS（古いソフト用）</option>
+      </select>
+      <label for="fOutNl">改行コード</label>
+      <select id="fOutNl">
+        <option value="keep" selected>そのまま</option>
+        <option value="crlf">CRLF（Windows）</option>
+        <option value="lf">LF（Unix/Mac）</option>
+      </select>
+      <button class="btn" id="fSave" style="padding:8px 18px;font-size:14px;">💾 変換して保存</button>
+    </div>
+    <div class="warn" id="fSaveWarn" style="display:none;"></div>
+    <p class="note">💡 「ExcelでCSVを開くと化ける」→ <b style="color:#cdd6f4;">UTF-8（BOM付き）</b>か<b style="color:#cdd6f4;">Shift_JIS</b>で保存し直すのが定番の対処。</p>
+  </div>
+
+  <h2>🔍 文字化けの見分け方チートシート</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">「縺ゅ→縺」「繧繝」系</div><div class="a"><b style="color:#cdd6f4;">UTF-8のデータをShift_JISとして読んでいる</b>。読み込み側の文字コード設定をUTF-8に。</div></div>
+    <div class="guide-item"><div class="q">「ã�‚ã�„」「ã‚ã„ã†」系</div><div class="a"><b style="color:#cdd6f4;">UTF-8のデータをLatin-1(Windows-1252)として読んでいる</b>。海外製ツールやメールでよく起こる。</div></div>
+    <div class="guide-item"><div class="q">「�����」（菱形だらけ）</div><div class="a"><b style="color:#cdd6f4;">Shift_JISなどのデータをUTF-8として読んでいる</b>。UTF-8として不正なバイトが「�」に置換された状態。</div></div>
+    <div class="guide-item"><div class="q">「?????」（ハテナだらけ）</div><div class="a"><b style="color:#cdd6f4;">変換時に文字が失われている</b>。変換先の文字コードに無い文字（絵文字をShift_JISへ等）が「?」に置換された。読み方を変えても戻らない。</div></div>
+    <div class="guide-item"><div class="q">先頭に「ï»¿」や「&#xFEFF;」</div><div class="a"><b style="color:#cdd6f4;">BOM（EF BB BF）</b>。UTF-8ファイルの先頭印。プログラムでCSV等を読むとき邪魔になることがある。</div></div>
+    <div class="guide-item"><div class="q">URLの「+」がスペースになる</div><div class="a">フォーム形式（application/x-www-form-urlencoded）では<b style="color:#cdd6f4;">スペースを「+」</b>で表す流儀がある。このツールのデコードは「+」をスペースとして扱う。</div></div>
+  </div>
+
+  <footer>
+    変換はすべてブラウザ内で完結します（どこにも送信されません）。Shift_JIS変換はブラウザのデコーダ（CP932相当）から逆引き表を生成しています。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — textCodecTool.html
+  </footer>
+
+<script>
+  const byId = id => document.getElementById(id);
+
+  /* ---- Shift_JIS エンコード表（ブラウザのデコーダから逆引き生成） ---- */
+  let sjisMap = null;
+  function buildSjisMap() {
+    if (sjisMap) return sjisMap;
+    sjisMap = new Map();
+    const dec = new TextDecoder('shift_jis', { fatal: true });
+    const add = bytes => {
+      try {
+        const s = dec.decode(new Uint8Array(bytes));
+        if (s.length === 1 && !sjisMap.has(s)) sjisMap.set(s, bytes);
+      } catch (e) { /* 未定義領域は無視 */ }
+    };
+    for (let b = 0x00; b <= 0x7f; b++) add([b]);
+    for (let b = 0xa1; b <= 0xdf; b++) add([b]);          // 半角カナ
+    for (let lead = 0x81; lead <= 0xfc; lead++) {
+      if (lead > 0x9f && lead < 0xe0) continue;
+      for (let trail = 0x40; trail <= 0xfc; trail++) {
+        if (trail === 0x7f) continue;
+        add([lead, trail]);
+      }
+    }
+    return sjisMap;
+  }
+  // 戻り値: { bytes, missing[] }（SJISに無い文字は '?' 0x3F に置換）
+  function encodeSjis(str) {
+    const map = buildSjisMap();
+    const out = [], missing = [];
+    for (const ch of str) {
+      const b = map.get(ch);
+      if (b) out.push(...b);
+      else { out.push(0x3f); if (!missing.includes(ch)) missing.push(ch); }
+    }
+    return { bytes: new Uint8Array(out), missing };
+  }
+
+  /* ---- バイト列ユーティリティ ---- */
+  const utf8Enc = new TextEncoder();
+  function b64FromBytes(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function bytesFromB64(b64) {
+    const s = atob(b64.replace(/\s+/g, ''));
+    const a = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+    return a;
+  }
+  const hexFromBytes = bytes => [...bytes].map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  function bytesFromHex(s) {
+    const clean = s.replace(/0x/gi, '').replace(/[\s,;:\-]/g, '');
+    if (!/^[0-9A-Fa-f]*$/.test(clean)) throw new Error('16進数以外の文字が含まれています');
+    if (clean.length % 2 !== 0) throw new Error('桁数が奇数です（2桁＝1バイト）');
+    const a = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < a.length; i++) a[i] = parseInt(clean.substr(i * 2, 2), 16);
+    return a;
+  }
+  // URLエンコード文字列 → バイト列（+はスペース、%XX以外の文字はUTF-8バイトとして通す）
+  function bytesFromUrl(s) {
+    const out = [];
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '%' && /^[0-9A-Fa-f]{2}$/.test(s.substr(i + 1, 2))) {
+        out.push(parseInt(s.substr(i + 1, 2), 16)); i += 2;
+      } else if (c === '+') {
+        out.push(0x20);
+      } else {
+        out.push(...utf8Enc.encode(c));
+      }
+    }
+    return new Uint8Array(out);
+  }
+  // バイト列 → URLエンコード（未予約文字はそのまま）
+  function urlFromBytes(bytes) {
+    let s = '';
+    for (const b of bytes) {
+      const c = String.fromCharCode(b);
+      s += /[A-Za-z0-9\-_.~]/.test(c) ? c : '%' + b.toString(16).toUpperCase().padStart(2, '0');
+    }
+    return s;
+  }
+
+  /* ---- Windows-1252(Latin-1) エンコード表（逆引き生成） ---- */
+  let w1252Map = null;
+  function encodeW1252(str) {
+    if (!w1252Map) {
+      w1252Map = new Map();
+      const d = new TextDecoder('windows-1252');
+      for (let b = 0; b < 256; b++) {
+        const ch = d.decode(new Uint8Array([b]));
+        if (!w1252Map.has(ch)) w1252Map.set(ch, b);
+      }
+    }
+    const out = [], missing = [];
+    for (const ch of str) {
+      const b = w1252Map.get(ch);
+      if (b !== undefined) out.push(b);
+      else { out.push(0x3f); if (!missing.includes(ch)) missing.push(ch); }
+    }
+    return { bytes: new Uint8Array(out), missing };
+  }
+
+  /* ---- 文字インスペクタ ---- */
+  const CHAR_NOTES = {
+    0x09: { d: '⇥', n: 'タブ', w: 1 },
+    0x0A: { d: '␊', n: '改行（LF）', w: 0 },
+    0x0D: { d: '␍', n: '改行（CR）。CRLFはWindows系の改行', w: 1 },
+    0x20: { d: '␣', n: '半角スペース', w: 0 },
+    0xA0: { d: '␣', n: 'ノーブレークスペース（見た目は普通の空白だが別物）', w: 1 },
+    0x3000: { d: '⬚', n: '全角スペース', w: 1 },
+    0x200B: { d: '∅', n: 'ゼロ幅スペース（不可視！）', w: 1 },
+    0x200C: { d: '∅', n: 'ゼロ幅非接合子（不可視）', w: 1 },
+    0x200D: { d: '∅', n: 'ゼロ幅接合子（不可視・絵文字の結合用）', w: 1 },
+    0xFEFF: { d: '∅', n: 'BOM／ゼロ幅ノーブレークスペース（不可視！）', w: 1 },
+    0x2010: { d: null, n: 'ハイフン（U+2010。半角「-」U+002D とは別物）', w: 1 },
+    0x2212: { d: null, n: 'マイナス記号（半角「-」U+002D とは別物）', w: 1 },
+    0xFF0D: { d: null, n: '全角ハイフンマイナス', w: 1 },
+    0x30FC: { d: null, n: '長音記号（カタカナの「ー」）', w: 0 },
+    0x301C: { d: null, n: '波ダッシュ（全角チルダ U+FF5E と別物。SJIS変換の定番トラブル）', w: 1 },
+    0xFF5E: { d: null, n: '全角チルダ（波ダッシュ U+301C と別物）', w: 1 }
+  };
+  function charInfo(c) {
+    const cp = c.codePointAt(0);
+    const e = CHAR_NOTES[cp];
+    let d = e && e.d ? e.d : c, n = e ? e.n : '', w = e ? !!e.w : false;
+    if (!e) {
+      if (cp >= 0xFF01 && cp <= 0xFF5E) { n = '全角の英数記号（半角「' + String.fromCharCode(cp - 0xFEE0) + '」とは別物）'; w = true; }
+      else if (cp >= 0x1F000) { n = '絵文字など（Shift_JISでは表せない）'; }
+    }
+    return { cp, d, n, w };
+  }
+  function updInspector(s) {
+    const tb = byId('inspBody');
+    tb.innerHTML = '';
+    const all = [...s], chars = all.slice(0, 200);
+    byId('inspNote').textContent = all.length > 200 ? '※ 長いため最初の200文字のみ表示しています' : '';
+    chars.forEach((c, idx) => {
+      const info = charInfo(c);
+      const sj = encodeSjis(c);
+      const tr = document.createElement('tr');
+      if (info.w) tr.className = 'w';
+      const cells = [
+        ['', String(idx + 1)],
+        ['ch', info.d],
+        ['bytes', 'U+' + info.cp.toString(16).toUpperCase().padStart(4, '0')],
+        ['bytes', hexFromBytes(utf8Enc.encode(c))],
+        [sj.missing.length ? 'miss' : 'bytes', sj.missing.length ? 'なし（?）' : hexFromBytes(sj.bytes)],
+        ['cnote', (info.w ? '⚠ ' : '') + info.n]
+      ];
+      for (const [cls, txt] of cells) {
+        const td = document.createElement('td');
+        if (cls) td.className = cls;
+        td.textContent = txt;
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    });
+  }
+
+  /* ---- エンコード一括更新 ---- */
+  function updEnc() {
+    const s = byId('src').value;
+    const chars = [...s];
+    const u8 = utf8Enc.encode(s);
+    const sj = encodeSjis(s);
+
+    byId('stChars').textContent = chars.length;
+    byId('stU16').textContent = s.length;
+    byId('stU8').textContent = u8.length;
+    byId('stSjis').textContent = sj.bytes.length;
+
+    const warn = byId('sjisWarn');
+    if (sj.missing.length) {
+      warn.style.display = '';
+      warn.textContent = '⚠ Shift_JISに無い文字を「?」に置換しました: ' + sj.missing.join(' ');
+    } else {
+      warn.style.display = 'none';
+    }
+
+    byId('oUrl').textContent = encodeURIComponent(s);
+    byId('mUrl').textContent = encodeURIComponent(s).length + ' 文字';
+    byId('oUrlS').textContent = urlFromBytes(sj.bytes);
+    byId('mUrlS').textContent = urlFromBytes(sj.bytes).length + ' 文字';
+    byId('oB64').textContent = s ? b64FromBytes(u8) : '';
+    byId('mB64').textContent = (s ? b64FromBytes(u8).length : 0) + ' 文字';
+    byId('oB64S').textContent = s ? b64FromBytes(sj.bytes) : '';
+    byId('mB64S').textContent = (s ? b64FromBytes(sj.bytes).length : 0) + ' 文字';
+    byId('oHex').textContent = hexFromBytes(u8);
+    byId('mHex').textContent = u8.length + ' bytes';
+    byId('oHexS').textContent = hexFromBytes(sj.bytes);
+    byId('mHexS').textContent = sj.bytes.length + ' bytes';
+    byId('oCp').textContent = chars.map(c => 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')).join(' ');
+    byId('oRef').textContent = chars.map(c => {
+      const cp = c.codePointAt(0);
+      return cp > 127 ? '&#x' + cp.toString(16).toUpperCase() + ';' : c;
+    }).join('');
+
+    updInspector(s);
+    updMoji();
+  }
+  byId('src').addEventListener('input', updEnc);
+
+  /* ---- デコード ---- */
+  function autoFmt(t) {
+    if (/%[0-9A-Fa-f]{2}/.test(t)) return 'url';
+    const hexClean = t.replace(/0x/gi, '').replace(/[\s,;:\-]/g, '');
+    if (/^[0-9A-Fa-f]+$/.test(hexClean) && hexClean.length % 2 === 0 && hexClean.length >= 2) return 'hex';
+    if (/^[A-Za-z0-9+/=\s]+$/.test(t) && t.replace(/\s/g, '').length % 4 === 0) return 'b64';
+    return null;
+  }
+  function smartDecode(bytes, cs) {
+    if (cs !== 'auto') {
+      return { text: new TextDecoder(cs).decode(bytes), cs: cs.toUpperCase() + ' として解釈' };
+    }
+    try { return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), cs: 'UTF-8 として解釈' }; } catch (e) {}
+    try { return { text: new TextDecoder('shift_jis', { fatal: true }).decode(bytes), cs: 'Shift_JIS として解釈' }; } catch (e) {}
+    return { text: new TextDecoder('utf-8').decode(bytes), cs: 'UTF-8（不正バイトは�に置換）' };
+  }
+  function updDec() {
+    const t = byId('decIn').value.trim();
+    const out = byId('decOut'), info = byId('decInfo');
+    out.classList.remove('err');
+    if (!t) { out.textContent = ''; info.textContent = ''; return; }
+    let fmt = byId('decFmt').value;
+    if (fmt === 'auto') {
+      fmt = autoFmt(t);
+      if (!fmt) {
+        out.textContent = '形式を自動判定できませんでした。形式を手動で選んでください。';
+        out.classList.add('err'); info.textContent = '';
+        return;
+      }
+    }
+    try {
+      let bytes;
+      if (fmt === 'url') bytes = bytesFromUrl(t);
+      else if (fmt === 'hex') bytes = bytesFromHex(t);
+      else bytes = bytesFromB64(t);
+      const r = smartDecode(bytes, byId('decCs').value);
+      out.textContent = r.text;
+      const fmtName = { url: 'URLエンコード', hex: 'Hex', b64: 'Base64' }[fmt];
+      info.textContent = '判定: ' + fmtName + '（' + bytes.length + ' bytes）→ ' + r.cs;
+    } catch (e) {
+      out.textContent = 'デコード失敗: ' + e.message;
+      out.classList.add('err'); info.textContent = '';
+    }
+  }
+  ['decIn', 'decFmt', 'decCs'].forEach(id => byId(id).addEventListener('input', updDec));
+
+  /* ---- 文字化けシミュレータ ---- */
+  function updMoji() {
+    const s = byId('src').value;
+    if (!s) { byId('mojiOut').textContent = ''; return; }
+    const mode = byId('mojiMode').value;
+    const srcBytes = mode[0] === 'u' ? utf8Enc.encode(s) : encodeSjis(s).bytes;
+    const readAs = { s: 'shift_jis', u: 'utf-8', l: 'windows-1252' }[mode[2]];
+    byId('mojiOut').textContent = new TextDecoder(readAs).decode(srcBytes);
+  }
+  byId('mojiMode').addEventListener('input', updMoji);
+
+  /* ---- 文字化け修復（逆変換の総当たり） ---- */
+  // 「encFnで再エンコード → rightCsで読み直す」を厳密に試す。失敗ならnull
+  function tryFix(s, encFn, rightCs) {
+    const e = encFn(s);
+    if (e.missing.length) return null; // 逆変換できない文字がある＝この誤読経路ではない
+    try {
+      return new TextDecoder(rightCs, { fatal: true }).decode(e.bytes);
+    } catch (err) { return null; }
+  }
+  // 日本語らしさスコア（候補の並べ替え用）
+  function jpScore(t) {
+    let sc = 0;
+    for (const ch of t) {
+      const cp = ch.codePointAt(0);
+      if (cp >= 0x3040 && cp <= 0x30FF) sc += 2;                 // かな
+      else if (cp >= 0x4E00 && cp <= 0x9FFF) sc += 1;            // 漢字
+      else if ((cp >= 0x30 && cp <= 0x39) || (cp >= 0x41 && cp <= 0x5A) || (cp >= 0x61 && cp <= 0x7A) || cp === 0x20) sc += 0.5;
+      else if (cp >= 0xFF61 && cp <= 0xFF9F) sc -= 0.5;          // 半角カナ（化け残りに多い）
+      else if (cp >= 0x80 && cp <= 0xFF) sc -= 1;                // ã å などの化け残り
+      else if (cp === 0xFFFD) sc -= 3;
+      else if (cp < 0x20 && cp !== 9 && cp !== 10 && cp !== 13) sc -= 2;
+    }
+    return sc;
+  }
+  // Latin-1誤読のコピペでは C1制御(0x81等)が不可視のまま欠落しがち。
+  // UTF-8の構造を頼りに、欠落バイトを総当たりで補完して復元を試みる。
+  function repair1252Dropped(s) {
+    encodeW1252(''); // 変換表を準備
+    const CAND = [0x81, 0x8D, 0x8F, 0x90, 0x9D]; // cp1252に無い＝消えやすいバイト
+    const base = [];
+    for (const ch of s) {
+      if (ch === '�') { base.push(-1); continue; } // ビューアが欠落バイトを�表示したもの → 推定対象
+      const b = w1252Map.get(ch);
+      if (b === undefined) return [];
+      base.push(b);
+    }
+    if (base.length > 400) return [];
+    const results = new Set();
+    let nodes = 0;
+    const dec = new TextDecoder('utf-8', { fatal: true });
+    const isCont = b => b >= 0x80 && b <= 0xBF;
+    const need = b => b < 0x80 ? 0 : (b >= 0xC2 && b <= 0xDF) ? 1 : (b >= 0xE0 && b <= 0xEF) ? 2 : (b >= 0xF0 && b <= 0xF4) ? 3 : -1;
+    function dfs(i, out, ins) {
+      if (nodes++ > 200000 || ins > 10 || results.size >= 400) return;
+      if (i >= base.length) {
+        try { results.add(dec.decode(new Uint8Array(out))); } catch (e) {}
+        return;
+      }
+      const b = base[i], n = b === -1 ? -1 : need(b);
+      if (n < 0) return; // 文字の先頭が継続バイト/不明 → この経路では解釈不能
+      const seq = [b];
+      (function fill(k, j, insNow) {
+        if (k === n) { dfs(j, out.concat(seq), insNow); return; }
+        for (const c of CAND) { seq.push(c); fill(k + 1, j, insNow + 1); seq.pop(); }
+        if (j < base.length) {
+          const nb = base[j];
+          if (nb === -1) { // �＝不明バイトを候補で埋めて消費
+            for (const c of CAND) { seq.push(c); fill(k + 1, j + 1, insNow); seq.pop(); }
+          } else if (isCont(nb)) {
+            seq.push(nb); fill(k + 1, j + 1, insNow); seq.pop();
+          }
+        }
+      })(0, i + 1, ins);
+    }
+    dfs(0, [], 0);
+    return [...results];
+  }
+
+  function updFix() {
+    const s = byId('fixIn').value;
+    const wrap = byId('fixOut'), info = byId('fixInfo');
+    wrap.innerHTML = '';
+    if (!s.trim()) { info.textContent = ''; return; }
+
+    const combos = [
+      [encodeSjis, 'utf-8', 'UTF-8 のデータを Shift_JIS で誤読していた'],
+      [encodeW1252, 'utf-8', 'UTF-8 のデータを Latin-1(Windows-1252) で誤読していた'],
+      [t => ({ bytes: utf8Enc.encode(t), missing: [] }), 'shift_jis', 'Shift_JIS のデータを UTF-8 で誤読していた'],
+      [encodeW1252, 'shift_jis', 'Shift_JIS のデータを Latin-1(Windows-1252) で誤読していた']
+    ];
+    const cands = [];
+    const push = (label, text) => {
+      if (text !== null && text !== s && !cands.some(x => x.text === text)) cands.push({ label, text, score: jpScore(text) });
+    };
+    for (const [encFn, cs, label] of combos) push(label, tryFix(s, encFn, cs));
+    // 二重誤読（Latin-1経由を2回くぐったパターン）
+    const once = tryFix(s, encodeW1252, 'utf-8');
+    if (once !== null) {
+      const twice = tryFix(once, encodeW1252, 'utf-8');
+      if (twice !== null && twice !== once) push('Latin-1 で二重に誤読していた（2回復元）', twice);
+    }
+    // 厳密なLatin-1復元が無理なら、欠落バイトの補完推定を試す
+    if (once === null) {
+      const inferred = repair1252Dropped(s)
+        .map(t => ({ t, sc: jpScore(t) }))
+        .sort((a, b) => b.sc - a.sc)
+        .slice(0, 2);
+      for (const r of inferred) push('UTF-8 を Latin-1 で誤読＋不可視バイトが欠落していた（補完して推定）', r.t);
+    }
+    cands.sort((a, b) => b.score - a.score);
+    for (const c of cands) if (c.score < 0) c.label = '（参考・たぶん違う）' + c.label;
+
+    const msgs = [];
+    if (cands.length) msgs.push('復元候補 ' + cands.length + ' 件');
+    else msgs.push('復元候補が見つかりませんでした（別パターンの化け方か、すでに情報が失われています）');
+    if (s.includes('�')) msgs.push('※「�」の部分は元バイトを推定して補完を試みています（Latin-1誤読パターンのみ・確実ではありません）');
+    if (s.includes('?')) msgs.push('※「?」は変換時に落ちた文字の可能性があり、その部分は復元できません');
+    info.textContent = msgs.join('。');
+
+    for (const c of cands) {
+      const row = document.createElement('div');
+      row.className = 'out-row';
+      const hd = document.createElement('div');
+      hd.className = 'hd';
+      const lbl = document.createElement('span');
+      lbl.className = 'lbl';
+      lbl.textContent = c.label;
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = 'コピー';
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(c.text);
+          btn.textContent = '✓ コピー済';
+        } catch (e) { btn.textContent = '✕ 失敗'; }
+        setTimeout(() => { btn.textContent = 'コピー'; }, 1200);
+      });
+      hd.appendChild(lbl); hd.appendChild(btn);
+      const val = document.createElement('div');
+      val.className = 'val';
+      val.textContent = c.text;
+      row.appendChild(hd); row.appendChild(val);
+      wrap.appendChild(row);
+    }
+  }
+  byId('fixIn').addEventListener('input', updFix);
+
+  /* ---- ファイルの文字コード変換 ---- */
+  let fileState = null;
+  const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(2) + ' MB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
+  function detectFile(buf) {
+    const b = new Uint8Array(buf);
+    const tryDec = cs => { try { return new TextDecoder(cs, { fatal: true }).decode(buf); } catch (e) { return null; } };
+    if (b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF)
+      return { label: 'UTF-8（BOM付き）', text: new TextDecoder('utf-8').decode(buf), warn: '' };
+    if (b.length >= 2 && b[0] === 0xFF && b[1] === 0xFE)
+      return { label: 'UTF-16LE（BOM付き）', text: new TextDecoder('utf-16le').decode(buf), warn: '' };
+    if (b.length >= 2 && b[0] === 0xFE && b[1] === 0xFF)
+      return { label: 'UTF-16BE（BOM付き）', text: new TextDecoder('utf-16be').decode(buf), warn: '' };
+    const u = tryDec('utf-8');
+    if (u !== null) return { label: 'UTF-8', text: u, warn: '' };
+    const cands = [];
+    const sj = tryDec('shift_jis'); if (sj !== null) cands.push({ label: 'Shift_JIS', text: sj });
+    const eu = tryDec('euc-jp'); if (eu !== null) cands.push({ label: 'EUC-JP', text: eu });
+    if (cands.length) {
+      cands.sort((a, b2) => jpScore(b2.text) - jpScore(a.text));
+      const c = cands[0];
+      c.warn = cands.length > 1 ? '※ ' + cands[1].label + ' の可能性もあります（日本語らしい方を採用）。プレビューが化けていたら教えてください' : '';
+      return c;
+    }
+    return { label: '不明', text: new TextDecoder('utf-8').decode(buf), warn: '⚠ 文字コードを判定できず、UTF-8として強制的に読みました（�は壊れた部分）' };
+  }
+  function nlDetect(t) {
+    const crlf = (t.match(/\r\n/g) || []).length;
+    const lf = (t.match(/(?<!\r)\n/g) || []).length;
+    const cr = (t.match(/\r(?!\n)/g) || []).length;
+    const parts = [];
+    if (crlf) parts.push('CRLF×' + crlf);
+    if (lf) parts.push('LF×' + lf);
+    if (cr) parts.push('CR×' + cr);
+    if (!parts.length) return '改行なし';
+    return parts.join(' ') + ([crlf, lf, cr].filter(Boolean).length > 1 ? '（混在⚠）' : '');
+  }
+  async function handleFile(file) {
+    if (!file) return;
+    const buf = await file.arrayBuffer();
+    const det = detectFile(buf);
+    fileState = { name: file.name, text: det.text };
+    byId('fName').textContent = file.name;
+    byId('fSize').textContent = fmtSize(file.size);
+    byId('fEnc').textContent = det.label;
+    byId('fNl').textContent = nlDetect(det.text);
+    byId('fInfo').style.display = '';
+    const dw = byId('fDetWarn');
+    dw.style.display = det.warn ? '' : 'none';
+    dw.textContent = det.warn;
+    byId('fPrev').textContent = det.text.slice(0, 2000) + (det.text.length > 2000 ? '\n…（以下省略）' : '');
+    byId('fPrevWrap').style.display = '';
+    byId('fSaveRow').style.display = '';
+    byId('fSaveWarn').style.display = 'none';
+  }
+  const fDrop = byId('fDrop');
+  fDrop.addEventListener('click', () => byId('fIn').click());
+  byId('fIn').addEventListener('change', e => handleFile(e.target.files[0]));
+  fDrop.addEventListener('dragover', e => { e.preventDefault(); fDrop.classList.add('over'); });
+  fDrop.addEventListener('dragleave', () => fDrop.classList.remove('over'));
+  fDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    fDrop.classList.remove('over');
+    handleFile(e.dataTransfer.files[0]);
+  });
+  byId('fSave').addEventListener('click', () => {
+    if (!fileState) return;
+    let text = fileState.text;
+    const nl = byId('fOutNl').value;
+    if (nl === 'crlf') text = text.replace(/\r\n|\r|\n/g, '\r\n');
+    else if (nl === 'lf') text = text.replace(/\r\n|\r|\n/g, '\n');
+    const enc = byId('fOutEnc').value;
+    let bytes, suffix;
+    const sw = byId('fSaveWarn');
+    sw.style.display = 'none';
+    if (enc === 'sjis') {
+      const e = encodeSjis(text);
+      bytes = e.bytes; suffix = 'sjis';
+      if (e.missing.length) {
+        sw.style.display = '';
+        sw.textContent = '⚠ Shift_JISに無い文字を「?」に置換して保存しました: ' + e.missing.slice(0, 20).join(' ') + (e.missing.length > 20 ? ' …' : '');
+      }
+    } else {
+      const u = utf8Enc.encode(text);
+      if (enc === 'utf8bom') {
+        bytes = new Uint8Array(u.length + 3);
+        bytes.set([0xEF, 0xBB, 0xBF]); bytes.set(u, 3);
+        suffix = 'utf8bom';
+      } else { bytes = u; suffix = 'utf8'; }
+    }
+    const m = fileState.name.match(/^(.*?)(\.[^.]+)?$/);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([bytes]));
+    a.download = (m[1] || 'converted') + '_' + suffix + (m[2] || '.txt');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+
+  /* ---- コピー ---- */
+  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+    const text = byId(b.dataset.copy).textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      const old = b.textContent;
+      b.textContent = '✓ コピー済';
+      setTimeout(() => { b.textContent = old; }, 1200);
+    } catch (e) {
+      b.textContent = '✕ 失敗';
+      setTimeout(() => { b.textContent = 'コピー'; }, 1200);
+    }
+  }));
+
+  /* ---- ヒントの開閉 ---- */
+  document.querySelectorAll('.hint-btn').forEach(b => b.addEventListener('click', () => {
+    const h = b.closest('.out-row').querySelector('.hint');
+    h.hidden = !h.hidden;
+    b.classList.toggle('active', !h.hidden);
+  }));
+
+  updEnc();
+  updDec();
+</script>
+</body>
+</html>

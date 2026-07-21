@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ダイオード早見表 / リファレンス</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono {
+    font-family: "Consolas", monospace;
+    background: #11111b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #a6e3a1;
+  }
+
+  /* 帯の向きの図 */
+  .symbol-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .diode-fig {
+    display: inline-flex;
+    align-items: center;
+    font-family: Consolas, monospace;
+    font-size: 15px;
+  }
+  .body-fig {
+    display: inline-flex;
+    align-items: stretch;
+    height: 34px;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #585b70;
+    margin: 0 8px;
+  }
+  .body-fig .glass { background: #6c7086; width: 56px; }
+  .body-fig .band  { background: #cdd6f4; width: 10px; }
+  .wire { width: 26px; height: 2px; background: #cdd6f4; }
+  .tag-a { color: #a6e3a1; font-weight: bold; }
+  .tag-k { color: #f38ba8; font-weight: bold; }
+
+  /* フィルタ */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 16px 0;
+    padding: 10px 12px;
+    background: #313244;
+    border-radius: 8px;
+    align-items: center;
+  }
+  .filters .label { color: #a6adc8; font-size: 13px; margin-right: 4px; }
+  .filter-btn {
+    background: #45475a;
+    color: #cdd6f4;
+    border: 2px solid transparent;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .filter-btn.on { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; }
+  #search {
+    flex: 1;
+    min-width: 160px;
+    padding: 6px 12px;
+    background: #181825;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  /* 比較表 */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 8px;
+    font-size: 14px;
+    min-width: 720px;
+  }
+  th, td {
+    border: 1px solid #45475a;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #181825; color: #89b4fa; position: sticky; top: 0; }
+  tr:nth-child(even) td { background: #232334; }
+  td .pn { color: #a6e3a1; font-family: Consolas, monospace; }
+
+  /* 詳細カード */
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .card {
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 12px;
+    padding: 16px 18px;
+    border-top: 4px solid var(--accent, #89b4fa);
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    color: var(--accent, #89b4fa);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .card h3 .en { font-size: 12px; color: #a6adc8; font-weight: normal; }
+  .card .vf {
+    display: inline-block;
+    background: #11111b;
+    color: #f9e2af;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .card dl { margin: 8px 0 0; }
+  .card dt {
+    color: #a6adc8;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 8px;
+    text-transform: none;
+  }
+  .card dd { margin: 2px 0 0; font-size: 14px; }
+  .card dd .pn { color: #a6e3a1; font-family: Consolas, monospace; }
+  .hidden { display: none !important; }
+
+  /* LED抵抗計算機 */
+  .calc {
+    background: #181825;
+    border: 2px solid #a6e3a1;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .calc h2 { margin: 0 0 4px; border: none; padding: 0; color: #a6e3a1; font-size: 20px; }
+  .calc .sub { color: #a6adc8; font-size: 13px; margin-bottom: 12px; }
+  .calc .inputs { display: flex; flex-wrap: wrap; gap: 14px; }
+  .calc .field { display: flex; flex-direction: column; gap: 4px; }
+  .calc .field label { font-size: 12px; color: #a6adc8; font-weight: bold; }
+  .calc .field input {
+    width: 120px;
+    padding: 8px 10px;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+    font-size: 15px;
+  }
+  .calc .field .unit { color: #a6adc8; font-size: 11px; }
+  .calc .presets { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .calc .presets .label { font-size: 12px; color: #a6adc8; margin-right: 2px; }
+  .calc .preset-btn {
+    background: #45475a; color: #cdd6f4; border: none;
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; cursor: pointer;
+  }
+  .calc .preset-btn:hover { background: #585b70; }
+  .calc .result {
+    margin-top: 14px;
+    background: #11111b;
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-left: 4px solid #f9e2af;
+  }
+  .calc .result .big {
+    font-family: Consolas, monospace;
+    font-size: 30px;
+    font-weight: bold;
+    color: #a6e3a1;
+    margin: 2px 0 6px;
+  }
+  .calc .result .detail { font-family: Consolas, monospace; font-size: 13px; color: #cdd6f4; }
+  .calc .result .detail span { color: #f9e2af; }
+  .calc .result.warn { border-left-color: #f38ba8; }
+  .calc .result.warn .big { color: #f38ba8; font-size: 18px; }
+
+  /* 逆引きガイド */
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item {
+    background: #232334;
+    border-radius: 8px;
+    padding: 12px 14px;
+    border-left: 3px solid #a6e3a1;
+  }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  /* 常備セット */
+  .kit { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .kit-item {
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .kit-item .pn { color: #a6e3a1; font-family: Consolas, monospace; font-weight: bold; }
+  .kit-item .desc { font-size: 13px; color: #bac2de; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>⚡ ダイオード早見表 / リファレンス</h1>
+
+  <div class="lead">
+    <b>ダイオード</b>とは、電流を<b>一方向にだけ</b>流す半導体素子。
+    記号の三角形が指す向き（アノード <span class="tag-a">A</span> → カソード <span class="tag-k">K</span>）が順方向。
+    用途・性能の違いで多くの種類があり、選び方を間違えると「発熱する」「動かない」「壊れる」原因になります。
+    <span class="note">※ 本ページの電圧・電流値は一般的な目安です。実機ではデータシートを確認してください。</span>
+  </div>
+
+  <div class="calc">
+    <h2>🧮 LED 抵抗値かんたん計算</h2>
+    <div class="sub">電源電圧・LEDの順方向電圧(Vf)・流したい電流を入れると、必要な抵抗値を計算します。<br>
+    ※ <b style="color:#f9e2af;">電源電圧は Vf より 0.5〜1V 以上高め</b>が目安。例: 白(3.6V)・青(2.8V)を 3.3V で点けるのは厳しい（届かず点灯しない/暗い）。赤・黄・橙なら 3.3V でもOK。<br>
+    ※ <b style="color:#f9e2af;">流したい電流の目安: （暗い）5mA 〜 20mA（明るい）</b>。明るさは電流で変わります。細かく調整する場合は PWM（高速点滅で平均を変える）などを使います。</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="cVcc">電源電圧</label>
+        <input id="cVcc" type="number" step="0.1" min="0" value="5">
+        <span class="unit">V（ボルト）</span>
+      </div>
+      <div class="field">
+        <label for="cVf">LEDのVf</label>
+        <input id="cVf" type="number" step="0.1" min="0" value="2.0">
+        <span class="unit">V（LEDの順方向電圧）</span>
+      </div>
+      <div class="field">
+        <label for="cI">流したい電流</label>
+        <input id="cI" type="number" step="1" min="0" value="20">
+        <span class="unit">mA（ミリアンペア）</span>
+      </div>
+    </div>
+    <div class="presets">
+      <span class="label">電源プリセット:</span>
+      <button class="preset-btn" data-vcc="3.3">3.3V (ESP32)</button>
+      <button class="preset-btn" data-vcc="5">5V (USB)</button>
+      <button class="preset-btn" data-vcc="12">12V</button>
+    </div>
+    <div class="presets">
+      <span class="label">参考LED:</span>
+      <button class="preset-btn" data-vf="3.6" data-i="20">白 3.6V/20mA</button>
+      <button class="preset-btn" data-vf="2.9" data-i="20">緑 2.9V/20mA</button>
+      <button class="preset-btn" data-vf="1.8" data-i="5">橙 1.8V/5mA</button>
+      <button class="preset-btn" data-vf="2.0" data-i="20">黄 2.0V/20mA</button>
+      <button class="preset-btn" data-vf="2.8" data-i="5">青 2.8V/5mA</button>
+      <button class="preset-btn" data-vf="2.4" data-i="20">赤 2.4V/20mA</button>
+    </div>
+    <div class="result" id="cResult">
+      <div>必要な抵抗値（計算値）:</div>
+      <div class="big" id="cBig">-</div>
+      <div id="cStdLabel" style="margin-top:8px;color:#a6adc8;">使う標準抵抗（E12）:</div>
+      <div class="big" id="cBig2" style="color:#89b4fa;">-</div>
+      <div class="detail" id="cDetail"></div>
+    </div>
+  </div>
+
+  <h2>🔎 帯（カソードマーク）の向き</h2>
+  <div class="symbol-box">
+    <div class="diode-fig">
+      <span class="tag-a">A（+）</span>
+      <span class="wire"></span>
+      <span class="body-fig"><span class="glass"></span><span class="band"></span></span>
+      <span class="wire"></span>
+      <span class="tag-k">K（−）</span>
+    </div>
+    <div style="font-size:14px;">
+      本体の<b style="color:#cdd6f4;">帯（ストライプ）がある側がカソード（K, 出口側）</b>。<br>
+      記号 <span class="mono">▷|</span> の縦棒側もカソード。<br>
+      整流では「帯の向きに電流が出ていく」と覚えると間違えにくい。
+    </div>
+  </div>
+
+  <h2>📋 種類の比較表</h2>
+  <p class="note"><b style="color:#cdd6f4;">「1A」「3A」は電流（アンペア）＝流せる電流の上限（定格電流）。</b> 一方「1000V」などの<b style="color:#cdd6f4;">V（ボルト）は耐圧</b>＝逆方向にかけられる電圧の上限。ダイオードは「何A流すか」と「何V耐えるか」の両方で選びます。</p>
+  <div class="filters" id="filters">
+    <span class="label">用途で絞る:</span>
+    <button class="filter-btn on" data-cat="all">すべて</button>
+    <button class="filter-btn" data-cat="rectify">整流・電源</button>
+    <button class="filter-btn" data-cat="signal">信号・高速</button>
+    <button class="filter-btn" data-cat="regulate">定電圧・基準</button>
+    <button class="filter-btn" data-cat="protect">保護・サージ</button>
+    <button class="filter-btn" data-cat="special">表示・特殊</button>
+    <input id="search" type="text" placeholder="型番・キーワードで検索（例: 1N4148, ショットキー, DC-DC）" />
+  </div>
+
+  <div class="table-wrap">
+    <table id="compareTable">
+      <thead>
+        <tr>
+          <th>種類</th>
+          <th>主な用途</th>
+          <th>順方向電圧 Vf(目安)</th>
+          <th>入手しやすい型番例</th>
+          <th>他との違い・注意点</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-cat="rectify">
+          <td>一般整流ダイオード</td>
+          <td>AC→DC電源整流、逆接続保護</td>
+          <td>約 0.7〜1.0 V</td>
+          <td><span class="pn">1N4001〜1N4007</span>（1A）<br><span class="pn">1N5400〜1N5408</span>（3A）</td>
+          <td>安価で耐圧が高いが、逆回復が遅く高周波には不向き。1N4007は1000V耐圧で万能。</td>
+        </tr>
+        <tr data-cat="rectify signal">
+          <td>ショットキーバリア（SBD）</td>
+          <td>DC-DC整流、逆流防止、低損失化</td>
+          <td>約 0.2〜0.45 V</td>
+          <td><span class="pn">1N5817/5819</span>（1A）<br><span class="pn">1N5819W</span>（1A・SMD/SOD-123）<br><span class="pn">SS14/SS34</span>（SMD）<br><span class="pn">1N5822</span>（3A）</td>
+          <td>Vfが低く高速。ただし逆漏れ電流が大きめ・耐圧低め・高温に弱い。効率重視の整流向き。</td>
+        </tr>
+        <tr data-cat="signal">
+          <td>小信号スイッチング</td>
+          <td>信号処理、ロジック、クランプ、小電流整流</td>
+          <td>約 0.7 V</td>
+          <td><span class="pn">1N4148</span> / <span class="pn">1N914</span></td>
+          <td>超高速（数ns）・小型だが電流容量が小さい（〜200mA程度）。電子工作の万能小信号品。</td>
+        </tr>
+        <tr data-cat="rectify signal">
+          <td>ファストリカバリ整流</td>
+          <td>スイッチング電源など高周波の整流</td>
+          <td>約 0.9〜1.3 V</td>
+          <td><span class="pn">UF4007</span> / <span class="pn">FR107</span><br><span class="pn">MUR120</span> 系</td>
+          <td>一般整流より逆回復が速い。Vfはショットキーより高いが耐圧を取りやすい。</td>
+        </tr>
+        <tr data-cat="regulate">
+          <td>ツェナーダイオード</td>
+          <td>定電圧・基準電圧、過電圧クランプ</td>
+          <td>逆方向で降伏電圧を利用</td>
+          <td><span class="pn">1N4728〜1N4764</span>（3.3〜100V）<br><span class="pn">BZX55/BZX84</span> 系</td>
+          <td>わざと逆方向降伏（ブレークダウン）を使う点が決定的に違う。電流制限抵抗が必須。</td>
+        </tr>
+        <tr data-cat="protect">
+          <td>TVS（サージ保護）</td>
+          <td>ESD/サージ/過電圧からの保護</td>
+          <td>クランプ電圧で規定</td>
+          <td><span class="pn">P6KE</span> 系、<span class="pn">SMAJ</span> 系<br><span class="pn">1.5KE</span> 系</td>
+          <td>ツェナーに似るが、大電力サージを一瞬で吸収する設計。応答が非常に速く保護専用。</td>
+        </tr>
+        <tr data-cat="special">
+          <td>LED（発光ダイオード）</td>
+          <td>表示、照明、光通信</td>
+          <td>赤≈1.8V / 青・白≈3.0〜3.4V</td>
+          <td>各色 5mm/3mm 砲弾型、各種SMD</td>
+          <td>順方向で発光。必ず電流制限抵抗（または定電流回路）が必要。逆耐圧が低い。</td>
+        </tr>
+        <tr data-cat="rectify">
+          <td>ブリッジダイオード</td>
+          <td>全波整流を1パッケージで</td>
+          <td>約 1.0〜2.0 V（2素子分）</td>
+          <td><span class="pn">DB107</span>、<span class="pn">KBP210</span><br><span class="pn">KBPC</span> 系</td>
+          <td>整流ダイオード4本を内蔵。AC2端子・DC2端子で配線が楽。電源の定番。</td>
+        </tr>
+        <tr data-cat="special">
+          <td>定電流ダイオード（CRD）</td>
+          <td>LED駆動の定電流、簡易電流源</td>
+          <td>動作電圧範囲内で一定電流</td>
+          <td><span class="pn">E-103</span> / <span class="pn">E-153</span> 等</td>
+          <td>電圧が変わっても電流をほぼ一定に保つ（JFETベース）。抵抗より明るさが安定。</td>
+        </tr>
+        <tr data-cat="special">
+          <td>バラクタ（可変容量）</td>
+          <td>同調回路、PLL、VCO</td>
+          <td>逆電圧で容量が変化</td>
+          <td><span class="pn">1SV149</span>、<span class="pn">1SV101</span> 等</td>
+          <td>逆方向の接合容量を電圧で可変。整流ではなく「電圧可変コンデンサ」として使う。</td>
+        </tr>
+        <tr data-cat="special signal">
+          <td>フォトダイオード</td>
+          <td>光検出、受光センサ、光通信</td>
+          <td>逆方向で光電流を取得</td>
+          <td><span class="pn">S系（浜松）</span>、各種SMD受光素子</td>
+          <td>光が当たると電流が流れる。LEDの逆動作にあたる受光側の素子。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note" id="noMatch" style="display:none;">該当する種類がありません。検索語やフィルタを変えてください。</p>
+
+  <h2>🗂 種類ごとの詳細</h2>
+  <div class="cards" id="cards">
+
+    <div class="card" data-cat="rectify" style="--accent:#89b4fa;">
+      <h3>一般整流ダイオード <span class="en">Rectifier</span></h3>
+      <span class="vf">Vf ≈ 0.7〜1.0V / 50〜1000V耐圧</span>
+      <dl>
+        <dt>主な用途</dt><dd>AC→DCの整流、電源の逆接続（逆挿し）保護、フリーホイールダイオード。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">1N4007</span>（1A/1000V・最も万能）、<span class="pn">1N5408</span>（3A）。</dd>
+        <dt>他との違い</dt><dd>安くて耐圧が高い反面、逆回復が遅く高周波スイッチングには使えない。商用50/60Hz整流の定番。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="rectify signal" style="--accent:#a6e3a1;">
+      <h3>ショットキーバリア <span class="en">Schottky / SBD</span></h3>
+      <span class="vf">Vf ≈ 0.2〜0.45V / 高速・低損失</span>
+      <dl>
+        <dt>主な用途</dt><dd>DC-DCコンバータの整流、逆流防止（電源OR）、電圧降下を抑えたい箇所。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">1N5819</span>（1A/40V・リード品）、<span class="pn">1N5819W</span>（同スペックのSMD版/SOD-123）、<span class="pn">SS34</span>（SMD・3A/40V）、<span class="pn">1N5822</span>（3A）。</dd>
+        <dt>他との違い</dt><dd>Vfが低く発熱が少ない・高速。ただし逆漏れ電流が大きく耐圧が低め、高温で漏れが増える点に注意。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="signal" style="--accent:#f9e2af;">
+      <h3>小信号スイッチング <span class="en">Small-signal</span></h3>
+      <span class="vf">Vf ≈ 0.7V / 〜200mA / 数ns</span>
+      <dl>
+        <dt>主な用途</dt><dd>信号のクランプ、ロジック保護、小電流整流、検波。電子工作の万能品。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">1N4148</span>（定番）、<span class="pn">1N914</span>（ほぼ同等）。</dd>
+        <dt>他との違い</dt><dd>小型・超高速だが電流容量が小さい。大電流の整流には使えない。迷ったらまずこれ。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="rectify signal" style="--accent:#94e2d5;">
+      <h3>ファストリカバリ整流 <span class="en">Fast Recovery</span></h3>
+      <span class="vf">Vf ≈ 0.9〜1.3V / 逆回復が速い</span>
+      <dl>
+        <dt>主な用途</dt><dd>スイッチング電源、インバータなど高周波回路の整流。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">UF4007</span>（1A/1000V）、<span class="pn">FR107</span>、<span class="pn">MUR120</span>。</dd>
+        <dt>他との違い</dt><dd>一般整流（1N400x）より逆回復が速い。ショットキーより耐圧を取りやすいがVfは高め。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="regulate" style="--accent:#fab387;">
+      <h3>ツェナーダイオード <span class="en">Zener</span></h3>
+      <span class="vf">逆方向の降伏電圧を利用（3.3〜100V）</span>
+      <dl>
+        <dt>主な用途</dt><dd>定電圧・基準電圧の生成、過電圧クランプ、簡易レギュレータ。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">1N4733A</span>（5.1V）、<span class="pn">1N4742A</span>（12V）、<span class="pn">BZX55C</span> シリーズ。</dd>
+        <dt>他との違い</dt><dd>普通のダイオードと逆向き（カソードを＋側）に使い、降伏電圧で電圧を固定する。直列に電流制限抵抗が必須。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="protect" style="--accent:#f38ba8;">
+      <h3>TVS（サージ保護） <span class="en">TVS / Transient</span></h3>
+      <span class="vf">クランプ電圧で規定 / 大電力サージ吸収</span>
+      <dl>
+        <dt>主な用途</dt><dd>ESD・落雷サージ・過電圧からICや入力ポートを守る。USB/電源ライン保護。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">P6KE</span> 系（0.6kW）、<span class="pn">1.5KE</span> 系（1.5kW）、<span class="pn">SMAJ</span> 系（SMD）。</dd>
+        <dt>他との違い</dt><dd>ツェナーに似るが、瞬間的な大電力を吸収する保護専用設計で応答が極めて速い。双方向品もある。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="special" style="--accent:#cba6f7;">
+      <h3>LED（発光ダイオード） <span class="en">LED</span></h3>
+      <span class="vf">Vf: 赤≈1.8V / 青・白≈3.0〜3.4V</span>
+      <dl>
+        <dt>主な用途</dt><dd>状態表示、イルミネーション、照明、光通信の送信側。</dd>
+        <dt>入手しやすい例</dt><dd>3mm/5mm 砲弾型（赤・緑・青・白・黄）、各種SMD（0603/2012 等）。</dd>
+        <dt>他との違い</dt><dd>順方向で発光する。必ず電流制限抵抗か定電流回路が必要。逆耐圧が低く逆接続に弱い。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="rectify" style="--accent:#74c7ec;">
+      <h3>ブリッジダイオード <span class="en">Bridge Rectifier</span></h3>
+      <span class="vf">整流ダイオード4本内蔵 / 全波整流</span>
+      <dl>
+        <dt>主な用途</dt><dd>ACを全波整流してDC化。電源回路のフロントエンド。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">DB107</span>（1A）、<span class="pn">KBP210</span>（2A）、<span class="pn">KBPC</span> 系（大電流）。</dd>
+        <dt>他との違い</dt><dd>4本を1パッケージ化。AC×2・DC(+/−)×2端子で配線が簡単。極性表示（〜と+−）を確認。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="special" style="--accent:#a6e3a1;">
+      <h3>定電流ダイオード <span class="en">CRD</span></h3>
+      <span class="vf">動作範囲内で電流ほぼ一定</span>
+      <dl>
+        <dt>主な用途</dt><dd>LEDを電圧変動に強く一定の明るさで点灯、簡易な定電流源。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">E-103</span>（約10mA）、<span class="pn">E-153</span>（約15mA）。</dd>
+        <dt>他との違い</dt><dd>整流素子ではなくJFETを使った定電流素子。抵抗1本のLED駆動より明るさが安定する。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="special" style="--accent:#f5c2e7;">
+      <h3>バラクタ（可変容量） <span class="en">Varactor</span></h3>
+      <span class="vf">逆電圧で接合容量が変化</span>
+      <dl>
+        <dt>主な用途</dt><dd>ラジオ等の同調、PLL/VCOの周波数制御。</dd>
+        <dt>入手しやすい例</dt><dd><span class="pn">1SV149</span>、<span class="pn">1SV101</span> 等。</dd>
+        <dt>他との違い</dt><dd>整流ではなく「電圧で容量が変わるコンデンサ」として使う特殊用途。</dd>
+      </dl>
+    </div>
+
+    <div class="card" data-cat="special signal" style="--accent:#94e2d5;">
+      <h3>フォトダイオード <span class="en">Photodiode</span></h3>
+      <span class="vf">光が当たると逆方向に光電流</span>
+      <dl>
+        <dt>主な用途</dt><dd>光検出、明るさセンサ、光通信の受信側、リモコン受光。</dd>
+        <dt>入手しやすい例</dt><dd>各種フォトダイオード／フォトトランジスタ、受光モジュール。</dd>
+        <dt>他との違い</dt><dd>LEDの逆動作にあたる受光素子。光量に応じた電流を取り出す。</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <h2>🧭 用途から選ぶ（逆引き）</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">電源を整流したい（AC→DC）</div><div class="a">→ 一般整流（<span class="mono">1N4007</span>）／配線を楽にするならブリッジ（<span class="mono">DB107</span>）。</div></div>
+    <div class="guide-item"><div class="q">効率よく整流したい・電圧降下を抑えたい</div><div class="a">→ ショットキー（<span class="mono">1N5819 / SS34</span>）。DC-DCの整流に最適。</div></div>
+    <div class="guide-item"><div class="q">電源の逆接続（逆挿し）を防ぎたい</div><div class="a">→ 直列にショットキー、またはPchMOSFETによる理想ダイオード。</div></div>
+    <div class="guide-item"><div class="q">高速な信号を扱う・小電流整流</div><div class="a">→ 小信号スイッチング（<span class="mono">1N4148</span>）。</div></div>
+    <div class="guide-item"><div class="q">スイッチング電源の高周波整流</div><div class="a">→ ファストリカバリ（<span class="mono">UF4007</span>）またはショットキー。</div></div>
+    <div class="guide-item"><div class="q">一定の電圧を作りたい・基準電圧</div><div class="a">→ ツェナー（例: 5.1Vなら <span class="mono">1N4733A</span>）＋電流制限抵抗。</div></div>
+    <div class="guide-item"><div class="q">サージ・ESDから守りたい</div><div class="a">→ TVS（<span class="mono">P6KE / SMAJ</span> 系）を保護したいラインに並列。</div></div>
+    <div class="guide-item"><div class="q">LEDを安定した明るさで点けたい</div><div class="a">→ 電流制限抵抗、または定電流ダイオード（<span class="mono">E-153</span>）。</div></div>
+  </div>
+
+  <h2>🧰 とりあえず常備すると便利な定番</h2>
+  <div class="kit">
+    <div class="kit-item"><span class="pn">1N4148</span><div class="desc">小信号の万能品。クランプ・検波・小電流整流に。</div></div>
+    <div class="kit-item"><span class="pn">1N4007</span><div class="desc">整流の万能品。1A/1000V。逆接続保護にも。</div></div>
+    <div class="kit-item"><span class="pn">1N5819</span><div class="desc">ショットキーの定番。低Vf・逆流防止・DC-DC整流。</div></div>
+    <div class="kit-item"><span class="pn">1N4733A 等</span><div class="desc">ツェナー（5.1Vなど必要電圧を数種）。定電圧用。</div></div>
+    <div class="kit-item"><span class="pn">各色 LED</span><div class="desc">赤・青・白。動作確認やインジケータに必須。</div></div>
+    <div class="kit-item"><span class="pn">DB107</span><div class="desc">ブリッジ整流器。AC電源の全波整流を手軽に。</div></div>
+  </div>
+
+  <h2>📡 ESP32 でよく使うダイオード</h2>
+  <p class="note">ESP32（および S2/S3/C3 系）は <b style="color:#cdd6f4;">3.3Vロジック</b>。GPIOは<b style="color:#cdd6f4;">5Vトレラントではない</b>（＝5Vを直接つなぐと壊れる。下の用語解説参照）ので、保護とレベルに特に注意。代表的な使いどころを整理します。</p>
+  <div class="cards" id="espCards">
+
+    <div class="card" style="--accent:#a6e3a1;">
+      <h3>電源OR / 逆接続保護 <span class="en">USB + 外部電源</span></h3>
+      <span class="vf">ショットキーで低損失に</span>
+      <dl>
+        <dt>用途</dt><dd>USB(5V)と外部電源/電池をダイオードORでつなぎ、どちらが挿さっても給電。VINの逆挿し保護にも。</dd>
+        <dt>おすすめ型番</dt><dd><span class="pn">SS14</span> / <span class="pn">1N5819</span>（1A級）、<span class="pn">MBR0520</span>（SMD・0.5A）、<span class="pn">BAT54C</span>（小電流OR）。</dd>
+        <dt>ポイント</dt><dd>Vfが低いショットキー必須。電流が大きい用途は理想ダイオード(Pch MOSFET)も検討。多くのDevKitはUSB5VとVBUSの間にこの構成。</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="--accent:#f38ba8;">
+      <h3>USB データラインのESD保護 <span class="en">D+/D−</span></h3>
+      <span class="vf">TVSダイオードアレイ</span>
+      <dl>
+        <dt>用途</dt><dd>ESP32-S2/S3/C3 のネイティブUSBや、CH340/CP2102のD+/D−をESD/サージから保護。</dd>
+        <dt>おすすめ型番</dt><dd><span class="pn">USBLC6-2SC6</span>（USB用ESD保護の定番）、<span class="pn">PESD5V0</span> 系。</dd>
+        <dt>ポイント</dt><dd>低容量タイプを選ぶと信号品質を損なわない。市販ボードもほぼこの石を採用。</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="--accent:#fab387;">
+      <h3>リレー/モーター駆動のフライホイール <span class="en">Flyback</span></h3>
+      <span class="vf">逆起電力（コイルが出す逆向きの電圧）を吸収</span>
+      <dl>
+        <dt>用途</dt><dd>ESP32のGPIO→トランジスタ/MOSFET経由でリレーやソレノイドを駆動する際、コイルに並列で逆起電力を逃がす。</dd>
+        <dt>おすすめ型番</dt><dd><span class="pn">1N4007</span>（リレー定番）、小型なら <span class="pn">1N4148</span>。高速復帰なら <span class="pn">UF4007</span>。</dd>
+        <dt>ポイント</dt><dd>コイルに対しカソードを＋側へ。これが無いとスイッチング素子やESP32が破損しやすい。リレーモジュールは内蔵済みが多い。</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="--accent:#89b4fa;">
+      <h3>GPIO入力の過電圧クランプ <span class="en">3.3V保護</span></h3>
+      <span class="vf">5V信号 → 3.3Vへ保護</span>
+      <dl>
+        <dt>用途</dt><dd>外部の5V信号やノイズからGPIOを守る。ショットキーで3.3Vレールへクランプ、または直列抵抗＋クランプ。</dd>
+        <dt>おすすめ型番</dt><dd><span class="pn">BAT54</span> / <span class="pn">BAT54S</span>（クランプ）、入力保護なら <span class="pn">PESD3V3</span> 系TVS。</dd>
+        <dt>ポイント</dt><dd>確実な5V→3.3V変換はレベルシフタ(例: TXS0108E)を推奨。ダイオードクランプは簡易用途向け。</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="--accent:#cba6f7;">
+      <h3>RTC / バックアップ電源のOR <span class="en">Deep-Sleep / 電池</span></h3>
+      <span class="vf">低Vf・低漏れ</span>
+      <dl>
+        <dt>用途</dt><dd>主電源とコイン電池/スーパーキャパシタをORし、停電時もRTCやSRAMを保持。</dd>
+        <dt>おすすめ型番</dt><dd><span class="pn">BAT54C</span>（2素子OR）、低漏れショットキー。</dd>
+        <dt>ポイント</dt><dd>逆漏れ電流が小さい品を選ぶと電池消費を抑えられる。Vf分の電圧降下に注意。</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="--accent:#f9e2af;">
+      <h3>ステータス表示LED <span class="en">Indicator</span></h3>
+      <span class="vf">GPIOは1ピン最大〜数十mA</span>
+      <dl>
+        <dt>用途</dt><dd>通信状態や電源の表示。GPIOで直接、または明るさ重視ならトランジスタ駆動。</dd>
+        <dt>おすすめ</dt><dd>各色LED＋電流制限抵抗（3.3Vなら赤で約150〜330Ω目安）。WS2812(NeoPixel)もLEDの一種。</dd>
+        <dt>ポイント</dt><dd>ESP32のGPIO総電流には上限あり。多数点灯やパワーLEDは外部ドライブで。</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <h2>📖 用語解説（むずかしい言葉）</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">アノード / カソード</div><div class="a">ダイオードの2本の足の名前。電流が入る＋側がアノード(A)、出る−側がカソード(K)。本体の<b style="color:#cdd6f4;">帯がある側がカソード</b>。</div></div>
+    <div class="guide-item"><div class="q">順方向 / 逆方向</div><div class="a">電流が流れる向き（A→K）が順方向。その逆が逆方向で、ふつうは電流を止める（＝一方通行）。</div></div>
+    <div class="guide-item"><div class="q">定格電流（1A・3A など）</div><div class="a">順方向に流し続けられる電流の上限（単位アンペア）。超えると発熱して壊れる。実際に流す電流より余裕のある品を選ぶ。</div></div>
+    <div class="guide-item"><div class="q">耐圧（1000V など）</div><div class="a">逆方向にかけられる電圧の上限（単位ボルト）。これを超えると降伏して壊れる。電流とは別の指標。</div></div>
+    <div class="guide-item"><div class="q">順方向電圧 Vf</div><div class="a">順方向に電流を流したとき、ダイオードで失われる電圧。低いほど発熱が少なく効率的（ショットキーが低い）。</div></div>
+    <div class="guide-item"><div class="q">逆回復（時間）</div><div class="a">順方向→逆方向に切り替わるとき、止まりきるまでの遅れ。短いほど高速。一般整流は遅く、ショットキー/高速品は速い。</div></div>
+    <div class="guide-item"><div class="q">降伏（ブレークダウン）</div><div class="a">逆方向に強い電圧をかけると、ある電圧で急に電流が流れ出す現象。ツェナーはこれを<b style="color:#cdd6f4;">あえて使って</b>電圧を一定にする。</div></div>
+    <div class="guide-item"><div class="q">クランプ</div><div class="a">電圧が一定値を超えないよう「頭打ち」にすること。過電圧から回路を守る使い方。</div></div>
+    <div class="guide-item"><div class="q">ダイオードOR</div><div class="a">複数の電源をダイオードでつなぎ、<b style="color:#cdd6f4;">電圧の高い方から自動で給電</b>する回路。逆流は各ダイオードが防ぐ。</div></div>
+    <div class="guide-item"><div class="q">理想ダイオード</div><div class="a">MOSFETと制御ICで作る、Vf（電圧降下）がほぼ0のダイオード相当回路。大電流でも発熱が少ない。</div></div>
+    <div class="guide-item"><div class="q">逆起電力</div><div class="a">コイル（リレー・モーター）への電流を切った瞬間に出る、逆向きの高い電圧。放置するとスイッチ素子を壊す。</div></div>
+    <div class="guide-item"><div class="q">フライホイール（フリーホイール）ダイオード</div><div class="a">コイルに並列に入れ、上の逆起電力を逃がして消すためのダイオード。「還流ダイオード」とも言う。</div></div>
+    <div class="guide-item"><div class="q">5Vトレラント</div><div class="a">3.3Vで動くピンに5Vをつないでも壊れない耐性のこと。<b style="color:#cdd6f4;">ESP32のGPIOはこれが無い</b>ので5V直結はNG。</div></div>
+    <div class="guide-item"><div class="q">レベルシフタ</div><div class="a">3.3Vと5Vなど、電圧の違う信号同士を安全につなぐ変換IC。確実な電圧変換にはこちらを使う。</div></div>
+    <div class="guide-item"><div class="q">ESD（静電気放電）</div><div class="a">人体などにたまった静電気が一瞬で流れる現象。数千Vになり半導体を壊す。保護にTVSを使う。</div></div>
+    <div class="guide-item"><div class="q">サージ</div><div class="a">落雷や電源の切替などで瞬間的に発生する、異常に高い電圧/電流のこと。</div></div>
+    <div class="guide-item"><div class="q">TVS</div><div class="a">ESDやサージを一瞬で吸収する保護専用ダイオード（Transient Voltage Suppressor）。</div></div>
+    <div class="guide-item"><div class="q">逆接続保護（逆挿し保護）</div><div class="a">電源の＋−を逆に挿しても回路が壊れないようにする仕組み。ショットキーやMOSFETで作る。</div></div>
+    <div class="guide-item"><div class="q">電流制限抵抗</div><div class="a">LEDなどに流れる電流を抑えるために直列に入れる抵抗。無いと過電流で焼ける。</div></div>
+    <div class="guide-item"><div class="q">デッドゾーン</div><div class="a">スティックの中央付近など、わずかな入力を「無し」と扱う不感帯。誤動作防止に使う。</div></div>
+  </div>
+
+  <footer>
+    値は一般的な目安です。実際の設計ではメーカーのデータシート（最大定格・Vf・逆回復時間・許容損失）を必ず確認してください。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — diodeGuide.html
+  </footer>
+
+<script>
+  // --- LED抵抗値計算機 ---
+  const cVcc = document.getElementById('cVcc');
+  const cVf = document.getElementById('cVf');
+  const cI = document.getElementById('cI');
+  const cBig = document.getElementById('cBig');
+  const cBig2 = document.getElementById('cBig2');
+  const cStdLabel = document.getElementById('cStdLabel');
+  const cDetail = document.getElementById('cDetail');
+  const cResult = document.getElementById('cResult');
+
+  function hideStd() { cBig2.style.display = 'none'; cStdLabel.style.display = 'none'; }
+  function showStd() { cBig2.style.display = ''; cStdLabel.style.display = ''; }
+
+  const E12 = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2];
+  function nearestE12(r) {
+    if (r <= 0) return 0;
+    // r 以上で最も近いE12標準値（電流を目標以下に抑える安全側）
+    let best = Infinity;
+    for (let exp = -1; exp <= 7; exp++) {
+      for (const base of E12) {
+        const v = base * Math.pow(10, exp);
+        if (v >= r - 1e-9 && v < best) best = v;
+      }
+    }
+    return best;
+  }
+  function fmtOhm(r) {
+    if (r >= 1e6) return (r / 1e6).toFixed(r % 1e6 ? 1 : 0) + ' MΩ';
+    if (r >= 1e3) return (r / 1e3).toFixed(r % 1e3 ? 1 : 0) + ' kΩ';
+    return Math.round(r) + ' Ω';
+  }
+  function wattRating(p) {
+    if (p <= 0.0625) return '1/8W (0.125W) 以上';
+    if (p <= 0.125) return '1/4W (0.25W) 以上';
+    if (p <= 0.25) return '1/2W 以上';
+    if (p <= 0.5) return '1W 以上';
+    return Math.ceil(p) + 'W 以上';
+  }
+
+  function calcLed() {
+    const vcc = parseFloat(cVcc.value);
+    const vf = parseFloat(cVf.value);
+    const i = parseFloat(cI.value) / 1000; // mA→A
+
+    cResult.classList.remove('warn');
+    if (isNaN(vcc) || isNaN(vf) || isNaN(i)) {
+      cBig.textContent = '-';
+      cDetail.textContent = '数値を入力してください。';
+      hideStd();
+      return;
+    }
+    if (i <= 0) {
+      cResult.classList.add('warn');
+      cBig.textContent = '電流を入力してください';
+      cDetail.textContent = '「流したい電流」を 1mA 以上にしてください。';
+      hideStd();
+      return;
+    }
+    if (vcc <= vf) {
+      cResult.classList.add('warn');
+      cBig.textContent = '電源電圧が足りません';
+      cDetail.innerHTML = `電源電圧(<span>${vcc}V</span>)が LEDのVf(<span>${vf}V</span>)以下です。このLEDは点灯しません。電源電圧を上げてください。`;
+      hideStd();
+      return;
+    }
+    showStd();
+
+    const r = (vcc - vf) / i;            // 理論値
+    const std = nearestE12(r);           // 最寄りE12（安全側＝以上）
+    const iActual = (vcc - vf) / std;    // その抵抗での実際の電流
+    const pStd = (vcc - vf) * iActual;   // 抵抗の消費電力
+
+    cBig.textContent = fmtOhm(r);
+    cBig2.innerHTML = `${fmtOhm(std)} <span style="font-size:16px;color:#cdd6f4;">→ 電流 ${(iActual * 1000).toFixed(1)} mA</span>`;
+    cDetail.innerHTML =
+      `抵抗にかかる電圧: <span>${(vcc - vf).toFixed(2)} V</span>　` +
+      `消費電力: <span>${(pStd * 1000).toFixed(0)} mW</span>（${wattRating(pStd)}）<br>` +
+      `計算式: R = (${vcc} − ${vf}) ÷ ${(i * 1000)}mA = ${fmtOhm(r)}`;
+  }
+
+  [cVcc, cVf, cI].forEach(el => el.addEventListener('input', calcLed));
+  document.querySelectorAll('.calc .preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.vcc) cVcc.value = btn.dataset.vcc;
+      if (btn.dataset.vf) cVf.value = btn.dataset.vf;
+      if (btn.dataset.i) cI.value = btn.dataset.i;
+      calcLed();
+    });
+  });
+  calcLed();
+
+  const filterBtns = document.querySelectorAll('.filter-btn[data-cat]');
+  const searchEl = document.getElementById('search');
+  const rows = document.querySelectorAll('#compareTable tbody tr');
+  const cards = document.querySelectorAll('#cards .card');
+  const noMatch = document.getElementById('noMatch');
+  let activeCat = 'all';
+
+  function matches(el) {
+    const cats = (el.dataset.cat || '').split(/\s+/);
+    const catOk = activeCat === 'all' || cats.includes(activeCat);
+    const q = searchEl.value.trim().toLowerCase();
+    const textOk = !q || el.textContent.toLowerCase().includes(q);
+    return catOk && textOk;
+  }
+
+  function apply() {
+    let shown = 0;
+    rows.forEach(r => {
+      const ok = matches(r);
+      r.classList.toggle('hidden', !ok);
+      if (ok) shown++;
+    });
+    cards.forEach(c => c.classList.toggle('hidden', !matches(c)));
+    noMatch.style.display = shown === 0 ? 'block' : 'none';
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      activeCat = btn.dataset.cat;
+      apply();
+    });
+  });
+  searchEl.addEventListener('input', apply);
+  apply();
+</script>
+</body>
+</html>

@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>オームの法則：抵抗アニメーション</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0; padding: 20px;
+    background: #1e1e2e; color: #cdd6f4; line-height: 1.7; min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 { color: #89b4fa; border-bottom: 2px solid #45475a; padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: #89b4fa; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244; padding: 14px 18px; border-radius: 8px;
+    border-left: 4px solid #f9e2af; margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code { font-family: Consolas, monospace; background: #11111b; padding: 1px 6px; border-radius: 4px; color: #a6e3a1; }
+
+  .panel {
+    background: #181825; border: 1px solid #45475a; border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 20px;
+  }
+  .panel.accent { border: 2px solid #a6e3a1; }
+
+  /* スライダー */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .slider-row label { width: 150px; color: #a6adc8; font-size: 13px; font-weight: bold; }
+  .slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: #89b4fa; }
+  .slider-row .val { font-family: Consolas, monospace; color: #f9e2af; min-width: 86px; text-align: right; }
+  .panel select { padding: 8px 10px; background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 6px; font-family: Consolas, monospace; font-size: 15px; }
+  .rnum { width: 96px; padding: 6px 8px; background: #11111b; color: #f9e2af; border: 1px solid #585b70; border-radius: 6px; font-family: Consolas, monospace; font-size: 14px; }
+
+  /* 読み出し */
+  .readout { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  .readout .item { background: #11111b; border-radius: 8px; padding: 8px 14px; border-left: 3px solid #89b4fa; }
+  .readout .item .k { font-size: 11px; color: #a6adc8; }
+  .readout .item .v { font-family: Consolas, monospace; font-size: 20px; color: #a6e3a1; font-weight: bold; }
+  .readout .item.hl { border-left-color: #f9e2af; }
+  .readout .item.hl .v { color: #f9e2af; }
+
+  /* 計算機 */
+  .solve-btns { display: flex; gap: 8px; margin: 6px 0 12px; align-items: center; flex-wrap: wrap; }
+  .solve-btns .label { font-size: 12px; color: #a6adc8; font-weight: bold; margin-right: 4px; }
+  .solve-btns button {
+    background: #11111b; color: #cdd6f4; border: 1px solid #585b70;
+    border-radius: 6px; padding: 6px 14px; font-size: 14px; cursor: pointer; font-family: inherit; font-weight: bold;
+  }
+  .solve-btns button:hover { border-color: #89b4fa; }
+  .solve-btns button.active { background: #89b4fa; color: #11111b; border-color: #89b4fa; }
+  .calc-inputs { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: #a6adc8; font-weight: bold; }
+  .field input {
+    width: 130px; padding: 8px 10px; background: #11111b; color: #cdd6f4;
+    border: 1px solid #585b70; border-radius: 6px; font-family: Consolas, monospace; font-size: 16px;
+  }
+  .field input.target { border-color: #f9e2af; color: #f9e2af; background: #1c1b14; }
+  .field .unit { color: #a6adc8; font-size: 11px; }
+  .formula {
+    margin-top: 12px; background: #11111b; border-radius: 8px; padding: 12px 16px; border-left: 4px solid #f9e2af;
+    font-family: Consolas, monospace; font-size: 16px; color: #cdd6f4;
+  }
+  .formula b { color: #f9e2af; }
+  .layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+
+  svg.tri text { font-family: "Segoe UI", sans-serif; }
+  .schem { display: block; max-width: 380px; width: 100%; height: auto; background: #11111b; border: 1px solid #45475a; border-radius: 8px; }
+  .schem.wide { max-width: 420px; }
+
+  /* ショート→発熱→爆発の演出（汎用クラス） */
+  .res { transition: stroke .4s, fill .4s; }
+  .res.hot { stroke: #f38ba8; fill: #43242a; animation: heatshake .1s linear infinite; }
+  @keyframes heatshake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-1.5px); } 75% { transform: translateX(1.5px); } }
+  .expl { transform-box: view-box; opacity: 0; }
+  .expl.go { animation: boom .7s ease-out forwards; }
+  @keyframes boom { 0% { transform: scale(.2); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+  .flash { opacity: 0; }
+  .flash.go { animation: flash .5s ease-out; }
+  @keyframes flash { 0% { opacity: 0; } 25% { opacity: .5; } 100% { opacity: 0; } }
+  .boomt { opacity: 0; }
+  .boomt.go { animation: boomtext .8s ease-out forwards; }
+  @keyframes boomtext { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 8px; }
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item { background: #232334; border-radius: 8px; padding: 12px 14px; border-left: 3px solid #a6e3a1; }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; min-width: 560px; }
+  th, td { border: 1px solid #45475a; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>⚡ オームの法則：抵抗アニメーション</h1>
+
+  <div class="lead">
+    電気の基本は <b>オームの法則：電圧 V ＝ 電流 I × 抵抗 R</b>。
+    「電圧（押す力）」「電流（流れる量）」「抵抗（流れにくさ）」の3つの関係を、<b>計算機</b>と<b>動くアニメ</b>でつかみましょう。
+    後半では <b>直列つなぎ／並列つなぎ</b>の違いも、流れる粒の速さで見比べられます。
+    <span class="note">※ 値・式は学習用の目安です。</span>
+  </div>
+
+  <!-- ===================== 計算機 ===================== -->
+  <h2>🔢 オームの法則 計算機</h2>
+  <div class="panel accent">
+    <div class="solve-btns">
+      <span class="label">求めたいもの:</span>
+      <button data-solve="V">電圧 V</button>
+      <button data-solve="I" class="active">電流 I</button>
+      <button data-solve="R">抵抗 R</button>
+    </div>
+    <div class="layout">
+      <div>
+        <div class="calc-inputs">
+          <div class="field">
+            <label for="cV">電圧 V</label>
+            <input id="cV" type="number" step="0.1" value="5">
+            <span class="unit">V（ボルト）</span>
+          </div>
+          <div class="field">
+            <label for="cI">電流 I</label>
+            <input id="cI" type="number" step="1" value="">
+            <span class="unit">mA（ミリアンペア）</span>
+          </div>
+          <div class="field">
+            <label for="cR">抵抗 R</label>
+            <input id="cR" type="number" step="1" value="100">
+            <span class="unit">Ω（オーム）</span>
+          </div>
+        </div>
+        <div class="formula" id="cFormula">—</div>
+      </div>
+      <!-- VIRの三角形 -->
+      <svg class="tri" width="180" height="150" viewBox="0 0 180 150" role="img" aria-label="VIRの三角形">
+        <polygon points="90,12 28,135 152,135" fill="#181825" stroke="#585b70" stroke-width="2"/>
+        <line x1="49" y1="84" x2="131" y2="84" stroke="#585b70" stroke-width="2"/>
+        <line x1="90" y1="84" x2="90" y2="135" stroke="#585b70" stroke-width="2"/>
+        <text id="tV" x="90" y="62" text-anchor="middle" fill="#cdd6f4" font-size="30" font-weight="bold">V</text>
+        <text id="tI" x="68" y="118" text-anchor="middle" fill="#cdd6f4" font-size="24" font-weight="bold">I</text>
+        <text id="tR" x="113" y="118" text-anchor="middle" fill="#cdd6f4" font-size="24" font-weight="bold">R</text>
+      </svg>
+    </div>
+    <div class="note">三角形は覚え方。<b style="color:#cdd6f4;">求めたい文字を指でかくす</b>と、残りが式になる（V を隠す→ I×R、I を隠す→ V÷R、R を隠す→ V÷I）。</div>
+  </div>
+
+  <!-- ===================== 抵抗の定格 ===================== -->
+  <h2>🌡 抵抗の定格（許容電力 W）に注意</h2>
+  <div class="panel">
+    <div class="slider-row">
+      <label for="wRating">抵抗の定格</label>
+      <select id="wRating">
+        <option value="0.0625">1/16 W（0.0625W）</option>
+        <option value="0.125">1/8 W（0.125W）</option>
+        <option value="0.25" selected>1/4 W（0.25W）</option>
+        <option value="0.5">1/2 W（0.5W）</option>
+        <option value="1">1 W</option>
+        <option value="2">2 W</option>
+        <option value="5">5 W</option>
+      </select>
+    </div>
+    <p class="note">抵抗が消費する電力 <b style="color:#cdd6f4;">P = I²×R</b>（＝その抵抗にかかる電圧 × 流れる電流）が定格を超えると、抵抗が発熱して焼損（変色・煙・断線）します。下の各回路では、抵抗の消費電力が選んだ定格を超えると値が <b style="color:#f38ba8;">赤色＋⚠</b> 表示になります。</p>
+    <div class="guide">
+      <div class="guide-item"><div class="q">定格は「限界ライン」</div><div class="a">1/4W抵抗は「0.25Wまで余裕で使える」ではなく、<b style="color:#cdd6f4;">0.25Wがギリギリの上限</b>。常用は<b style="color:#cdd6f4;">定格の50%以下</b>（できれば1/3以下）が目安。<b style="color:#f38ba8;">⚠が出る＝設計NG</b>と考える。</div></div>
+      <div class="guide-item"><div class="q">温度でさらに下がる（ディレーティング）</div><div class="a">定格は<b style="color:#cdd6f4;">25℃前後が前提</b>。周囲温度が高い・密閉ケース・抵抗が密集していると放熱できず、<b style="color:#cdd6f4;">使える電力は定格より小さくなる</b>（高温では定格の数割まで低下することも）。表示の数字どおり0.25Wまで攻めない。</div></div>
+      <div class="guide-item"><div class="q">超えそうなときの対策</div><div class="a">① <b style="color:#cdd6f4;">定格の大きい抵抗</b>に変える（1/4W→1W等）。<br>② <b style="color:#cdd6f4;">抵抗を分けて分散</b>：直列や並列で複数本にすると、1本あたりの消費電力が下がる（例：同じ値を2本直列＋2本並列＝合成は同じでも各本の負担は1/2〜1/4）。<br>③ 電流自体を見直す（抵抗値・電圧を変える）。④ 放熱（大型・ヒートシンク・風）を確保。</div></div>
+      <div class="guide-item"><div class="q">分散の考え方</div><div class="a">例：100Ωで2Wかかってしまう → 100Ωを<b style="color:#cdd6f4;">200Ω2本の並列</b>（=100Ω）にすると、各抵抗は1Wずつに分かれる。合成抵抗は同じまま負担だけ減らせる。</div></div>
+    </div>
+  </div>
+
+  <!-- ===================== 電流アニメ ===================== -->
+  <h2>🌊 電流の流れを見る（アニメ）</h2>
+  <p class="note">電圧 V を上げる／抵抗 R を下げると、流れる粒（電流）が<b style="color:#cdd6f4;">速く＝たくさん</b>になります。逆に抵抗を上げると流れにくくなって遅くなります。</p>
+  <div class="panel">
+    <div class="solve-btns" style="margin-bottom:2px;">
+      <span class="label">電圧プリセット:</span>
+      <button type="button" class="vpreset" data-target="aV" data-v="3.3">3.3V</button>
+      <button type="button" class="vpreset" data-target="aV" data-v="5">5V</button>
+      <button type="button" class="vpreset" data-target="aV" data-v="9">9V</button>
+      <button type="button" class="vpreset" data-target="aV" data-v="12">12V</button>
+      <button type="button" class="vpreset" data-target="aV" data-v="18">18V</button>
+    </div>
+    <div class="slider-row">
+      <label for="aV">電圧 V</label>
+      <input id="aV" type="range" min="1" max="18" step="0.1" value="5">
+      <span class="val" id="aVval">5.0 V</span>
+    </div>
+    <div class="slider-row">
+      <label for="aR">抵抗 R</label>
+      <input id="aR" type="range" min="0" max="100" step="1" value="20">
+      <input id="aRn" type="text" value="100" class="rnum">
+      <span class="unit">Ω（0=ショート）</span>
+    </div>
+    <p class="note">⚠ <b style="color:#f38ba8;">抵抗 R を 0 にする</b>と「ショート（短絡）」状態。電流が無限大になり、発熱して<b style="color:#f38ba8;">爆発</b>します（実際の回路でも電源や部品が壊れる危険な状態）。</p>
+    <svg class="schem" viewBox="0 0 340 200" xmlns="http://www.w3.org/2000/svg">
+      <path id="p-basic" d="M 70 45 H 270 V 155 H 70 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <!-- 電池 -->
+      <line x1="56" y1="92" x2="84" y2="92" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="63" y1="106" x2="77" y2="106" stroke="#a6adc8" stroke-width="3"/>
+      <text x="96" y="96" fill="#f38ba8" font-size="12" font-weight="bold">＋</text>
+      <text x="96" y="116" fill="#a6adc8" font-size="12" font-weight="bold">－</text>
+      <text x="48" y="100" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">電池 V</text>
+      <!-- 抵抗 -->
+      <rect id="aRes" class="res" x="256" y="78" width="28" height="44" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="292" y="104" fill="#f9e2af" font-size="13" font-weight="bold">R</text>
+      <text x="170" y="36" text-anchor="middle" fill="#a6e3a1" font-size="11">→ 電流の向き →</text>
+      <g id="g-basic"></g>
+      <!-- 爆発演出 -->
+      <rect id="aFlash" class="flash" x="0" y="0" width="340" height="200" fill="#f38ba8"/>
+      <g id="aExpl" class="expl" style="transform-origin:270px 100px">
+        <circle cx="270" cy="100" r="22" fill="#f9e2af"/>
+        <circle cx="270" cy="100" r="34" fill="none" stroke="#fab387" stroke-width="5"/>
+        <line x1="270" y1="100" x2="270" y2="58" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="270" y1="100" x2="312" y2="100" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="270" y1="100" x2="270" y2="142" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="270" y1="100" x2="228" y2="100" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="270" y1="100" x2="300" y2="70" stroke="#fab387" stroke-width="3"/>
+        <line x1="270" y1="100" x2="300" y2="130" stroke="#fab387" stroke-width="3"/>
+        <line x1="270" y1="100" x2="240" y2="70" stroke="#fab387" stroke-width="3"/>
+        <line x1="270" y1="100" x2="240" y2="130" stroke="#fab387" stroke-width="3"/>
+      </g>
+      <text id="aBoom" class="boomt" x="270" y="110" text-anchor="middle" font-size="30">💥</text>
+    </svg>
+    <div id="aMsg" style="display:none;color:#f38ba8;font-weight:bold;margin-top:8px;">⚡ ショート！ R=0 は電流が無限大 → 抵抗が発熱して破損。実際の回路では電源やLED・配線が壊れます。R を上げると復帰します。</div>
+    <div class="readout">
+      <div class="item hl"><div class="k">電流 I = V ÷ R</div><div class="v" id="aI">-</div></div>
+      <div class="item"><div class="k">抵抗の消費電力 P=I²R</div><div class="v" id="aP">-</div></div>
+    </div>
+  </div>
+
+  <!-- ===================== 直列 ===================== -->
+  <h2>🔗 直列つなぎ（一本道）</h2>
+  <p class="note">抵抗を<b style="color:#cdd6f4;">一列</b>につなぐ方式。電流の通り道は1本だけ。</p>
+  <div class="panel">
+    <div class="solve-btns" style="margin-bottom:2px;">
+      <span class="label">電圧プリセット:</span>
+      <button type="button" class="vpreset" data-target="sV" data-v="3.3">3.3V</button>
+      <button type="button" class="vpreset" data-target="sV" data-v="5">5V</button>
+      <button type="button" class="vpreset" data-target="sV" data-v="9">9V</button>
+      <button type="button" class="vpreset" data-target="sV" data-v="12">12V</button>
+      <button type="button" class="vpreset" data-target="sV" data-v="18">18V</button>
+    </div>
+    <div class="slider-row">
+      <label for="sV">電圧 V</label>
+      <input id="sV" type="range" min="1" max="18" step="0.1" value="6">
+      <span class="val" id="sVval">6.0 V</span>
+    </div>
+    <div class="slider-row">
+      <label for="sR1">抵抗 R1</label>
+      <input id="sR1" type="range" min="0" max="100" step="1" value="20">
+      <input id="sR1n" type="text" value="100" class="rnum">
+      <span class="unit">Ω</span>
+    </div>
+    <div class="slider-row">
+      <label for="sR2">抵抗 R2</label>
+      <input id="sR2" type="range" min="0" max="100" step="1" value="40">
+      <input id="sR2n" type="text" value="220" class="rnum">
+      <span class="unit">Ω</span>
+    </div>
+    <svg class="schem wide" viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg">
+      <path id="p-series" d="M 70 45 H 290 V 155 H 70 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <line x1="56" y1="88" x2="84" y2="88" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="63" y1="102" x2="77" y2="102" stroke="#a6adc8" stroke-width="3"/>
+      <text x="48" y="98" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">V</text>
+      <rect id="sRes1" class="res" x="120" y="33" width="46" height="24" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="143" y="49" text-anchor="middle" fill="#f9e2af" font-size="12" font-weight="bold">R1</text>
+      <rect id="sRes2" class="res" x="200" y="33" width="46" height="24" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="223" y="49" text-anchor="middle" fill="#f9e2af" font-size="12" font-weight="bold">R2</text>
+      <text x="143" y="74" text-anchor="middle" fill="#94e2d5" font-size="10">V1降下</text>
+      <text x="223" y="74" text-anchor="middle" fill="#94e2d5" font-size="10">V2降下</text>
+      <text x="180" y="180" text-anchor="middle" fill="#a6adc8" font-size="11">電流はどこでも同じ（粒の速さが一定）</text>
+      <g id="g-series"></g>
+      <!-- 爆発演出 -->
+      <rect id="sFlash" class="flash" x="0" y="0" width="360" height="200" fill="#f38ba8"/>
+      <g id="sExpl" class="expl" style="transform-origin:183px 45px">
+        <circle cx="183" cy="45" r="20" fill="#f9e2af"/>
+        <circle cx="183" cy="45" r="30" fill="none" stroke="#fab387" stroke-width="5"/>
+        <line x1="183" y1="45" x2="183" y2="13" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="183" y1="45" x2="215" y2="45" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="183" y1="45" x2="183" y2="77" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="183" y1="45" x2="151" y2="45" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="183" y1="45" x2="207" y2="21" stroke="#fab387" stroke-width="3"/>
+        <line x1="183" y1="45" x2="207" y2="69" stroke="#fab387" stroke-width="3"/>
+        <line x1="183" y1="45" x2="159" y2="21" stroke="#fab387" stroke-width="3"/>
+        <line x1="183" y1="45" x2="159" y2="69" stroke="#fab387" stroke-width="3"/>
+      </g>
+      <text id="sBoom" class="boomt" x="183" y="55" text-anchor="middle" font-size="28">💥</text>
+    </svg>
+    <div id="sMsg" style="display:none;color:#f38ba8;font-weight:bold;margin-top:8px;">⚡ ショート！ R1もR2も0Ω＝合成抵抗0で電流が無限大 → 発熱・破損。直列はどちらかに抵抗があれば短絡しません。</div>
+    <div class="readout">
+      <div class="item"><div class="k">合成抵抗 R = R1＋R2</div><div class="v" id="sRtot">-</div></div>
+      <div class="item hl"><div class="k">電流 I（共通）</div><div class="v" id="sI">-</div></div>
+      <div class="item"><div class="k">R1での電圧降下 V1</div><div class="v" id="sV1">-</div></div>
+      <div class="item"><div class="k">R2での電圧降下 V2</div><div class="v" id="sV2">-</div></div>
+      <div class="item"><div class="k">R1の消費電力</div><div class="v" id="sP1">-</div></div>
+      <div class="item"><div class="k">R2の消費電力</div><div class="v" id="sP2">-</div></div>
+    </div>
+    <div class="note">直列では <b style="color:#cdd6f4;">電流はどこでも同じ</b>。電圧は各抵抗で分け合う（<b style="color:#cdd6f4;">V1＋V2＝V</b>）。抵抗が増えるほど合成抵抗が大きくなり、電流は減る。</div>
+  </div>
+
+  <!-- ===================== 並列 ===================== -->
+  <h2>🔀 並列つなぎ（分かれ道）</h2>
+  <p class="note">抵抗を<b style="color:#cdd6f4;">枝分かれ</b>させる方式。電流の通り道が複数になる。</p>
+  <div class="panel">
+    <div class="solve-btns" style="margin-bottom:2px;">
+      <span class="label">電圧プリセット:</span>
+      <button type="button" class="vpreset" data-target="pV" data-v="3.3">3.3V</button>
+      <button type="button" class="vpreset" data-target="pV" data-v="5">5V</button>
+      <button type="button" class="vpreset" data-target="pV" data-v="9">9V</button>
+      <button type="button" class="vpreset" data-target="pV" data-v="12">12V</button>
+      <button type="button" class="vpreset" data-target="pV" data-v="18">18V</button>
+    </div>
+    <div class="slider-row">
+      <label for="pV">電圧 V</label>
+      <input id="pV" type="range" min="1" max="18" step="0.1" value="6">
+      <span class="val" id="pVval">6.0 V</span>
+    </div>
+    <div class="slider-row">
+      <label for="pR1">抵抗 R1</label>
+      <input id="pR1" type="range" min="0" max="100" step="1" value="20">
+      <input id="pR1n" type="text" value="100" class="rnum">
+      <span class="unit">Ω</span>
+    </div>
+    <div class="slider-row">
+      <label for="pR2">抵抗 R2</label>
+      <input id="pR2" type="range" min="0" max="100" step="1" value="40">
+      <input id="pR2n" type="text" value="220" class="rnum">
+      <span class="unit">Ω</span>
+    </div>
+    <svg class="schem wide" viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg">
+      <path id="p-par1" d="M 80 50 H 185 V 170 H 80 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <path id="p-par2" d="M 80 50 H 290 V 170 H 80 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <!-- 電池（左の縦・両ラインに同じV） -->
+      <line x1="66" y1="100" x2="94" y2="100" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="72" y1="114" x2="88" y2="114" stroke="#a6adc8" stroke-width="3"/>
+      <text x="60" y="92" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">電池 V</text>
+      <!-- R1 / R2 の枝 -->
+      <rect id="pRes1" class="res" x="173" y="92" width="24" height="36" rx="3" fill="#1e1e2e" stroke="#94e2d5" stroke-width="2"/>
+      <text x="185" y="115" text-anchor="middle" fill="#94e2d5" font-size="12" font-weight="bold">R1</text>
+      <rect id="pRes2" class="res" x="278" y="92" width="24" height="36" rx="3" fill="#1e1e2e" stroke="#fab387" stroke-width="2"/>
+      <text x="290" y="115" text-anchor="middle" fill="#fab387" font-size="12" font-weight="bold">R2</text>
+      <text x="185" y="192" text-anchor="middle" fill="#94e2d5" font-size="10">I1（青緑）</text>
+      <text x="290" y="192" text-anchor="middle" fill="#fab387" font-size="10">I2（橙）</text>
+      <text x="120" y="40" text-anchor="middle" fill="#a6adc8" font-size="10">同じVが両方にかかる</text>
+      <g id="g-par1"></g>
+      <g id="g-par2"></g>
+      <!-- 爆発演出 -->
+      <rect id="pFlash" class="flash" x="0" y="0" width="360" height="220" fill="#f38ba8"/>
+      <g id="pExpl" class="expl" style="transform-origin:185px 110px">
+        <circle cx="185" cy="110" r="20" fill="#f9e2af"/>
+        <circle cx="185" cy="110" r="30" fill="none" stroke="#fab387" stroke-width="5"/>
+        <line x1="185" y1="110" x2="185" y2="78" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="185" y1="110" x2="217" y2="110" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="185" y1="110" x2="185" y2="142" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="185" y1="110" x2="153" y2="110" stroke="#f38ba8" stroke-width="3"/>
+        <line x1="185" y1="110" x2="209" y2="86" stroke="#fab387" stroke-width="3"/>
+        <line x1="185" y1="110" x2="209" y2="134" stroke="#fab387" stroke-width="3"/>
+        <line x1="185" y1="110" x2="161" y2="86" stroke="#fab387" stroke-width="3"/>
+        <line x1="185" y1="110" x2="161" y2="134" stroke="#fab387" stroke-width="3"/>
+      </g>
+      <text id="pBoom" class="boomt" x="185" y="120" text-anchor="middle" font-size="28">💥</text>
+    </svg>
+    <div id="pMsg" style="display:none;color:#f38ba8;font-weight:bold;margin-top:8px;">⚡ ショート！ 片方の抵抗を0Ωにすると、その枝が電池を直結（短絡）→ 電流が無限大で破損。並列は1本でも0Ωだと全体が危険。</div>
+    <div class="readout">
+      <div class="item"><div class="k">R1に流れる I1</div><div class="v" id="pI1" style="color:#94e2d5;">-</div></div>
+      <div class="item"><div class="k">R2に流れる I2</div><div class="v" id="pI2" style="color:#fab387;">-</div></div>
+      <div class="item hl"><div class="k">合計 I = I1＋I2</div><div class="v" id="pItot">-</div></div>
+      <div class="item"><div class="k">合成抵抗 R</div><div class="v" id="pRtot">-</div></div>
+      <div class="item"><div class="k">R1の消費電力</div><div class="v" id="pP1">-</div></div>
+      <div class="item"><div class="k">R2の消費電力</div><div class="v" id="pP2">-</div></div>
+    </div>
+    <div class="note">並列では <b style="color:#cdd6f4;">電圧はどちらにも同じ</b>。電流は分かれて流れ、<b style="color:#cdd6f4;">抵抗が小さい方に多く</b>流れる（速い粒）。合計電流は増え、<b style="color:#cdd6f4;">合成抵抗はどの抵抗よりも小さく</b>なる（R = 1 ÷（1/R1＋1/R2））。</div>
+  </div>
+
+  <!-- ===================== 分圧回路 ===================== -->
+  <h2>🎚 分圧回路（電圧を分ける）</h2>
+  <p class="note">抵抗2本で電圧を「比」で分ける回路（中身は直列）。出力 Vout は <b style="color:#cdd6f4;">R2 が全体に占める割合</b>で決まる：<code>Vout = V × R2 ÷ (R1+R2)</code>。ボリューム（可変抵抗）やセンサー回路の基本。</p>
+  <div class="panel">
+    <div class="solve-btns" style="margin-bottom:2px;">
+      <span class="label">電圧プリセット:</span>
+      <button type="button" class="vpreset" data-target="dV" data-v="3.3">3.3V</button>
+      <button type="button" class="vpreset" data-target="dV" data-v="5">5V</button>
+      <button type="button" class="vpreset" data-target="dV" data-v="9">9V</button>
+      <button type="button" class="vpreset" data-target="dV" data-v="12">12V</button>
+      <button type="button" class="vpreset" data-target="dV" data-v="18">18V</button>
+    </div>
+    <div class="slider-row">
+      <label for="dV">入力電圧 V</label>
+      <input id="dV" type="range" min="1" max="18" step="0.1" value="5">
+      <span class="val" id="dVval">5.0 V</span>
+    </div>
+    <div class="slider-row">
+      <label for="dR1">抵抗 R1（上）</label>
+      <input id="dR1" type="range" min="1" max="100" step="1" value="10">
+      <input id="dR1n" type="text" value="10" class="rnum">
+      <span class="unit">Ω</span>
+    </div>
+    <div class="slider-row">
+      <label for="dR2">抵抗 R2（下）</label>
+      <input id="dR2" type="range" min="1" max="100" step="1" value="10">
+      <input id="dR2n" type="text" value="10" class="rnum">
+      <span class="unit">Ω</span>
+    </div>
+    <svg class="schem wide" viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg">
+      <path id="p-div" d="M 70 40 H 270 V 180 H 70 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <line x1="56" y1="103" x2="84" y2="103" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="63" y1="117" x2="77" y2="117" stroke="#a6adc8" stroke-width="3"/>
+      <text x="48" y="113" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">電池 V</text>
+      <rect x="258" y="52" width="24" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="250" y="76" text-anchor="end" fill="#f9e2af" font-size="12" font-weight="bold">R1</text>
+      <rect x="258" y="128" width="24" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="250" y="152" text-anchor="end" fill="#f9e2af" font-size="12" font-weight="bold">R2</text>
+      <circle cx="270" cy="110" r="3.5" fill="#a6e3a1"/>
+      <line x1="270" y1="110" x2="330" y2="110" stroke="#a6e3a1" stroke-width="2"/>
+      <text x="334" y="106" fill="#a6e3a1" font-size="11" font-weight="bold">Vout</text>
+      <text x="334" y="120" fill="#a6adc8" font-size="9">(R2側)</text>
+      <text x="180" y="205" text-anchor="middle" fill="#a6adc8" font-size="10">基準(GND)は電池の − 側。VoutはR2にかかる電圧。</text>
+      <g id="g-div"></g>
+    </svg>
+    <div class="readout">
+      <div class="item hl"><div class="k">出力電圧 Vout</div><div class="v" id="dVout">-</div></div>
+      <div class="item"><div class="k">電流 I</div><div class="v" id="dI">-</div></div>
+      <div class="item"><div class="k">R1の消費電力</div><div class="v" id="dP1">-</div></div>
+      <div class="item"><div class="k">R2の消費電力</div><div class="v" id="dP2">-</div></div>
+    </div>
+    <div class="formula" id="dFormulaBox">—</div>
+    <div class="note">R1＝R2 なら出力はちょうど半分。<b style="color:#cdd6f4;">R2を大きく</b>すると Vout は入力に近づき、<b style="color:#cdd6f4;">R2を小さく</b>すると 0 に近づく。<br>⚠ 出力に電流を流す（負荷をつなぐ）と、この比は崩れて Vout が下がる。センサーやマイコン入力など「ほとんど電流を取らない」相手に向く。</div>
+  </div>
+
+  <h2>📖 用語解説</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">電圧 V（ボルト）</div><div class="a">電気を押し出す「力（圧力）」。高いほど強く押す。水でいう「水圧」。</div></div>
+    <div class="guide-item"><div class="q">電流 I（アンペア）</div><div class="a">実際に流れる電気の「量」。1秒あたりどれだけ流れるか。水でいう「流れる水の量」。1A＝1000mA。</div></div>
+    <div class="guide-item"><div class="q">抵抗 R（オーム Ω）</div><div class="a">電気の「流れにくさ」。大きいほど流れを妨げる。水でいう「細いホース」。</div></div>
+    <div class="guide-item"><div class="q">電力 P（ワット W）</div><div class="a">消費するエネルギーの大きさ。P＝V×I。大きいほど発熱・明るさ・仕事が増える。</div></div>
+    <div class="guide-item"><div class="q">オームの法則</div><div class="a">V＝I×R。電圧・電流・抵抗の関係式。2つ分かれば残り1つが計算できる。</div></div>
+    <div class="guide-item"><div class="q">電圧降下</div><div class="a">抵抗に電流が流れると、その抵抗の両端で電圧が下がること。直列ではこれが分け合われる。</div></div>
+    <div class="guide-item"><div class="q">合成抵抗</div><div class="a">複数の抵抗をまとめて1つとみなしたときの抵抗値。直列は足し算、並列は逆数の和の逆数。</div></div>
+  </div>
+
+  <footer>
+    値・式は学習用の目安です。実際の回路では部品の定格・発熱（電力）に注意してください。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — ohmGuide.html
+  </footer>
+
+<script>
+  const val = id => parseFloat(document.getElementById(id).value);
+  const fmtA = a => {
+    if (!isFinite(a)) return '-';
+    if (a < 1) return (a * 1000).toFixed(0) + ' mA';
+    return a.toFixed(2) + ' A';
+  };
+  const fmtW = w => {
+    if (!isFinite(w)) return '-';
+    if (w < 1) return (w * 1000).toFixed(0) + ' mW';
+    return w.toFixed(2) + ' W';
+  };
+  const fmtOhm = r => (r >= 1000 ? (r / 1000).toFixed(2) + ' kΩ' : r.toFixed(1) + ' Ω');
+  // 抵抗スライダー: 位置0..100 を 対数で 0Ω / 1Ω..100kΩ に変換
+  function rval(id) {
+    const t = parseFloat(document.getElementById(id).value);
+    if (t <= 0) return 0;
+    const r = Math.pow(10, ((t - 1) / 99) * 5); // t=1→1Ω, t=100→100000Ω
+    if (r < 10) return Math.round(r);
+    const mag = Math.pow(10, Math.floor(Math.log10(r)) - 1);
+    return Math.round(r / mag) * mag; // 2桁の有効数字に丸め
+  }
+  const fmtR = r => (r <= 0 ? '0 Ω' : r >= 1000 ? (r / 1000) + ' kΩ' : r + ' Ω');
+  // 抵抗の数値入力ボックスから値を読む。"4.7k" "10k" "1M" などの表記もOK
+  function rget(id) {
+    let s = String(document.getElementById(id).value).trim().toLowerCase().replace(/ω|ohm|Ω/g, '').replace(/\s/g, '');
+    let mult = 1;
+    if (s.endsWith('k')) { mult = 1e3; s = s.slice(0, -1); }
+    else if (s.endsWith('m')) { mult = 1e6; s = s.slice(0, -1); }
+    const v = parseFloat(s);
+    return (isNaN(v) || v < 0) ? 0 : v * mult;
+  }
+  // 抵抗値 → ボックス表示（1000以上は k、100万以上は M 表記）
+  function fmtRnum(R) {
+    if (R <= 0) return '0';
+    if (R >= 1e6) return (R / 1e6) + 'M';
+    if (R >= 1000) return (R / 1000) + 'k';
+    return String(R);
+  }
+  // 抵抗値 R → スライダー位置(0..100)。スライダーつまみを数値に合わせるため
+  function r2pos(R) {
+    if (R <= 0) return 0;
+    const r = Math.min(Math.max(R, 1), 100000);
+    return Math.round(1 + (Math.log10(r) / 5) * 99);
+  }
+  // スライダー(0..100)と数値ボックスを連動させる
+  function wireR(sliderId, numId, upd) {
+    const s = document.getElementById(sliderId), n = document.getElementById(numId);
+    s.addEventListener('input', () => { n.value = fmtRnum(rval(sliderId)); upd(); });
+    n.addEventListener('input', () => { s.value = r2pos(rget(numId)); upd(); });
+    n.addEventListener('change', () => { n.value = fmtRnum(rget(numId)); upd(); });
+  }
+  // 現在の電圧に一致するプリセットボタンをハイライト
+  function syncPresets() {
+    document.querySelectorAll('.vpreset').forEach(b => {
+      const t = b.dataset.target || 'aV';
+      const cur = parseFloat(document.getElementById(t).value);
+      b.classList.toggle('active', cur === parseFloat(b.dataset.v));
+    });
+  }
+  // 抵抗の消費電力を表示。定格(W)を超えたら赤＋⚠
+  const ratingW = () => parseFloat(document.getElementById('wRating').value);
+  function setPow(id, p) {
+    const el = document.getElementById(id);
+    if (!isFinite(p)) { el.textContent = '∞ ⚠'; el.style.color = '#f38ba8'; return; }
+    const over = p > ratingW() + 1e-9;
+    el.textContent = fmtW(p) + (over ? ' ⚠ 定格超過' : '');
+    el.style.color = over ? '#f38ba8' : '#a6e3a1';
+  }
+
+  /* ---------- 計算機 ---------- */
+  let solveFor = 'I';
+  const cV = document.getElementById('cV'), cI = document.getElementById('cI'), cR = document.getElementById('cR');
+  const cFormula = document.getElementById('cFormula');
+  const tEls = { V: document.getElementById('tV'), I: document.getElementById('tI'), R: document.getElementById('tR') };
+
+  function setSolve(s) {
+    solveFor = s;
+    document.querySelectorAll('.solve-btns button').forEach(b => b.classList.toggle('active', b.dataset.solve === s));
+    [['V', cV], ['I', cI], ['R', cR]].forEach(([k, el]) => {
+      el.classList.toggle('target', k === s);
+      el.readOnly = (k === s);
+    });
+    for (const k in tEls) tEls[k].setAttribute('fill', k === s ? '#f38ba8' : '#cdd6f4');
+    recompute();
+  }
+  function recompute() {
+    const V = parseFloat(cV.value), Ima = parseFloat(cI.value), R = parseFloat(cR.value);
+    const I = Ima / 1000; // mA -> A
+    if (solveFor === 'V') {
+      if (isFinite(I) && isFinite(R)) { const v = I * R; cV.value = (Math.round(v * 1000) / 1000); }
+    } else if (solveFor === 'I') {
+      if (isFinite(V) && isFinite(R) && R !== 0) { const ima = V / R * 1000; cI.value = (Math.round(ima * 100) / 100); }
+    } else if (solveFor === 'R') {
+      if (isFinite(V) && isFinite(I) && I !== 0) { const r = V / I; cR.value = (Math.round(r * 100) / 100); }
+    }
+    const V2 = parseFloat(cV.value), I2 = parseFloat(cI.value) / 1000, R2 = parseFloat(cR.value);
+    const P = (isFinite(V2) && isFinite(I2)) ? V2 * I2 : NaN;
+    let f = '';
+    if (solveFor === 'V') f = `<b>V = I × R</b> = ${(I2 * 1000) || 0}mA × ${R2 || 0}Ω = <b>${isFinite(V2) ? V2 + ' V' : '-'}</b>`;
+    else if (solveFor === 'I') f = `<b>I = V ÷ R</b> = ${V2 || 0}V ÷ ${R2 || 0}Ω = <b>${fmtA(I2)}</b>`;
+    else f = `<b>R = V ÷ I</b> = ${V2 || 0}V ÷ ${(I2 * 1000) || 0}mA = <b>${isFinite(R2) ? fmtOhm(R2) : '-'}</b>`;
+    f += `　／　電力 P = V × I = <b>${fmtW(P)}</b>`;
+    cFormula.innerHTML = f;
+  }
+  document.querySelectorAll('.solve-btns button').forEach(b => b.addEventListener('click', () => setSolve(b.dataset.solve)));
+  [cV, cI, cR].forEach(el => el.addEventListener('input', recompute));
+  setSolve('I');
+
+  /* ---------- アニメ共通 ---------- */
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const systems = [];
+  function addSystem(pathId, groupId, count, color, currentFn) {
+    const path = document.getElementById(pathId);
+    const group = document.getElementById(groupId);
+    const len = path.getTotalLength();
+    const dots = [];
+    for (let i = 0; i < count; i++) {
+      const c = document.createElementNS(SVGNS, 'circle');
+      c.setAttribute('r', '4.5'); c.setAttribute('fill', color);
+      group.appendChild(c);
+      dots.push({ el: c, off: (i / count) * len });
+    }
+    systems.push({ path, len, dots, currentFn });
+  }
+  const SCALE = 200; // 1A -> 200px/s
+  const speed = I => Math.min(Math.max(I, 0) * SCALE, 800);
+
+  let last = null;
+  function frame(t) {
+    if (last === null) last = t;
+    let dt = (t - last) / 1000; last = t;
+    if (dt > 0.1) dt = 0.1;
+    for (const s of systems) {
+      const sp = speed(s.currentFn());
+      for (const d of s.dots) {
+        d.off = (d.off + sp * dt) % s.len;
+        const p = s.path.getPointAtLength(d.off);
+        d.el.setAttribute('cx', p.x.toFixed(1));
+        d.el.setAttribute('cy', p.y.toFixed(1));
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- ショート→発熱→爆発 共通 ---------- */
+  function Exploder(hotIds, flashId, explId, boomId, msgId, dotGroupIds) {
+    this.phase = 'normal'; this.timer = null;
+    this.hot = hotIds.map(i => document.getElementById(i));
+    this.flash = document.getElementById(flashId);
+    this.expl = document.getElementById(explId);
+    this.boom = document.getElementById(boomId);
+    this.msg = document.getElementById(msgId);
+    this.dots = dotGroupIds.map(i => document.getElementById(i));
+  }
+  Exploder.prototype.trigger = function () {
+    if (this.phase !== 'normal') return;
+    this.phase = 'heating';
+    this.hot.forEach(e => e.classList.add('hot'));
+    const self = this;
+    this.timer = setTimeout(function () {
+      self.phase = 'exploded';
+      self.hot.forEach(e => { e.classList.remove('hot'); e.style.opacity = '0.15'; });
+      self.dots.forEach(g => g.style.opacity = '0');
+      [self.expl, self.flash, self.boom].forEach(e => e.classList.remove('go'));
+      void self.expl.offsetWidth;
+      [self.expl, self.flash, self.boom].forEach(e => e.classList.add('go'));
+      self.msg.style.display = 'block';
+    }, 1000);
+  };
+  Exploder.prototype.reset = function () {
+    if (this.phase === 'normal') return;
+    clearTimeout(this.timer); this.phase = 'normal';
+    this.hot.forEach(e => { e.classList.remove('hot'); e.style.opacity = '1'; });
+    this.dots.forEach(g => g.style.opacity = '1');
+    [this.expl, this.flash, this.boom].forEach(e => e.classList.remove('go'));
+    this.msg.style.display = 'none';
+  };
+  const exBasic = new Exploder(['aRes'], 'aFlash', 'aExpl', 'aBoom', 'aMsg', ['g-basic']);
+  const exSeries = new Exploder(['sRes1', 'sRes2'], 'sFlash', 'sExpl', 'sBoom', 'sMsg', ['g-series']);
+  const exParallel = new Exploder(['pRes1', 'pRes2'], 'pFlash', 'pExpl', 'pBoom', 'pMsg', ['g-par1', 'g-par2']);
+
+  /* ---------- 基本アニメ ---------- */
+  function updBasic() {
+    const V = val('aV'), R = rget('aRn');
+    document.getElementById('aVval').textContent = V.toFixed(1) + ' V';
+    setPow('aP', V * V / R); // R=0 → ∞
+    if (R <= 0) {
+      document.getElementById('aI').textContent = '∞ ショート!';
+      exBasic.trigger();
+    } else {
+      exBasic.reset();
+      document.getElementById('aI').textContent = fmtA(V / R);
+    }
+    syncPresets();
+  }
+  document.getElementById('aV').addEventListener('input', updBasic);
+  wireR('aR', 'aRn', updBasic);
+  const updMap = { aV: updBasic, sV: updSeries, pV: updParallel, dV: updDiv };
+  document.querySelectorAll('.vpreset').forEach(b => b.addEventListener('click', () => {
+    const t = b.dataset.target || 'aV';
+    document.getElementById(t).value = b.dataset.v;
+    (updMap[t] || updBasic)();
+  }));
+
+  /* ---------- 直列 ---------- */
+  function updSeries() {
+    const V = val('sV'), R1 = rget('sR1n'), R2 = rget('sR2n'), Rt = R1 + R2;
+    document.getElementById('sVval').textContent = V.toFixed(1) + ' V';
+    if (Rt <= 0) {
+      document.getElementById('sRtot').textContent = '0 Ω';
+      document.getElementById('sI').textContent = '∞ ショート!';
+      document.getElementById('sV1').textContent = '-';
+      document.getElementById('sV2').textContent = '-';
+      setPow('sP1', Infinity); setPow('sP2', Infinity);
+      exSeries.trigger();
+    } else {
+      exSeries.reset();
+      const I = V / Rt;
+      document.getElementById('sRtot').textContent = fmtOhm(Rt);
+      document.getElementById('sI').textContent = fmtA(I);
+      document.getElementById('sV1').textContent = (I * R1).toFixed(2) + ' V';
+      document.getElementById('sV2').textContent = (I * R2).toFixed(2) + ' V';
+      setPow('sP1', I * I * R1); setPow('sP2', I * I * R2);
+    }
+    syncPresets();
+  }
+  document.getElementById('sV').addEventListener('input', updSeries);
+  wireR('sR1', 'sR1n', updSeries); wireR('sR2', 'sR2n', updSeries);
+
+  /* ---------- 並列 ---------- */
+  function updParallel() {
+    const V = val('pV'), R1 = rget('pR1n'), R2 = rget('pR2n');
+    document.getElementById('pVval').textContent = V.toFixed(1) + ' V';
+    setPow('pP1', V * V / R1); setPow('pP2', V * V / R2); // R=0 → ∞
+    if (R1 <= 0 || R2 <= 0) {
+      document.getElementById('pI1').textContent = R1 <= 0 ? '∞' : fmtA(V / R1);
+      document.getElementById('pI2').textContent = R2 <= 0 ? '∞' : fmtA(V / R2);
+      document.getElementById('pItot').textContent = '∞ ショート!';
+      document.getElementById('pRtot').textContent = '0 Ω';
+      exParallel.trigger();
+    } else {
+      exParallel.reset();
+      const I1 = V / R1, I2 = V / R2, It = I1 + I2, Rt = V / It;
+      document.getElementById('pI1').textContent = fmtA(I1);
+      document.getElementById('pI2').textContent = fmtA(I2);
+      document.getElementById('pItot').textContent = fmtA(It);
+      document.getElementById('pRtot').textContent = fmtOhm(Rt);
+    }
+    syncPresets();
+  }
+  document.getElementById('pV').addEventListener('input', updParallel);
+  wireR('pR1', 'pR1n', updParallel); wireR('pR2', 'pR2n', updParallel);
+
+  /* ---------- 分圧回路 ---------- */
+  function updDiv() {
+    const V = val('dV'), R1 = rget('dR1n'), R2 = rget('dR2n'), Rt = R1 + R2;
+    const Vout = V * R2 / Rt, I = V / Rt;
+    document.getElementById('dVval').textContent = V.toFixed(1) + ' V';
+    document.getElementById('dVout').textContent = Vout.toFixed(2) + ' V';
+    document.getElementById('dI').textContent = fmtA(I);
+    setPow('dP1', I * I * R1); setPow('dP2', I * I * R2);
+    document.getElementById('dFormulaBox').innerHTML =
+      `<b>Vout = V × R2 ÷ (R1+R2)</b> = ${V} × ${R2} ÷ (${R1}+${R2}) = <b>${Vout.toFixed(2)} V</b>`;
+    syncPresets();
+  }
+  document.getElementById('dV').addEventListener('input', updDiv);
+  wireR('dR1', 'dR1n', updDiv); wireR('dR2', 'dR2n', updDiv);
+
+  // 定格変更で全回路を再判定
+  document.getElementById('wRating').addEventListener('change', () => {
+    updBasic(); updSeries(); updParallel(); updDiv();
+  });
+
+  /* ---------- 起動 ---------- */
+  // R=0 のとき V/R=∞ → speed() が上限にクランプ（＝最速）。爆発後は 0（停止）。
+  addSystem('p-basic', 'g-basic', 9, '#f9e2af', () => exBasic.phase === 'exploded' ? 0 : val('aV') / rget('aRn'));
+  addSystem('p-series', 'g-series', 10, '#f9e2af', () => exSeries.phase === 'exploded' ? 0 : val('sV') / (rget('sR1n') + rget('sR2n')));
+  addSystem('p-par1', 'g-par1', 8, '#94e2d5', () => exParallel.phase === 'exploded' ? 0 : val('pV') / rget('pR1n'));
+  addSystem('p-par2', 'g-par2', 8, '#fab387', () => exParallel.phase === 'exploded' ? 0 : val('pV') / rget('pR2n'));
+  addSystem('p-div', 'g-div', 9, '#f9e2af', () => val('dV') / (rget('dR1n') + rget('dR2n')));
+  // スライダーつまみを数値ボックスの値に合わせ、ボックスはk表記に整形
+  [['aR', 'aRn'], ['sR1', 'sR1n'], ['sR2', 'sR2n'], ['pR1', 'pR1n'], ['pR2', 'pR2n'], ['dR1', 'dR1n'], ['dR2', 'dR2n']]
+    .forEach(([s, n]) => {
+      document.getElementById(s).value = r2pos(rget(n));
+      document.getElementById(n).value = fmtRnum(rget(n));
+    });
+  updBasic(); updSeries(); updParallel(); updDiv();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

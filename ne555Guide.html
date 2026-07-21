@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NE555 タイマー IC の使い方 / リファレンス</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  h3 { color: #89b4fa; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono {
+    font-family: "Consolas", monospace;
+    background: #11111b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #a6e3a1;
+  }
+
+  /* 比較表 */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 8px;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  th, td {
+    border: 1px solid #45475a;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+  td .pn, .pn { color: #a6e3a1; font-family: Consolas, monospace; }
+
+  /* 計算機 */
+  .calc {
+    background: #181825;
+    border: 2px solid #a6e3a1;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .calc h3 { margin: 0 0 4px; color: #a6e3a1; font-size: 18px; }
+  .calc .sub { color: #a6adc8; font-size: 13px; margin-bottom: 12px; }
+  .calc .inputs { display: flex; flex-wrap: wrap; gap: 14px; }
+  .calc .field { display: flex; flex-direction: column; gap: 4px; }
+  .calc .field label { font-size: 12px; color: #a6adc8; font-weight: bold; }
+  .calc .field input {
+    width: 130px;
+    padding: 8px 10px;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+    font-size: 15px;
+  }
+  .calc .field .unit { color: #a6adc8; font-size: 11px; }
+  .calc .result {
+    margin-top: 14px;
+    background: #11111b;
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-left: 4px solid #f9e2af;
+  }
+  .calc .result .big {
+    font-family: Consolas, monospace;
+    font-size: 30px;
+    font-weight: bold;
+    color: #a6e3a1;
+    margin: 2px 0 6px;
+  }
+  .calc .result .detail { font-family: Consolas, monospace; font-size: 13px; color: #cdd6f4; }
+  .calc .result .detail span { color: #f9e2af; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+  .presets .label { font-size: 12px; color: #a6adc8; font-weight: bold; margin-right: 2px; }
+  .preset-btn {
+    background: #11111b; color: #cdd6f4; border: 1px solid #585b70;
+    border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  .preset-btn:hover { background: #313244; border-color: #89b4fa; color: #89b4fa; }
+
+  /* カード */
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .card {
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 12px;
+    padding: 14px 16px;
+    border-top: 4px solid var(--accent, #89b4fa);
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    color: var(--accent, #89b4fa);
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  }
+  .card h3 .en { font-size: 12px; color: #a6adc8; font-weight: normal; }
+  .card .vf {
+    display: inline-block;
+    background: #11111b; color: #f9e2af;
+    font-family: Consolas, monospace; font-size: 12px;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+  }
+  .card dl { margin: 6px 0 0; }
+  .card dt { color: #a6adc8; font-size: 12px; font-weight: bold; margin-top: 8px; }
+  .card dd { margin: 2px 0 0; font-size: 14px; }
+
+  /* 手順・ガイド */
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item {
+    background: #232334; border-radius: 8px;
+    padding: 12px 14px; border-left: 3px solid #a6e3a1;
+  }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .circuit {
+    background: #181825; border: 1px solid #45475a; border-radius: 10px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+  .schem {
+    display: block; max-width: 560px; width: 100%; height: auto;
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 8px; margin-bottom: 12px;
+  }
+  .schem text { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  .warnbox {
+    background: #45302e; color: #fab387; border: 2px solid #fab387;
+    border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+  }
+  .warnbox b { color: #f9e2af; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>⏱ NE555 タイマー IC の使い方 / リファレンス</h1>
+
+  <div class="lead">
+    <b>555</b>（NE555）は、1972年から使われ続けている超定番の<b>タイマー / 発振 IC</b>。
+    抵抗とコンデンサを数個つなぐだけで、<b>一定時間の遅延・点滅・発振・PWM・ワンショット</b>などが作れます。
+    中身は「2個のコンパレータ＋1個のフリップフロップ」。この構造を理解すると、応用の幅が一気に広がります。
+    <span class="note">※ 本ページの値・式は一般的な目安です。実機では必ずデータシートを確認してください。</span>
+  </div>
+
+  <h2>🔢 ピン配置（8ピン DIP・上から見た図）</h2>
+  <svg class="schem" viewBox="0 0 460 250" xmlns="http://www.w3.org/2000/svg">
+    <!-- 本体 -->
+    <rect x="160" y="40" width="140" height="180" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+    <path d="M 210 41 A 20 20 0 0 0 250 41" fill="#11111b" stroke="#585b70" stroke-width="2"/>
+    <circle cx="178" cy="62" r="4" fill="#585b70"/>
+    <text x="230" y="138" text-anchor="middle" fill="#89b4fa" font-size="22" font-weight="bold">555</text>
+    <!-- 左ピン 1-4 -->
+    <!-- 1 GND -->
+    <line x1="130" y1="70" x2="160" y2="70" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="174" y="74" fill="#cdd6f4" font-size="12">1</text>
+    <text x="126" y="74" text-anchor="end" fill="#a6adc8" font-size="12" font-weight="bold">GND</text>
+    <!-- 2 TRIG -->
+    <line x1="130" y1="112" x2="160" y2="112" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="174" y="116" fill="#cdd6f4" font-size="12">2</text>
+    <text x="126" y="116" text-anchor="end" fill="#f9e2af" font-size="12" font-weight="bold">TRIG</text>
+    <!-- 3 OUT -->
+    <line x1="130" y1="154" x2="160" y2="154" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="174" y="158" fill="#cdd6f4" font-size="12">3</text>
+    <text x="126" y="158" text-anchor="end" fill="#a6e3a1" font-size="12" font-weight="bold">OUT</text>
+    <!-- 4 RESET -->
+    <line x1="130" y1="196" x2="160" y2="196" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="174" y="200" fill="#cdd6f4" font-size="12">4</text>
+    <text x="126" y="200" text-anchor="end" fill="#fab387" font-size="12" font-weight="bold">RESET</text>
+    <!-- 右ピン 8-5 -->
+    <!-- 8 Vcc -->
+    <line x1="300" y1="70" x2="330" y2="70" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="286" y="74" text-anchor="end" fill="#cdd6f4" font-size="12">8</text>
+    <text x="334" y="74" fill="#f38ba8" font-size="12" font-weight="bold">Vcc</text>
+    <!-- 7 DISCH -->
+    <line x1="300" y1="112" x2="330" y2="112" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="286" y="116" text-anchor="end" fill="#cdd6f4" font-size="12">7</text>
+    <text x="334" y="116" fill="#94e2d5" font-size="12" font-weight="bold">DISCH</text>
+    <!-- 6 THRES -->
+    <line x1="300" y1="154" x2="330" y2="154" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="286" y="158" text-anchor="end" fill="#cdd6f4" font-size="12">6</text>
+    <text x="334" y="158" fill="#f9e2af" font-size="12" font-weight="bold">THRES</text>
+    <!-- 5 CONT -->
+    <line x1="300" y1="196" x2="330" y2="196" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="286" y="200" text-anchor="end" fill="#cdd6f4" font-size="12">5</text>
+    <text x="334" y="200" fill="#cba6f7" font-size="12" font-weight="bold">CONT</text>
+  </svg>
+  <p class="note">◑ の半円（切り欠き）やマークが付いている側の左下が <b style="color:#cdd6f4;">1番ピン</b>。そこから反時計回りに 1→2→3→4、右側を下から上に 5→6→7→8 と数える。</p>
+
+  <h3>各ピンの役割</h3>
+  <div class="cards">
+    <div class="card" style="--accent:#a6adc8;">
+      <h3>① GND <span class="en">グラウンド</span></h3>
+      <dl><dt>役割</dt><dd>電源のマイナス（0V基準）。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#f9e2af;">
+      <h3>② TRIG <span class="en">トリガ（入力）</span></h3>
+      <span class="vf">&lt; ⅓Vcc で出力Hi</span>
+      <dl><dt>役割</dt><dd>⅓Vccより低い電圧が入るとFFをセット＝出力Hi。単安定の起動・双安定のSETに使う。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#a6e3a1;">
+      <h3>③ OUT <span class="en">出力</span></h3>
+      <span class="vf">±200mA(NE555)</span>
+      <dl><dt>役割</dt><dd>HiはほぼVcc、LoはほぼGND。LEDや小リレーを直接駆動できる。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#fab387;">
+      <h3>④ RESET <span class="en">リセット（入力）</span></h3>
+      <span class="vf">Lで強制Lo</span>
+      <dl><dt>役割</dt><dd>Loにすると他より優先して出力をLoに。使わないときは<b style="color:#cdd6f4;">Vccに接続</b>（開放にしない）。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#cba6f7;">
+      <h3>⑤ CONT <span class="en">コントロール電圧</span></h3>
+      <span class="vf">= ⅔Vcc点</span>
+      <dl><dt>役割</dt><dd>しきい値を外部から可変できる端子。使わないときは<b style="color:#cdd6f4;">0.01µF</b>でGNDへ（ノイズ対策）。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#f9e2af;">
+      <h3>⑥ THRES <span class="en">しきい値（入力）</span></h3>
+      <span class="vf">&gt; ⅔Vcc で出力Lo</span>
+      <dl><dt>役割</dt><dd>⅔Vccより高い電圧が入るとFFをリセット＝出力Lo。タイミング用Cの電圧監視に使う。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#94e2d5;">
+      <h3>⑦ DISCH <span class="en">放電</span></h3>
+      <span class="vf">出力Lo時にGNDへ</span>
+      <dl><dt>役割</dt><dd>内部トランジスタのコレクタ。出力Loの間ONになりタイミング用Cを放電する。</dd></dl>
+    </div>
+    <div class="card" style="--accent:#f38ba8;">
+      <h3>⑧ Vcc <span class="en">電源</span></h3>
+      <span class="vf">4.5〜16V(NE555)</span>
+      <dl><dt>役割</dt><dd>電源のプラス。近くに<b style="color:#cdd6f4;">0.1µF</b>のパスコンを入れるとノイズ・誤動作を防げる。</dd></dl>
+    </div>
+  </div>
+
+  <h2>🧠 内部構造（なぜ動くのか）</h2>
+  <p class="note">「555」の名は、内部の <b style="color:#f9e2af;">5kΩ 抵抗が3本</b>直列に入っていることが由来とされる。これが電源を3分割し、<b style="color:#94e2d5;">⅓Vcc</b> と <b style="color:#94e2d5;">⅔Vcc</b> の基準電圧を作る。この2点を2個のコンパレータで見張り、結果でフリップフロップを切り替えるのが動作の核心。</p>
+  <svg class="schem" viewBox="0 0 540 360" xmlns="http://www.w3.org/2000/svg">
+    <!-- 電源/GNDレール -->
+    <line x1="40" y1="36" x2="500" y2="36" stroke="#f38ba8" stroke-width="2"/>
+    <text x="34" y="40" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">⑧Vcc</text>
+    <line x1="40" y1="330" x2="500" y2="330" stroke="#a6adc8" stroke-width="2"/>
+    <text x="34" y="334" text-anchor="end" fill="#a6adc8" font-size="12">①GND</text>
+    <!-- 分圧抵抗3本 -->
+    <line x1="80" y1="36" x2="80" y2="70" stroke="#cdd6f4" stroke-width="2"/>
+    <rect x="65" y="70" width="30" height="48" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+    <text x="100" y="98" fill="#f9e2af" font-size="11">5k</text>
+    <line x1="80" y1="118" x2="80" y2="148" stroke="#cdd6f4" stroke-width="2"/>
+    <circle cx="80" cy="133" r="3.5" fill="#cdd6f4"/>
+    <text x="88" y="129" fill="#94e2d5" font-size="11">⅔Vcc</text>
+    <rect x="65" y="148" width="30" height="48" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+    <text x="100" y="176" fill="#f9e2af" font-size="11">5k</text>
+    <line x1="80" y1="196" x2="80" y2="226" stroke="#cdd6f4" stroke-width="2"/>
+    <circle cx="80" cy="211" r="3.5" fill="#cdd6f4"/>
+    <text x="88" y="224" fill="#94e2d5" font-size="11">⅓Vcc</text>
+    <rect x="65" y="226" width="30" height="48" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+    <text x="100" y="254" fill="#f9e2af" font-size="11">5k</text>
+    <line x1="80" y1="274" x2="80" y2="330" stroke="#cdd6f4" stroke-width="2"/>
+
+    <!-- コンパレータ1 (しきい値) -->
+    <polygon points="215,105 215,160 262,132" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+    <text x="231" y="136" text-anchor="middle" fill="#89b4fa" font-size="10">C1</text>
+    <text x="220" y="122" fill="#cdd6f4" font-size="12">+</text>
+    <text x="220" y="155" fill="#cdd6f4" font-size="12">−</text>
+    <!-- + = THRES(6) -->
+    <line x1="215" y1="117" x2="175" y2="117" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="173" y="121" text-anchor="end" fill="#f9e2af" font-size="11">⑥THRES</text>
+    <!-- − = ⅔Vcc -->
+    <line x1="80" y1="133" x2="150" y2="133" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="150" y1="133" x2="150" y2="148" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="150" y1="148" x2="215" y2="148" stroke="#cdd6f4" stroke-width="2"/>
+
+    <!-- コンパレータ2 (トリガ) -->
+    <polygon points="215,200 215,255 262,227" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+    <text x="231" y="231" text-anchor="middle" fill="#89b4fa" font-size="10">C2</text>
+    <text x="220" y="217" fill="#cdd6f4" font-size="12">+</text>
+    <text x="220" y="250" fill="#cdd6f4" font-size="12">−</text>
+    <!-- + = ⅓Vcc -->
+    <line x1="80" y1="211" x2="150" y2="211" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="150" y1="211" x2="150" y2="212" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="150" y1="212" x2="215" y2="212" stroke="#cdd6f4" stroke-width="2"/>
+    <!-- − = TRIG(2) -->
+    <line x1="215" y1="243" x2="175" y2="243" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="173" y="247" text-anchor="end" fill="#f9e2af" font-size="11">②TRIG</text>
+
+    <!-- フリップフロップ -->
+    <rect x="300" y="148" width="86" height="68" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+    <text x="343" y="178" text-anchor="middle" fill="#cba6f7" font-size="12" font-weight="bold">RS-FF</text>
+    <text x="310" y="166" fill="#cdd6f4" font-size="11">R</text>
+    <text x="310" y="210" fill="#cdd6f4" font-size="11">S</text>
+    <text x="375" y="187" fill="#cdd6f4" font-size="11">Q</text>
+    <!-- C1出力→R -->
+    <line x1="262" y1="132" x2="283" y2="132" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="283" y1="132" x2="283" y2="162" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="283" y1="162" x2="300" y2="162" stroke="#cdd6f4" stroke-width="2"/>
+    <!-- C2出力→S -->
+    <line x1="262" y1="227" x2="283" y2="227" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="283" y1="227" x2="283" y2="204" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="283" y1="204" x2="300" y2="204" stroke="#cdd6f4" stroke-width="2"/>
+    <!-- RESET(4) -->
+    <line x1="343" y1="216" x2="343" y2="255" stroke="#fab387" stroke-width="2"/>
+    <text x="349" y="252" fill="#fab387" font-size="11">④RESET</text>
+
+    <!-- 出力バッファ -->
+    <polygon points="410,166 410,200 442,183 " fill="#181825" stroke="#a6e3a1" stroke-width="2"/>
+    <line x1="386" y1="183" x2="410" y2="183" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="442" y1="183" x2="492" y2="183" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="496" y="187" fill="#a6e3a1" font-size="12" font-weight="bold">③OUT</text>
+
+    <!-- 放電トランジスタ -->
+    <line x1="398" y1="183" x2="398" y2="255" stroke="#cdd6f4" stroke-width="2"/>
+    <circle cx="398" cy="183" r="3.5" fill="#cdd6f4"/>
+    <line x1="398" y1="255" x2="430" y2="255" stroke="#cdd6f4" stroke-width="2"/>
+    <rect x="430" y="238" width="64" height="34" rx="4" fill="#181825" stroke="#94e2d5" stroke-width="2"/>
+    <text x="462" y="259" text-anchor="middle" fill="#94e2d5" font-size="11">放電Tr</text>
+    <line x1="462" y1="238" x2="462" y2="210" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="468" y="208" fill="#94e2d5" font-size="11">⑦DISCH</text>
+    <line x1="462" y1="272" x2="462" y2="330" stroke="#cdd6f4" stroke-width="2"/>
+    <circle cx="462" cy="330" r="3.5" fill="#cdd6f4"/>
+  </svg>
+  <div class="guide">
+    <div class="guide-item"><div class="q">C1（しきい値コンパレータ）</div><div class="a">⑥THRES が <b style="color:#cdd6f4;">⅔Vcc より高く</b>なると、フリップフロップを<b style="color:#cdd6f4;">リセット</b>（出力Lo・放電Tr ON）。</div></div>
+    <div class="guide-item"><div class="q">C2（トリガコンパレータ）</div><div class="a">②TRIG が <b style="color:#cdd6f4;">⅓Vcc より低く</b>なると、フリップフロップを<b style="color:#cdd6f4;">セット</b>（出力Hi・放電Tr OFF）。</div></div>
+    <div class="guide-item"><div class="q">RS-FF（記憶）</div><div class="a">一度セット/リセットされた状態を<b style="color:#cdd6f4;">保持</b>する。これが「タイマー」「ラッチ」の正体。</div></div>
+    <div class="guide-item"><div class="q">放電Tr（⑦DISCH）</div><div class="a">出力がLoの間ONになり、外付けコンデンサをGNDへ<b style="color:#cdd6f4;">放電</b>する。これで充放電サイクルが生まれる。</div></div>
+  </div>
+
+  <h2>📋 主な仕様（目安）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>項目</th><th>NE555（バイポーラ・定番）</th><th>CMOS版（TLC555 / LMC555 / ICM7555 等）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>電源電圧</td><td>4.5〜16V</td><td>2〜15V 程度（<b>低電圧でも動く</b>・品種による）</td></tr>
+        <tr><td>消費電流</td><td>3〜6mA（@5V・<b>やや多い</b>）</td><td>数百µA 以下（<b>省電力</b>・電池向き）</td></tr>
+        <tr><td>出力電流</td><td>±200mA（<b>大きい</b>・LEDや小リレー直接駆動可）</td><td>数十mA 程度（小さめ）</td></tr>
+        <tr><td>最高発振周波数</td><td>〜500kHz 程度</td><td>〜1〜3MHz 程度（<b>高速</b>）</td></tr>
+        <tr><td>電源ノイズ</td><td>出力切替時に大きな電流スパイク（要パスコン）</td><td>スパイク小さい</td></tr>
+        <tr><td>向いている用途</td><td>大きめの負荷を直接ドライブ・荒く使う</td><td>電池駆動・低消費・高周波・低電圧</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">ピン配置と使い方は両者ほぼ共通なので、回路をそのまま差し替えできることが多い。省電力にしたい・電池で動かしたいなら CMOS版が有利。</p>
+
+  <h2>🛒 入手しやすい型番・派生品</h2>
+  <div class="cards">
+    <div class="card" style="--accent:#a6e3a1;">
+      <h3>NE555 / NE555P <span class="en">バイポーラ・定番</span></h3>
+      <span class="vf">最も入手容易</span>
+      <dl>
+        <dt>特徴</dt><dd>一番出回っている標準品。出力電流が大きく荒く使える。まず買うならこれ。</dd>
+        <dt>注意</dt><dd>消費電流が多め・電源スパイク大。パスコン必須。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#89b4fa;">
+      <h3>TLC555 / LMC555 <span class="en">CMOS版</span></h3>
+      <span class="vf">省電力・低電圧・高速</span>
+      <dl>
+        <dt>特徴</dt><dd>消費数百µA以下、低電圧(2V〜)で動き、高周波もOK。電池駆動に最適。</dd>
+        <dt>注意</dt><dd>出力電流は小さめ。ピン配置はNE555と共通で差し替えやすい。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#cba6f7;">
+      <h3>ICM7555 <span class="en">CMOS版（定番）</span></h3>
+      <span class="vf">低消費の老舗</span>
+      <dl>
+        <dt>特徴</dt><dd>CMOS 555 の代表格。低消費・広い電源範囲。7555 と呼ばれることが多い。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#f9e2af;">
+      <h3>NE556 / LM556 <span class="en">2回路入り</span></h3>
+      <span class="vf">555 ×2（14ピン）</span>
+      <dl>
+        <dt>特徴</dt><dd>1パッケージに555が<b>2個</b>。電源・GNDは共通。2系統のタイマーや発振が要るときに省スペース。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#94e2d5;">
+      <h3>NE558 <span class="en">4回路入り</span></h3>
+      <span class="vf">555相当 ×4（16ピン）</span>
+      <dl>
+        <dt>特徴</dt><dd>4個分をまとめたタイマーIC（主に単安定用途）。多チャンネルのワンショットに。入手性は556より落ちる。</dd>
+      </dl>
+    </div>
+  </div>
+  <p class="note">迷ったら <b style="color:#cdd6f4;">NE555P</b>（学習・実験向け）、電池駆動や低消費にしたいなら <b style="color:#cdd6f4;">TLC555 / ICM7555</b>。2個要るなら <b style="color:#cdd6f4;">556</b> が手軽。</p>
+
+  <h2>🔀 3つの動作モード＋α</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>モード</th><th>別名</th><th>ざっくり動作</th><th>主な用途</th><th>時間の式</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>非安定</b></td><td>Astable / 発振器</td><td>自動でON/OFFを<b>繰り返す</b></td><td>LED点滅・クロック・トーン・PWM</td><td class="pn">f = 1.44 / ((R1+2R2)·C)</td></tr>
+        <tr><td><b>単安定</b></td><td>Monostable / ワンショット</td><td>トリガで<b>一定時間だけ</b>ON</td><td>タイマー・パルス幅・チャタリング除去</td><td class="pn">T = 1.1 · R · C</td></tr>
+        <tr><td><b>双安定</b></td><td>Bistable / フリップフロップ</td><td>セット/リセットで状態を<b>保持</b></td><td>ラッチ・SR-FF・スイッチ記憶</td><td class="pn">（C不要）</td></tr>
+        <tr><td><b>シュミット</b></td><td>コンパレータ波形整形</td><td>しきい値で反転（<b>ヒステリシス</b>）</td><td>波形整形・ノイズ除去・矩形化</td><td class="pn">（C不要）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">名前の「○安定」は <b style="color:#cdd6f4;">「安定状態（放置でずっと留まれる出力Hi/Lo）の数」</b> を表す。<b style="color:#94e2d5;">安定状態</b>＝外から何もしなければその出力のまま留まれる状態のこと。</p>
+  <div class="guide">
+    <div class="guide-item"><div class="q">双安定（bi＝2）— 安定が2つ</div><div class="a">Hiのままでも Loのままでも、<b style="color:#cdd6f4;">どちらも放置でずっと保持</b>できる。安定状態が2個あるので双安定。→ 記憶／フリップフロップ。</div></div>
+    <div class="guide-item"><div class="q">単安定（mono＝1）— 安定が1つ</div><div class="a">普段はLoで安定（唯一の安定状態）。トリガでHiになるが<b style="color:#cdd6f4;">Hiは安定でない</b>ので時間が経つと自分でLoへ戻る。→ ワンショット。</div></div>
+    <div class="guide-item"><div class="q">非安定（a＝否定／0）— 安定が0個</div><div class="a">HiもLoも<b style="color:#cdd6f4;">落ち着いていられない</b>。Hi→Lo→Hi…と勝手に行き来し続ける。安定状態がゼロなので非安定。→ 発振。</div></div>
+  </div>
+
+  <h2>〽 非安定モード（発振器・LED点滅・PWM）</h2>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 480 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- 555 box -->
+      <rect x="180" y="70" width="120" height="150" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="240" y="150" text-anchor="middle" fill="#89b4fa" font-size="18" font-weight="bold">555</text>
+      <!-- Vcc -->
+      <line x1="60" y1="30" x2="420" y2="30" stroke="#f38ba8" stroke-width="2"/>
+      <text x="50" y="34" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">Vcc</text>
+      <!-- pin8 Vcc & pin4 RESET to Vcc -->
+      <line x1="210" y1="70" x2="210" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="200" y="64" text-anchor="end" fill="#cdd6f4" font-size="10">8/4</text>
+      <circle cx="210" cy="30" r="3.5" fill="#cdd6f4"/>
+      <!-- R1: Vcc -> pin7 -->
+      <line x1="120" y1="30" x2="120" y2="60" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="120" cy="30" r="3.5" fill="#cdd6f4"/>
+      <rect x="105" y="60" width="30" height="44" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="140" y="86" fill="#f9e2af" font-size="11">R1</text>
+      <line x1="120" y1="104" x2="120" y2="120" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- pin7 DISCH -->
+      <line x1="180" y1="112" x2="120" y2="112" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="176" y="108" text-anchor="end" fill="#94e2d5" font-size="10">7</text>
+      <circle cx="120" cy="112" r="3.5" fill="#cdd6f4"/>
+      <!-- R2: pin7 -> pin6/2 -->
+      <rect x="105" y="120" width="30" height="44" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="140" y="146" fill="#f9e2af" font-size="11">R2</text>
+      <line x1="120" y1="164" x2="120" y2="185" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- pin6 THRES & pin2 TRIG tied -->
+      <line x1="180" y1="185" x2="120" y2="185" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="176" y="181" text-anchor="end" fill="#f9e2af" font-size="10">6+2</text>
+      <circle cx="120" cy="185" r="3.5" fill="#cdd6f4"/>
+      <!-- C: node -> GND -->
+      <line x1="120" y1="185" x2="120" y2="205" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="105" y1="205" x2="135" y2="205" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="110" y1="212" x2="130" y2="212" stroke="#94e2d5" stroke-width="2"/>
+      <text x="142" y="214" fill="#94e2d5" font-size="11">C</text>
+      <line x1="120" y1="212" x2="120" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- GND rail -->
+      <line x1="60" y1="250" x2="360" y2="250" stroke="#a6adc8" stroke-width="2"/>
+      <text x="50" y="254" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <circle cx="120" cy="250" r="3.5" fill="#cdd6f4"/>
+      <!-- pin1 GND -->
+      <line x1="240" y1="220" x2="240" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="232" y="240" fill="#cdd6f4" font-size="10">1</text>
+      <circle cx="240" cy="250" r="3.5" fill="#cdd6f4"/>
+      <!-- pin3 OUT -->
+      <line x1="300" y1="150" x2="350" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="305" y="144" fill="#a6e3a1" font-size="10">3</text>
+      <text x="356" y="154" fill="#a6e3a1" font-size="12" font-weight="bold">OUT</text>
+      <!-- 出力波形 -->
+      <polyline points="360,170 360,200 385,200 385,170 410,170 410,200 435,200 435,170 460,170"
+        fill="none" stroke="#a6e3a1" stroke-width="2"/>
+    </svg>
+    <p class="note">充電は <b style="color:#f9e2af;">R1+R2</b> 経由、放電は <b style="color:#f9e2af;">R2</b> 経由（⑦DISCH 経由でGNDへ）。これを繰り返して矩形波が出る。</p>
+  </div>
+
+  <div class="calc">
+    <h3>🧮 非安定モード 周波数計算</h3>
+    <div class="sub">R1・R2・C を入れると、発振周波数とON/OFF時間・デューティ比を計算します。</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="aR1">R1</label>
+        <input id="aR1" type="number" step="0.1" min="0" value="10">
+        <span class="unit">kΩ</span>
+      </div>
+      <div class="field">
+        <label for="aR2">R2</label>
+        <input id="aR2" type="number" step="0.1" min="0" value="68">
+        <span class="unit">kΩ</span>
+      </div>
+      <div class="field">
+        <label for="aC">C</label>
+        <input id="aC" type="number" step="0.01" min="0" value="10">
+        <span class="unit">µF（マイクロファラド）</span>
+      </div>
+    </div>
+    <div class="presets" id="aPresets">
+      <span class="label">よく使う例:</span>
+      <button class="preset-btn" data-r1="10" data-r2="68" data-c="10">約1Hz LED点滅</button>
+      <button class="preset-btn" data-r1="10" data-r2="33" data-c="10">約2Hz 点滅</button>
+      <button class="preset-btn" data-r1="4.7" data-r2="12" data-c="10">約5Hz 速い点滅</button>
+      <button class="preset-btn" data-r1="2.2" data-r2="13" data-c="0.1">約500Hz</button>
+      <button class="preset-btn" data-r1="1" data-r2="6.8" data-c="0.1">約1kHz トーン</button>
+    </div>
+    <div class="result" id="aResult">
+      <div>発振周波数:</div>
+      <div class="big" id="aBig">-</div>
+      <div class="detail" id="aDetail"></div>
+    </div>
+  </div>
+
+  <div class="calc" style="border-color:#89b4fa;">
+    <h3 style="color:#89b4fa;">🔄 逆算：欲しい周波数 → R2 を求める</h3>
+    <div class="sub">出したい周波数・C・R1 を入れると、必要な R2 を逆算します。（R1 は 10kΩ くらいから始めるのが定番）</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="raF">欲しい周波数 f</label>
+        <input id="raF" type="number" step="0.1" min="0" value="1">
+        <span class="unit">Hz</span>
+      </div>
+      <div class="field">
+        <label for="raC">C</label>
+        <input id="raC" type="number" step="0.01" min="0" value="10">
+        <span class="unit">µF</span>
+      </div>
+      <div class="field">
+        <label for="raR1">R1</label>
+        <input id="raR1" type="number" step="0.1" min="0" value="10">
+        <span class="unit">kΩ</span>
+      </div>
+    </div>
+    <div class="result" id="raResult">
+      <div>必要な R2:</div>
+      <div class="big" id="raBig">-</div>
+      <div class="detail" id="raDetail"></div>
+    </div>
+  </div>
+
+  <div class="guide">
+    <div class="guide-item"><div class="q">周期と周波数</div><div class="a">T = 0.693·(R1+2R2)·C、f = 1.44 / ((R1+2R2)·C)。Cを大きく/抵抗を大きくすると<b style="color:#cdd6f4;">遅く（低周波）</b>になる。</div></div>
+    <div class="guide-item"><div class="q">デューティ比</div><div class="a">基本回路では Hi の方が長く、必ず<b style="color:#cdd6f4;">50%超</b>になる。ちょうど50%や Lo を長くしたいときは R2 に並列ダイオードを足す等の工夫が要る。</div></div>
+    <div class="guide-item"><div class="q">使いどころ</div><div class="a">LEDチカチカ、ブザー/トーン発生、マイコンのクロック代わり、モーターやLEDの<b style="color:#cdd6f4;">PWM</b>（明るさ・速度調整）など。</div></div>
+  </div>
+
+  <h2>🎛 デューティ比を50%にする / Lowを長くする</h2>
+  <p class="note">基本の非安定回路は、充電が <b style="color:#f9e2af;">R1+R2</b>・放電が <b style="color:#f9e2af;">R2</b> を通るため、必ず <b style="color:#cdd6f4;">Hi の方が長く（デューティ50%超）</b>になる。PWMなどで自由に比率を変えたいときの定番テクが2つ。</p>
+  <svg class="schem" viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg">
+    <rect x="200" y="40" width="110" height="120" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+    <text x="255" y="105" text-anchor="middle" fill="#89b4fa" font-size="16" font-weight="bold">555</text>
+    <line x1="40" y1="22" x2="420" y2="22" stroke="#f38ba8" stroke-width="2"/>
+    <text x="34" y="26" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">Vcc</text>
+    <!-- pin8/4 -> Vcc, pin1 -> GND -->
+    <line x1="255" y1="40" x2="255" y2="22" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="247" y="36" text-anchor="end" fill="#cdd6f4" font-size="9">8/4</text>
+    <circle cx="255" cy="22" r="3.5" fill="#cdd6f4"/>
+    <line x1="255" y1="160" x2="255" y2="180" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="247" y="174" text-anchor="end" fill="#cdd6f4" font-size="9">1</text>
+    <circle cx="255" cy="180" r="3.5" fill="#cdd6f4"/>
+    <!-- R1 Vcc->7 -->
+    <line x1="120" y1="22" x2="120" y2="44" stroke="#cdd6f4" stroke-width="2"/>
+    <circle cx="120" cy="22" r="3.5" fill="#cdd6f4"/>
+    <rect x="105" y="44" width="30" height="36" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+    <text x="140" y="66" fill="#f9e2af" font-size="10">R1</text>
+    <line x1="120" y1="80" x2="120" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="200" y1="90" x2="120" y2="90" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="196" y="86" text-anchor="end" fill="#94e2d5" font-size="9">7</text>
+    <circle cx="120" cy="90" r="3.5" fill="#cdd6f4"/>
+    <!-- ダイオード並列 R2 -->
+    <rect x="105" y="100" width="30" height="36" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+    <text x="140" y="122" fill="#f9e2af" font-size="10">R2</text>
+    <!-- diode path -->
+    <line x1="70" y1="90" x2="70" y2="150" stroke="#94e2d5" stroke-width="2"/>
+    <line x1="70" y1="90" x2="120" y2="90" stroke="#94e2d5" stroke-width="2"/>
+    <polygon points="63,104 77,104 70,116" fill="#94e2d5"/>
+    <line x1="63" y1="116" x2="77" y2="116" stroke="#94e2d5" stroke-width="2"/>
+    <text x="40" y="112" text-anchor="end" fill="#94e2d5" font-size="9">D</text>
+    <line x1="70" y1="150" x2="120" y2="150" stroke="#94e2d5" stroke-width="2"/>
+    <line x1="120" y1="136" x2="120" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+    <!-- 6+2 -->
+    <line x1="200" y1="120" x2="150" y2="120" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="150" y1="120" x2="150" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="196" y="116" text-anchor="end" fill="#f9e2af" font-size="9">6+2</text>
+    <circle cx="120" cy="150" r="3.5" fill="#cdd6f4"/>
+    <line x1="120" y1="150" x2="150" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+    <circle cx="150" cy="150" r="3.5" fill="#cdd6f4"/>
+    <!-- C to GND -->
+    <line x1="120" y1="150" x2="120" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="108" y1="160" x2="132" y2="160" stroke="#94e2d5" stroke-width="2"/>
+    <line x1="113" y1="166" x2="127" y2="166" stroke="#94e2d5" stroke-width="2"/>
+    <text x="140" y="166" fill="#94e2d5" font-size="10">C</text>
+    <line x1="120" y1="166" x2="120" y2="180" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="40" y1="180" x2="340" y2="180" stroke="#a6adc8" stroke-width="2"/>
+    <text x="34" y="184" text-anchor="end" fill="#a6adc8" font-size="10">GND</text>
+    <circle cx="120" cy="180" r="3.5" fill="#cdd6f4"/>
+    <text x="350" y="100" fill="#94e2d5" font-size="11">Dで充電だけ</text>
+    <text x="350" y="116" fill="#94e2d5" font-size="11">R2を迂回</text>
+  </svg>
+  <div class="guide">
+    <div class="guide-item"><div class="q">① R2に並列でダイオード</div><div class="a">充電はダイオード経由で<b style="color:#cdd6f4;">R1だけ</b>を通り、放電は<b style="color:#cdd6f4;">R2だけ</b>を通るように分離できる。R1≒R2 にすればほぼ <b style="color:#cdd6f4;">50%</b>。R1&lt;R2 なら Hi が短くなり Lo を長くできる。</div></div>
+    <div class="guide-item"><div class="q">② CMOS版＋別配置</div><div class="a">放電(7)を使わず、出力(3)からRを介してCを充放電する回路にすると、原理的に<b style="color:#cdd6f4;">きれいな50%</b>が作りやすい。高精度PWMはこちら。</div></div>
+    <div class="guide-item"><div class="q">そもそもPWMがしたいなら</div><div class="a">細かい比率制御はマイコン(ESP32の<code>ledcWrite</code>等)の方が簡単・正確なことも多い。555は「マイコン無しで手早く」が強み。</div></div>
+  </div>
+  <div class="warnbox" style="border-color:#89b4fa;background:#1e2433;color:#89b4fa;">
+    💡 <b style="color:#cdd6f4;">豆知識</b>：555の発振周波数・タイマー時間は <b style="color:#cdd6f4;">電源電圧が変わってもほぼ変化しない</b>。しきい値(⅓/⅔Vcc)も電源に比例して動くため、RとCだけで時間が決まるから。電池電圧が下がっても周期がズレにくいのは大きな利点。
+  </div>
+
+  <h2>1️⃣ 単安定モード（ワンショット・タイマー）</h2>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 480 280" xmlns="http://www.w3.org/2000/svg">
+      <rect x="190" y="70" width="120" height="150" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="250" y="150" text-anchor="middle" fill="#89b4fa" font-size="18" font-weight="bold">555</text>
+      <!-- Vcc -->
+      <line x1="60" y1="30" x2="430" y2="30" stroke="#f38ba8" stroke-width="2"/>
+      <text x="50" y="34" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">Vcc</text>
+      <!-- pin8/4 to Vcc -->
+      <line x1="220" y1="70" x2="220" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="210" y="64" text-anchor="end" fill="#cdd6f4" font-size="10">8/4</text>
+      <circle cx="220" cy="30" r="3.5" fill="#cdd6f4"/>
+      <!-- R: Vcc -> pin7+6 -->
+      <line x1="130" y1="30" x2="130" y2="60" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="130" cy="30" r="3.5" fill="#cdd6f4"/>
+      <rect x="115" y="60" width="30" height="48" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="150" y="88" fill="#f9e2af" font-size="11">R</text>
+      <line x1="130" y1="108" x2="130" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- pin7+6 tied -->
+      <line x1="190" y1="115" x2="130" y2="115" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="111" text-anchor="end" fill="#94e2d5" font-size="10">7</text>
+      <line x1="190" y1="135" x2="160" y2="135" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="160" y1="135" x2="160" y2="115" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="131" text-anchor="end" fill="#f9e2af" font-size="10">6</text>
+      <circle cx="130" cy="115" r="3.5" fill="#cdd6f4"/>
+      <circle cx="160" cy="115" r="3.5" fill="#cdd6f4"/>
+      <!-- C: node130 -> GND -->
+      <line x1="130" y1="130" x2="130" y2="200" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="115" y1="200" x2="145" y2="200" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="120" y1="207" x2="140" y2="207" stroke="#94e2d5" stroke-width="2"/>
+      <text x="152" y="209" fill="#94e2d5" font-size="11">C</text>
+      <line x1="130" y1="207" x2="130" y2="245" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- GND -->
+      <line x1="60" y1="245" x2="380" y2="245" stroke="#a6adc8" stroke-width="2"/>
+      <text x="50" y="249" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <circle cx="130" cy="245" r="3.5" fill="#cdd6f4"/>
+      <!-- pin1 GND -->
+      <line x1="250" y1="220" x2="250" y2="245" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="242" y="236" text-anchor="end" fill="#cdd6f4" font-size="10">1</text>
+      <circle cx="250" cy="245" r="3.5" fill="#cdd6f4"/>
+      <!-- pin2 TRIG with button + pullup -->
+      <line x1="190" y1="170" x2="80" y2="170" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="166" text-anchor="end" fill="#f9e2af" font-size="10">2</text>
+      <!-- pullup -->
+      <line x1="80" y1="170" x2="80" y2="120" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="65" y="80" width="30" height="40" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="44" y="104" fill="#f9e2af" font-size="10">10k</text>
+      <line x1="80" y1="80" x2="80" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="80" cy="30" r="3.5" fill="#cdd6f4"/>
+      <!-- 押しボタンスイッチ（ノーマリオープン・斜めレバー） -->
+      <line x1="80" y1="170" x2="80" y2="196" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="80" cy="170" r="3.5" fill="#cdd6f4"/>
+      <circle cx="80" cy="196" r="2.5" fill="#cdd6f4"/>
+      <!-- 可動レバー（開いた状態）。下側接点をヒンジに上へ持ち上げ -->
+      <line x1="80" y1="224" x2="58" y2="200" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="80" cy="224" r="2.5" fill="#cdd6f4"/>
+      <line x1="80" y1="224" x2="80" y2="245" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="80" cy="245" r="3.5" fill="#cdd6f4"/>
+      <!-- 押す方向の矢印 -->
+      <line x1="60" y1="182" x2="60" y2="193" stroke="#a6adc8" stroke-width="1.5"/>
+      <polygon points="60,199 55,191 65,191" fill="#a6adc8"/>
+      <text x="50" y="221" text-anchor="end" fill="#cdd6f4" font-size="10">押すと</text>
+      <text x="50" y="233" text-anchor="end" fill="#cdd6f4" font-size="10">トリガ</text>
+      <!-- pin3 OUT -->
+      <line x1="310" y1="150" x2="360" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="315" y="144" fill="#a6e3a1" font-size="10">3</text>
+      <text x="366" y="154" fill="#a6e3a1" font-size="12" font-weight="bold">OUT</text>
+      <!-- 出力 一発パルス -->
+      <polyline points="360,185 385,185 385,160 430,160 430,185 460,185"
+        fill="none" stroke="#a6e3a1" stroke-width="2"/>
+    </svg>
+    <p class="note">②TRIG を一瞬 Lo にすると、出力が <b style="color:#a6e3a1;">T 秒だけ Hi</b> になり、その後ひとりでに Lo へ戻る（コンデンサが⅔Vccに充電された瞬間に終了）。</p>
+  </div>
+
+  <div class="calc">
+    <h3>🧮 単安定モード パルス幅計算</h3>
+    <div class="sub">R・C を入れると、出力が Hi を保つ時間 T を計算します。</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="mR">R</label>
+        <input id="mR" type="number" step="0.1" min="0" value="100">
+        <span class="unit">kΩ</span>
+      </div>
+      <div class="field">
+        <label for="mC">C</label>
+        <input id="mC" type="number" step="0.01" min="0" value="10">
+        <span class="unit">µF（マイクロファラド）</span>
+      </div>
+    </div>
+    <div class="presets" id="mPresets">
+      <span class="label">よく使う例:</span>
+      <button class="preset-btn" data-r="47" data-c="10">約0.5秒</button>
+      <button class="preset-btn" data-r="100" data-c="10">約1秒</button>
+      <button class="preset-btn" data-r="470" data-c="10">約5秒</button>
+      <button class="preset-btn" data-r="910" data-c="10">約10秒</button>
+      <button class="preset-btn" data-r="560" data-c="100">約1分</button>
+    </div>
+    <div class="result" id="mResult">
+      <div>出力 Hi の時間 T:</div>
+      <div class="big" id="mBig">-</div>
+      <div class="detail" id="mDetail"></div>
+    </div>
+  </div>
+
+  <div class="calc" style="border-color:#89b4fa;">
+    <h3 style="color:#89b4fa;">🔄 逆算：欲しい時間 → 必要な R を求める</h3>
+    <div class="sub">出力Hiを保ちたい時間とCを入れると、必要なRを逆算します。</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="rmT">欲しい時間 T</label>
+        <input id="rmT" type="number" step="0.1" min="0" value="5">
+        <span class="unit">秒（小数OK・0.5=500ms）</span>
+      </div>
+      <div class="field">
+        <label for="rmC">C</label>
+        <input id="rmC" type="number" step="0.01" min="0" value="10">
+        <span class="unit">µF</span>
+      </div>
+    </div>
+    <div class="result" id="rmResult">
+      <div>必要な R:</div>
+      <div class="big" id="rmBig">-</div>
+      <div class="detail" id="rmDetail"></div>
+    </div>
+  </div>
+
+  <div class="guide">
+    <div class="guide-item"><div class="q">式</div><div class="a">T = 1.1·R·C。たとえば R=100kΩ, C=10µF なら約1.1秒。長時間にするほど大きなCが要るが、漏れ電流の大きいコンデンサ（電解）は誤差が出やすい。</div></div>
+    <div class="guide-item"><div class="q">トリガの注意</div><div class="a">②TRIG は<b style="color:#cdd6f4;">通常Hi</b>に保ち、押した瞬間だけLoにする（プルアップ＋ボタン）。トリガパルスがT より長く居座ると正しく動かない。</div></div>
+    <div class="guide-item"><div class="q">使いどころ</div><div class="a">「ボタンを押したら一定時間だけ点灯」「スイッチのチャタリング除去」「決まった幅のパルス生成」など。</div></div>
+  </div>
+
+  <h2>🧩 タイミング部品（R・C）の選び方</h2>
+  <p class="note">計算した時間・周波数を「実物で当てる」ための指針。同じ式でも部品の質で誤差が大きく変わる。</p>
+  <div class="guide">
+    <div class="guide-item"><div class="q">抵抗 R の範囲</div><div class="a">目安は <b style="color:#cdd6f4;">約1kΩ〜1MΩ</b>。小さすぎると⑦DISCHに大電流が流れて発熱・破損のもと、大きすぎると漏れ電流や入力電流の影響で不安定に。</div></div>
+    <div class="guide-item"><div class="q">コンデンサ C の種類</div><div class="a">大容量が要る長時間用途は電解になりがちだが、<b style="color:#cdd6f4;">電解は容量誤差±20%・漏れ電流</b>が大きく時間がズレやすい。精度が要るなら<b style="color:#cdd6f4;">フィルム/セラミック</b>を。</div></div>
+    <div class="guide-item"><div class="q">長い時間が欲しいとき</div><div class="a">RもCも大きくすれば伸ばせるが、上限がある。数分〜数十分級は<b style="color:#cdd6f4;">555で粗く作り、後段で分周</b>するか、CMOS版＋良質なCが無難。</div></div>
+    <div class="guide-item"><div class="q">微調整したいとき</div><div class="a">Rを<b style="color:#cdd6f4;">半固定抵抗(ボリューム)</b>にすると周波数・時間をつまみで調整できる。固定抵抗と直列にして下限を確保すると安全。</div></div>
+    <div class="guide-item"><div class="q">E系列で近い値に</div><div class="a">計算値ぴったりの部品は無いことが多い。手持ちのE12/E24系列で近い値を選び、ズレは半固定抵抗で詰める。</div></div>
+  </div>
+
+  <h2>🔁 双安定モード（フリップフロップ / ラッチ）</h2>
+  <p class="note">コンデンサを使わず、内部の RS-フリップフロップを<b style="color:#cdd6f4;">そのまま</b>利用する使い方。②TRIG を「セット」、④RESET を「リセット」として使い、出力の Hi / Lo を<b style="color:#cdd6f4;">記憶・保持</b>させる。電子工作での「押したら点く→もう一方を押すまで点きっぱなし」を作れる。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 480 280" xmlns="http://www.w3.org/2000/svg">
+      <rect x="190" y="70" width="120" height="150" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="250" y="150" text-anchor="middle" fill="#89b4fa" font-size="18" font-weight="bold">555</text>
+      <!-- Vcc -->
+      <line x1="40" y1="30" x2="430" y2="30" stroke="#f38ba8" stroke-width="2"/>
+      <text x="34" y="34" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">Vcc</text>
+      <!-- pin8 -->
+      <line x1="270" y1="70" x2="270" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="262" y="64" text-anchor="end" fill="#cdd6f4" font-size="10">8</text>
+      <circle cx="270" cy="30" r="3.5" fill="#cdd6f4"/>
+      <!-- GND -->
+      <line x1="40" y1="250" x2="430" y2="250" stroke="#a6adc8" stroke-width="2"/>
+      <text x="34" y="254" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <!-- pin1 GND -->
+      <line x1="270" y1="220" x2="270" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="262" y="236" text-anchor="end" fill="#cdd6f4" font-size="10">1</text>
+      <circle cx="270" cy="250" r="3.5" fill="#cdd6f4"/>
+      <!-- pin6 THRES -> GND (使わないのでGNDへ) -->
+      <line x1="310" y1="135" x2="350" y2="135" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="350" y1="135" x2="350" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="316" y="129" fill="#f9e2af" font-size="10">6</text>
+      <circle cx="350" cy="250" r="3.5" fill="#cdd6f4"/>
+      <text x="356" y="139" fill="#a6adc8" font-size="10">THRESは</text>
+      <text x="356" y="151" fill="#a6adc8" font-size="10">GNDへ</text>
+      <!-- pin2 TRIG = SET (pullup + button) -->
+      <line x1="190" y1="110" x2="110" y2="110" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="106" text-anchor="end" fill="#f9e2af" font-size="10">2</text>
+      <line x1="110" y1="110" x2="110" y2="80" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="95" y="50" width="30" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="80" y="70" text-anchor="end" fill="#f9e2af" font-size="9">10k</text>
+      <line x1="110" y1="50" x2="110" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="110" cy="30" r="3.5" fill="#cdd6f4"/>
+      <line x1="110" y1="110" x2="110" y2="182" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="110" cy="110" r="3.5" fill="#cdd6f4"/>
+      <circle cx="110" cy="182" r="2.5" fill="#cdd6f4"/>
+      <line x1="110" y1="208" x2="88" y2="184" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="110" cy="208" r="2.5" fill="#cdd6f4"/>
+      <line x1="110" y1="208" x2="110" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="110" cy="250" r="3.5" fill="#cdd6f4"/>
+      <line x1="90" y1="167" x2="90" y2="178" stroke="#a6adc8" stroke-width="1.5"/>
+      <polygon points="90,184 85,176 95,176" fill="#a6adc8"/>
+      <text x="60" y="200" fill="#a6e3a1" font-size="11" font-weight="bold">SET</text>
+      <text x="48" y="214" fill="#a6adc8" font-size="9">(出力Hi)</text>
+      <!-- pin4 RESET = RESET (pullup + button) -->
+      <line x1="190" y1="180" x2="160" y2="180" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="186" y="176" text-anchor="end" fill="#fab387" font-size="10">4</text>
+      <line x1="160" y1="180" x2="160" y2="80" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="145" y="50" width="30" height="30" rx="3" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="190" y="70" fill="#f9e2af" font-size="9">10k</text>
+      <line x1="160" y1="50" x2="160" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="160" cy="30" r="3.5" fill="#cdd6f4"/>
+      <line x1="160" y1="180" x2="160" y2="204" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="160" cy="180" r="3.5" fill="#cdd6f4"/>
+      <circle cx="160" cy="204" r="2.5" fill="#cdd6f4"/>
+      <line x1="160" y1="228" x2="138" y2="206" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="160" cy="228" r="2.5" fill="#cdd6f4"/>
+      <line x1="160" y1="228" x2="160" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="160" cy="250" r="3.5" fill="#cdd6f4"/>
+      <line x1="140" y1="189" x2="140" y2="200" stroke="#a6adc8" stroke-width="1.5"/>
+      <polygon points="140,206 135,198 145,198" fill="#a6adc8"/>
+      <text x="180" y="246" fill="#fab387" font-size="11" font-weight="bold">RESET</text>
+      <text x="180" y="259" fill="#a6adc8" font-size="9">(出力Lo)</text>
+      <!-- pin3 OUT -->
+      <line x1="310" y1="160" x2="370" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="315" y="154" fill="#a6e3a1" font-size="10">3</text>
+      <text x="376" y="164" fill="#a6e3a1" font-size="12" font-weight="bold">OUT</text>
+    </svg>
+    <p class="note">SET（②TRIG を一瞬Lo）で<b style="color:#a6e3a1;">出力Hi</b>のまま保持、RESET（④を一瞬Lo）で<b style="color:#cdd6f4;">出力Lo</b>のまま保持。タイミング用のコンデンサは不要。</p>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">なぜFFになる？</div><div class="a">内部のRS-FFを直接たたいているだけ。②TRIGがS（セット）、④RESETがR（リセット）に対応し、状態が<b style="color:#cdd6f4;">保持</b>される。</div></div>
+    <div class="guide-item"><div class="q">THRES(6)はGNDへ</div><div class="a">⑥THRESが⅔Vccを超えると勝手にリセットされてしまうので、使わないこのモードでは<b style="color:#cdd6f4;">GNDに固定</b>しておく。</div></div>
+    <div class="guide-item"><div class="q">使いどころ</div><div class="a">「片方のボタンで点灯／別ボタンで消灯」のラッチ、簡易メモリ、リレーの保持、チャタリングに強いセット/リセット入力など。</div></div>
+  </div>
+
+  <h2>⚖ コンパレータ / シュミットトリガとして使う</h2>
+  <p class="note">②TRIG と ⑥THRES を<b style="color:#cdd6f4;">つないで1つの入力</b>にすると、内部の2個のコンパレータが <b style="color:#94e2d5;">⅓Vcc</b> と <b style="color:#94e2d5;">⅔Vcc</b> の2つのしきい値で働き、<b style="color:#cdd6f4;">ヒステリシス（不感帯）を持つコンパレータ＝シュミットトリガ</b>になる。なまった信号やノイズの乗った信号を、きれいな矩形波に整える用途で使う。</p>
+  <div class="circuit">
+    <svg class="schem" viewBox="0 0 480 260" xmlns="http://www.w3.org/2000/svg">
+      <rect x="200" y="60" width="120" height="140" rx="6" fill="#181825" stroke="#585b70" stroke-width="2"/>
+      <text x="260" y="135" text-anchor="middle" fill="#89b4fa" font-size="18" font-weight="bold">555</text>
+      <!-- Vcc -->
+      <line x1="60" y1="28" x2="440" y2="28" stroke="#f38ba8" stroke-width="2"/>
+      <text x="50" y="32" text-anchor="end" fill="#f38ba8" font-size="12" font-weight="bold">Vcc</text>
+      <line x1="280" y1="60" x2="280" y2="28" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="272" y="54" text-anchor="end" fill="#cdd6f4" font-size="10">8/4</text>
+      <circle cx="280" cy="28" r="3.5" fill="#cdd6f4"/>
+      <!-- GND -->
+      <line x1="60" y1="225" x2="440" y2="225" stroke="#a6adc8" stroke-width="2"/>
+      <text x="50" y="229" text-anchor="end" fill="#a6adc8" font-size="11">GND</text>
+      <line x1="280" y1="200" x2="280" y2="225" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="280" cy="225" r="3.5" fill="#cdd6f4"/>
+      <!-- 入力 -> pin2 + pin6 tied -->
+      <text x="40" y="124" fill="#94e2d5" font-size="12" font-weight="bold">入力</text>
+      <line x1="80" y1="120" x2="150" y2="120" stroke="#94e2d5" stroke-width="2"/>
+      <circle cx="150" cy="120" r="3.5" fill="#cdd6f4"/>
+      <line x1="150" y1="100" x2="200" y2="100" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="196" y="96" text-anchor="end" fill="#f9e2af" font-size="10">6</text>
+      <line x1="150" y1="120" x2="150" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="150" y1="160" x2="200" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="196" y="156" text-anchor="end" fill="#f9e2af" font-size="10">2</text>
+      <line x1="150" y1="100" x2="150" y2="120" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- pin3 OUT 矩形 -->
+      <line x1="320" y1="130" x2="370" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="325" y="124" fill="#a6e3a1" font-size="10">3</text>
+      <text x="376" y="134" fill="#a6e3a1" font-size="12" font-weight="bold">OUT</text>
+      <polyline points="360,170 360,150 385,150 385,180 410,180 410,150 435,150 435,180 460,180"
+        fill="none" stroke="#a6e3a1" stroke-width="2"/>
+      <!-- 入力波形（なまった信号）を下に表示 -->
+      <text x="48" y="152" fill="#94e2d5" font-size="10">入力（なまった信号）</text>
+      <path d="M 45 182 Q 62 162 80 180 Q 98 198 116 178 Q 132 162 150 180" fill="none" stroke="#94e2d5" stroke-width="2"/>
+    </svg>
+    <p class="note">入力が <b style="color:#94e2d5;">⅓Vcc を下回る</b>と出力Hi、<b style="color:#94e2d5;">⅔Vcc を上回る</b>と出力Lo。間（⅓〜⅔Vcc）では<b style="color:#cdd6f4;">前の状態を保持</b>するので、ノイズで何度もパタつかない。</p>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">ヒステリシスとは</div><div class="a">ONになるしきい値とOFFになるしきい値を<b style="color:#cdd6f4;">わざとずらす</b>こと。境界付近のノイズで出力がバタつく(チャタる)のを防ぐ。555では⅓〜⅔Vccの幅が不感帯になる。</div></div>
+    <div class="guide-item"><div class="q">単独コンパレータとの違い</div><div class="a">LM393等の専用コンパレータはしきい値が1つ。555は<b style="color:#cdd6f4;">2つのしきい値＝ヒステリシス内蔵</b>なので、波形整形・ノイズ除去がそのままできるのが強み。</div></div>
+    <div class="guide-item"><div class="q">しきい値を動かす</div><div class="a">⑤CONT に電圧を加えると上側しきい値(⅔Vcc)を変えられる。しきい値や周波数を外部から可変したいときに使う。</div></div>
+  </div>
+
+  <h2>🎚 ⑤CONTピンで周波数を可変（VCO・簡易FM）</h2>
+  <p class="note">通常はノイズ除けに0.01µFでGNDへ落とす⑤CONTだが、ここに<b style="color:#cdd6f4;">電圧を加える</b>と上側しきい値(⅔Vcc)が動き、発振周波数を外部からコントロールできる。これが <b style="color:#cdd6f4;">VCO（電圧制御発振器）</b>の簡易版。</p>
+  <div class="guide">
+    <div class="guide-item"><div class="q">仕組み</div><div class="a">CONTの電圧＝上側しきい値そのもの。電圧を<b style="color:#cdd6f4;">上げるとCの充電に時間がかかり→周波数が下がる</b>、下げると速くなる。</div></div>
+    <div class="guide-item"><div class="q">使いどころ</div><div class="a">サイレン/効果音（ゆっくり電圧を揺らす）、簡易テルミン、センサ電圧で音程を変える、など。可変抵抗での分圧をCONTへ入れる手軽な形でもOK。</div></div>
+    <div class="guide-item"><div class="q">注意</div><div class="a">CONTに電圧を加えるときは0.01µFは外す（または用途に応じて調整）。加える電圧はVcc以下・GND以上の範囲で。</div></div>
+  </div>
+
+  <h2>💡 よくある実用例</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">LED点滅 / ホタル風</div><div class="a">非安定モードでゆっくり発振。Cを大きくすれば1秒に1回などのチカチカに。</div></div>
+    <div class="guide-item"><div class="q">PWMで明るさ・速度調整</div><div class="a">非安定の出力でLEDやモーターをON/OFF。デューティ比で平均電力を変える（MOSFETと組むと大電流もOK／mosfetGuide.html 参照）。</div></div>
+    <div class="guide-item"><div class="q">ワンショットタイマー</div><div class="a">単安定で「押したら○秒だけ点灯」。照明の自動消灯、給電タイマーなど。</div></div>
+    <div class="guide-item"><div class="q">スイッチのチャタリング除去</div><div class="a">単安定や双安定で、機械スイッチのバタつきを1回のきれいな信号に整える。</div></div>
+    <div class="guide-item"><div class="q">トーン / ブザー</div><div class="a">非安定で可聴域(数百Hz〜数kHz)を発振させ、圧電スピーカーを鳴らす。</div></div>
+    <div class="guide-item"><div class="q">波形整形</div><div class="a">シュミット構成で、なまった信号やセンサ出力をきれいな矩形波（HIGH/LOW）に。</div></div>
+  </div>
+
+  <h2>📡 ESP32（マイコン）と 555 の使い分け</h2>
+  <p class="note">「マイコンがあるなら555いらないのでは？」はもっともな疑問。実際タイマー・PWM・発振はESP32のコードでできる。それでも555が向く場面がある。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>やりたいこと</th><th>マイコン(ESP32)</th><th>NE555</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>正確/可変なPWM・複雑な制御</td><td><b>得意</b>（ledcWrite等で自在）</td><td>苦手（固定的・粗い）</td></tr>
+        <tr><td>CPUを使わず確実に発振させたい</td><td>本体が固まると止まる</td><td><b>独立して動き続ける</b></td></tr>
+        <tr><td>電源ON時のリセットパルス生成</td><td>自分の起動前は無理</td><td><b>得意</b>（外部で生成）</td></tr>
+        <tr><td>とにかく手早く・部品だけで</td><td>書き込み環境が要る</td><td><b>抵抗とCだけで完結</b></td></tr>
+        <tr><td>消費電力・コスト</td><td>機能多いぶん高め</td><td>安価・単純</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">まとめ: <b style="color:#cdd6f4;">賢い制御・通信・可変はマイコン</b>、<b style="color:#cdd6f4;">単純な発振/タイマーを独立・確実に・部品だけで</b>なら555。マイコンの「外部ウォッチドッグ」や「電源リセット」に555を添える併用も定番。</p>
+
+  <h2>⚠ 使うときの注意点</h2>
+  <div class="warnbox">
+    ⚠ NE555（バイポーラ版）は出力の切替時に<b>大きな電流スパイク</b>を出すため、電源が暴れて誤動作の原因になりやすい。<b>Vcc-GND間に0.1µFのパスコン</b>を石のすぐ近くに必ず入れること。
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">④RESETを開放にしない</div><div class="a">未使用でも<b style="color:#cdd6f4;">Vccに接続</b>。開放だとノイズで勝手にリセットされる。</div></div>
+    <div class="guide-item"><div class="q">⑤CONTは0.01µFでGNDへ</div><div class="a">しきい値が揺れてジッタ（時間のばらつき）が出るのを防ぐ。可変に使わないなら付けておく。</div></div>
+    <div class="guide-item"><div class="q">長時間タイマーの誤差</div><div class="a">大きな電解コンデンサは漏れ電流・容量誤差が大きく、計算どおりの時間にならないことがある。精度が要るならCMOS版＋フィルムC、または分周を検討。</div></div>
+    <div class="guide-item"><div class="q">出力でリレー等を駆動するとき</div><div class="a">コイル負荷には<b style="color:#cdd6f4;">フライホイールダイオード</b>を（diodeGuide.html 参照）。大電流はMOSFETで受ける。</div></div>
+  </div>
+
+  <h2>🔧 トラブルシューティング</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>症状</th><th>よくある原因</th><th>対処</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>発振しない</b>（非安定）</td>
+          <td>⑥THRESと②TRIGの結線忘れ／④RESETがLoのまま・開放／配線ミス</td>
+          <td>6と2を接続、④はVccへ。R・Cの値と接続を確認</td>
+        </tr>
+        <tr>
+          <td><b>周波数・時間が計算と合わない</b></td>
+          <td>電解コンデンサの容量誤差・漏れ電流／抵抗値の読み違い</td>
+          <td>フィルム/セラミックCに変更、半固定抵抗で微調整。式の単位(kΩ・µF)を再確認</td>
+        </tr>
+        <tr>
+          <td><b>出力が中途半端な電圧</b></td>
+          <td>負荷が重すぎる／配線途中で電圧降下</td>
+          <td>出力電流を見直す。大電流はMOSFETやトランジスタで受ける</td>
+        </tr>
+        <tr>
+          <td><b>勝手にリセットされる</b></td>
+          <td>④RESETを開放にしている（ノイズを拾う）</td>
+          <td>未使用でも④を必ずVccへ接続</td>
+        </tr>
+        <tr>
+          <td><b>動作が不安定・誤動作</b></td>
+          <td>電源パスコン無し／⑤CONTが開放でジッタ</td>
+          <td>Vcc-GND間に0.1µF、⑤CONTに0.01µFをGNDへ</td>
+        </tr>
+        <tr>
+          <td><b>単安定が連続して動く</b></td>
+          <td>トリガ②がLoに張り付いている（パルスが長すぎ）</td>
+          <td>トリガはT より短い瞬間Loに。プルアップ＋ボタンで一瞬だけ</td>
+        </tr>
+        <tr>
+          <td><b>ICが熱い</b></td>
+          <td>⑦DISCHや出力に過大電流／Rが小さすぎ</td>
+          <td>放電抵抗R1を大きめに、負荷を軽く。配線の短絡を確認</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>📖 用語解説</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">非安定 / 単安定 / 双安定</div><div class="a">安定状態が0個=ずっと発振(非安定)、1個=トリガで一時的に反転して戻る(単安定)、2個=どちらの状態も保持(双安定)。</div></div>
+    <div class="guide-item"><div class="q">マルチバイブレータ</div><div class="a">2つの状態を行き来する回路の総称。555の各モードもこの一種。</div></div>
+    <div class="guide-item"><div class="q">フリップフロップ(FF)</div><div class="a">1ビットを記憶する回路。RS-FFはセット(S)で1、リセット(R)で0を保持する。</div></div>
+    <div class="guide-item"><div class="q">コンパレータ</div><div class="a">2つの電圧を比べて、どちらが大きいかでHi/Loを出す回路。555には2個内蔵。</div></div>
+    <div class="guide-item"><div class="q">ヒステリシス</div><div class="a">ONとOFFのしきい値をずらして不感帯を作ること。ノイズによるバタつきを防ぐ。</div></div>
+    <div class="guide-item"><div class="q">シュミットトリガ</div><div class="a">ヒステリシスを持つコンパレータ。なまった波形をきれいな矩形波に整える。</div></div>
+    <div class="guide-item"><div class="q">デューティ比</div><div class="a">1周期のうちHiの割合。50%なら半分。PWMで平均電力(明るさ・速度)を決める。</div></div>
+    <div class="guide-item"><div class="q">時定数 (R×C)</div><div class="a">抵抗とコンデンサで決まる「充電にかかる時間の目安」。555の時間はすべてこれで決まる。</div></div>
+    <div class="guide-item"><div class="q">パスコン（バイパスコンデンサ）</div><div class="a">電源ピンのすぐ近くに入れる小容量C(0.1µF等)。電源の瞬間的な変動を吸収して誤動作を防ぐ。</div></div>
+  </div>
+
+  <footer>
+    値・式は一般的な目安です。実際の設計ではメーカーのデータシート（電源電圧範囲・出力電流・温度特性・タイミング誤差）を必ず確認してください。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — ne555Guide.html
+  </footer>
+
+<script>
+  // 共通フォーマット
+  function fmtFreq(f) {
+    if (!isFinite(f)) return '-';
+    if (f >= 1000) return (f / 1000).toFixed(2) + ' kHz';
+    if (f >= 1)    return f.toFixed(2) + ' Hz';
+    return f.toFixed(3) + ' Hz';
+  }
+  function fmtTime(ms) {
+    if (!isFinite(ms)) return '-';
+    if (ms < 1)     return (ms * 1000).toFixed(1) + ' µs';
+    if (ms < 1000)  return ms.toFixed(2) + ' ms';
+    return (ms / 1000).toFixed(3) + ' s';
+  }
+
+  // 非安定モード
+  const aR1 = document.getElementById('aR1');
+  const aR2 = document.getElementById('aR2');
+  const aC  = document.getElementById('aC');
+  const aBig = document.getElementById('aBig');
+  const aDetail = document.getElementById('aDetail');
+
+  function calcAstable() {
+    const r1 = parseFloat(aR1.value); // kΩ
+    const r2 = parseFloat(aR2.value); // kΩ
+    const c  = parseFloat(aC.value);  // µF
+    if (isNaN(r1) || isNaN(r2) || isNaN(c) || r1 < 0 || r2 < 0 || c <= 0) {
+      aBig.textContent = '-';
+      aDetail.textContent = '数値を入力してください。';
+      return;
+    }
+    // f[Hz] = 1440 / ((R1+2R2)[kΩ] * C[µF]) , 時間[ms] = 0.693 * R[kΩ] * C[µF]
+    const f  = 1440 / ((r1 + 2 * r2) * c);
+    const tH = 0.693 * (r1 + r2) * c; // ms
+    const tL = 0.693 * r2 * c;        // ms
+    const duty = (r1 + r2) / (r1 + 2 * r2) * 100;
+    aBig.textContent = fmtFreq(f);
+    aDetail.innerHTML =
+      `周期 T = <span>${fmtTime(tH + tL)}</span>　` +
+      `（Hi: <span>${fmtTime(tH)}</span> / Lo: <span>${fmtTime(tL)}</span>）<br>` +
+      `デューティ比（Hiの割合）: <span>${duty.toFixed(1)} %</span><br>` +
+      `式: f = 1.44 / ((${r1}k + 2×${r2}k) × ${c}µF)`;
+  }
+  [aR1, aR2, aC].forEach(el => el.addEventListener('input', calcAstable));
+  calcAstable();
+
+  // 非安定モード プリセット
+  document.getElementById('aPresets').addEventListener('click', (e) => {
+    const b = e.target.closest('.preset-btn');
+    if (!b) return;
+    aR1.value = b.dataset.r1;
+    aR2.value = b.dataset.r2;
+    aC.value  = b.dataset.c;
+    calcAstable();
+  });
+
+  // 単安定モード
+  const mR = document.getElementById('mR');
+  const mC = document.getElementById('mC');
+  const mBig = document.getElementById('mBig');
+  const mDetail = document.getElementById('mDetail');
+
+  function calcMono() {
+    const r = parseFloat(mR.value); // kΩ
+    const c = parseFloat(mC.value); // µF
+    if (isNaN(r) || isNaN(c) || r < 0 || c <= 0) {
+      mBig.textContent = '-';
+      mDetail.textContent = '数値を入力してください。';
+      return;
+    }
+    const t = 1.1 * r * c; // ms （kΩ×µF=ms）
+    mBig.textContent = fmtTime(t);
+    mDetail.innerHTML =
+      `式: T = 1.1 × ${r}kΩ × ${c}µF = <span>${fmtTime(t)}</span><br>` +
+      `トリガ後、この時間だけ出力がHiになり自動でLoへ戻る。`;
+  }
+  [mR, mC].forEach(el => el.addEventListener('input', calcMono));
+  calcMono();
+
+  // 単安定モード プリセット
+  document.getElementById('mPresets').addEventListener('click', (e) => {
+    const b = e.target.closest('.preset-btn');
+    if (!b) return;
+    mR.value = b.dataset.r;
+    mC.value = b.dataset.c;
+    calcMono();
+  });
+
+  // 抵抗値の表示（kΩ→ Ω/kΩ/MΩ）
+  function fmtOhm(kohm) {
+    if (!isFinite(kohm)) return '-';
+    if (kohm >= 1000) return (kohm / 1000).toFixed(2) + ' MΩ';
+    if (kohm >= 1)    return kohm.toFixed(2) + ' kΩ';
+    return (kohm * 1000).toFixed(0) + ' Ω';
+  }
+  function rangeAdvice(kohm) {
+    if (kohm < 1)    return '⚠ Rが約1kΩ未満。⑦DISCHに大電流が流れる恐れ。Cを大きくしてRを上げると安全。';
+    if (kohm > 1000) return '⚠ Rが約1MΩ超。漏れ電流の影響でズレやすい。Cを大きくしてRを下げると安定。';
+    return '実用的な範囲（約1kΩ〜1MΩ）。';
+  }
+
+  // 非安定モード 逆算（f → R2）
+  const raF = document.getElementById('raF');
+  const raC = document.getElementById('raC');
+  const raR1 = document.getElementById('raR1');
+  const raBig = document.getElementById('raBig');
+  const raDetail = document.getElementById('raDetail');
+  const raResult = document.getElementById('raResult');
+
+  function calcAstableRev() {
+    const f  = parseFloat(raF.value);  // Hz
+    const c  = parseFloat(raC.value);  // µF
+    const r1 = parseFloat(raR1.value); // kΩ
+    raResult.classList.remove('warn');
+    if (isNaN(f) || isNaN(c) || isNaN(r1) || f <= 0 || c <= 0 || r1 < 0) {
+      raBig.textContent = '-';
+      raDetail.textContent = '数値を入力してください。';
+      return;
+    }
+    const total = 1440 / (f * c);   // R1+2R2 [kΩ]
+    const r2 = (total - r1) / 2;    // kΩ
+    if (r2 <= 0) {
+      raBig.textContent = '計算できません';
+      raResult.classList.add('warn');
+      raDetail.innerHTML =
+        `R1 が大きすぎる（または C が大きすぎる）ため R2 がマイナスになります。<br>` +
+        `R1+2R2 = <span>${fmtOhm(total)}</span> なので、R1 を <span>${fmtOhm(total)}</span> 未満に下げるか C を小さくしてください。`;
+      return;
+    }
+    const duty = (r1 + r2) / (r1 + 2 * r2) * 100;
+    raBig.textContent = fmtOhm(r2);
+    raDetail.innerHTML =
+      `内訳: R1+2R2 = <span>${fmtOhm(total)}</span>（R1=${fmtOhm(r1)} → R2=<span>${fmtOhm(r2)}</span>）<br>` +
+      `このときのデューティ比: <span>${duty.toFixed(1)} %</span><br>` +
+      `${rangeAdvice(r2)}`;
+  }
+  [raF, raC, raR1].forEach(el => el.addEventListener('input', calcAstableRev));
+  calcAstableRev();
+
+  // 単安定モード 逆算（T秒 → R）
+  const rmT = document.getElementById('rmT');
+  const rmC = document.getElementById('rmC');
+  const rmBig = document.getElementById('rmBig');
+  const rmDetail = document.getElementById('rmDetail');
+  const rmResult = document.getElementById('rmResult');
+
+  function calcMonoRev() {
+    const t = parseFloat(rmT.value); // 秒
+    const c = parseFloat(rmC.value); // µF
+    rmResult.classList.remove('warn');
+    if (isNaN(t) || isNaN(c) || t <= 0 || c <= 0) {
+      rmBig.textContent = '-';
+      rmDetail.textContent = '数値を入力してください。';
+      return;
+    }
+    // T[s] = 1.1 * R[kΩ] * C[µF] / 1000  →  R[kΩ] = 1000*T / (1.1*C)
+    const r = 1000 * t / (1.1 * c); // kΩ
+    rmBig.textContent = fmtOhm(r);
+    if (r < 1 || r > 1000) rmResult.classList.add('warn');
+    rmDetail.innerHTML =
+      `式: R = T / (1.1 × C) = ${t}s / (1.1 × ${c}µF) = <span>${fmtOhm(r)}</span><br>` +
+      `${rangeAdvice(r)}`;
+  }
+  [rmT, rmC].forEach(el => el.addEventListener('input', calcMonoRev));
+  calcMonoRev();
+</script>
+</body>
+</html>

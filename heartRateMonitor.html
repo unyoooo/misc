@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLE心拍モニター</title>
+<style>
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 { color: #89b4fa; border-bottom: 2px solid #45475a; padding-bottom: 6px; margin-top: 40px; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono { font-family: "Consolas", monospace; background: #11111b; padding: 1px 6px; border-radius: 4px; color: #a6e3a1; }
+
+  .panel { background: #181825; border: 1px solid #45475a; border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+
+  .btn { background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 8px; padding: 8px 16px; font-size: 14px; cursor: pointer; font-family: inherit; font-weight: bold; }
+  .btn:hover:not(:disabled) { border-color: #89b4fa; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.primary { border-color: #a6e3a1; color: #a6e3a1; }
+  .btn.primary:hover:not(:disabled) { background: #1c2a1e; border-color: #a6e3a1; }
+  .btn.stop { border-color: #f38ba8; color: #f38ba8; }
+  .btn.stop:hover:not(:disabled) { background: #2a1c22; border-color: #f38ba8; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+  .btn-sm { padding: 4px 12px; font-size: 13px; }
+  .btn.active { border-color: #89b4fa; color: #89b4fa; }
+
+  .state-chip {
+    display: inline-block; font-size: 12px; font-weight: bold;
+    padding: 2px 12px; border-radius: 999px; border: 1px solid;
+    vertical-align: middle;
+  }
+  .chip-gray   { color: #a6adc8; border-color: #585b70; background: #11111b; }
+  .chip-yellow { color: #f9e2af; border-color: #f9e2af; background: #2a2a1c; }
+  .chip-green  { color: #a6e3a1; border-color: #a6e3a1; background: #1c2a1e; }
+  .chip-red    { color: #f38ba8; border-color: #f38ba8; background: #2a1c22; }
+  .chip-purple { color: #cba6f7; border-color: #cba6f7; background: #241c2a; }
+
+  /* メイン表示 */
+  .hr-main { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .hr-heart { width: 90px; height: 90px; flex-shrink: 0; }
+  .hr-heart svg { width: 100%; height: 100%; overflow: visible; }
+  #heartShape { transform-origin: 50% 50%; transform-box: fill-box; }
+  .hr-bpm-box { display: flex; align-items: baseline; gap: 8px; }
+  #bpmValue { font-family: Consolas, monospace; font-size: 72px; font-weight: bold; color: #f38ba8; line-height: 1; min-width: 150px; text-align: right; }
+  .hr-bpm-box .unit { color: #a6adc8; font-size: 18px; font-weight: bold; }
+  .hr-meta { font-size: 13px; color: #a6adc8; display: flex; flex-direction: column; gap: 6px; }
+  .hr-meta .dev { color: #cdd6f4; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 10px; margin-top: 16px; }
+  .stat { background: #11111b; border: 1px solid #45475a; border-radius: 8px; padding: 8px 10px; text-align: center; }
+  .stat .k { color: #a6adc8; font-size: 12px; }
+  .stat .v { font-family: Consolas, monospace; font-size: 20px; font-weight: bold; color: #f9e2af; }
+  .stat .v small { font-size: 12px; color: #a6adc8; font-weight: normal; }
+  .stat.avg .v { color: #94e2d5; }
+  .stat.max .v { color: #f38ba8; }
+
+  #statusNote { color: #a6adc8; font-size: 13px; margin-top: 10px; min-height: 20px; }
+  #statusNote.err { color: #f38ba8; }
+
+  /* 外部ウィンドウ設定 */
+  .cfg-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 10px 0; font-size: 14px; }
+  .cfg-row .lbl { color: #a6adc8; font-size: 13px; font-weight: bold; min-width: 90px; }
+  .cfg-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .cfg-row input[type=checkbox] { accent-color: #89b4fa; }
+  .cfg-row input[type=color] { width: 44px; height: 28px; border: 1px solid #585b70; border-radius: 6px; background: #11111b; padding: 2px; cursor: pointer; }
+  .cfg-row input[type=number] { width: 74px; background: #11111b; color: #f9e2af; border: 1px solid #585b70; border-radius: 6px; padding: 4px 6px; font-family: Consolas, monospace; font-size: 14px; }
+  .cfg-row input[type=range] { width: 100px; accent-color: #89b4fa; }
+  .cfg-row select { background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 6px; padding: 4px 8px; font-family: inherit; font-size: 14px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 8px; font-size: 14px; min-width: 520px; }
+  th, td { border: 1px solid #45475a; padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+  #zoneTable tr.zone-active td { background: #3b3b5a; }
+  #zoneTable .zdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+
+  #chart { display: block; width: 100%; height: 260px; background: #11111b; border: 1px solid #45475a; border-radius: 8px; }
+
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item { background: #232334; border-radius: 8px; padding: 12px 14px; border-left: 3px solid #a6e3a1; }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .warnbox { background: #45302e; color: #fab387; border: 2px solid #fab387; border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+  .warnbox b { color: #f9e2af; }
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>❤️ BLE心拍モニター</h1>
+
+<div class="lead">
+  BLE心拍センサーに接続して、リアルタイム表示、外部ウィンドウで簡易表示もできます。（データはどこにも送信されません。）
+</div>
+
+<div class="panel">
+  <div class="hr-main">
+    <div class="hr-heart">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path id="heartShape" fill="#f38ba8"
+          d="M50 88 C20 64 8 46 8 32 C8 18 19 10 30 10 C39 10 46 15 50 23 C54 15 61 10 70 10 C81 10 92 18 92 32 C92 46 80 64 50 88 Z"/>
+      </svg>
+    </div>
+    <div class="hr-bpm-box">
+      <span id="bpmValue">--</span><span class="unit">bpm</span>
+    </div>
+    <div class="hr-meta">
+      <div><span id="stateChip" class="state-chip chip-gray">未接続</span></div>
+      <div class="dev" id="devName">デバイス: --</div>
+      <div id="contactInfo">センサー接触: --</div>
+      <div id="zoneInfo">ゾーン: --</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="btnStart">▶ 計測開始</button>
+    <button class="btn stop" id="btnStop" disabled>■ 停止</button>
+    <button class="btn" id="btnDemo">🎬 デモ（センサーなし）</button>
+    <button class="btn" id="btnCsv" disabled>⬇ CSV保存</button>
+    <button class="btn" id="btnReset" disabled>リセット</button>
+  </div>
+  <div id="statusNote"></div>
+
+  <div class="stats">
+    <div class="stat avg"><div class="k">平均</div><div class="v" id="stAvg">--</div></div>
+    <div class="stat max"><div class="k">最大</div><div class="v" id="stMax">--</div></div>
+    <div class="stat"><div class="k">最小</div><div class="v" id="stMin">--</div></div>
+    <div class="stat"><div class="k">計測時間</div><div class="v" id="stTime">--</div></div>
+    <div class="stat"><div class="k">記録数</div><div class="v" id="stCount">--</div></div>
+    <div class="stat"><div class="k">推定カロリー</div><div class="v" id="stKcal">--</div></div>
+    <div class="stat"><div class="k">電池</div><div class="v" id="stBatt">--</div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-sm" id="btnChartToggle">📈 グラフを隠す</button>
+    <button class="btn btn-sm active" id="rangeAll">全期間</button>
+    <button class="btn btn-sm" id="range5m">直近5分</button>
+  </div>
+  <div id="chartWrap">
+    <canvas id="chart"></canvas>
+    <div class="note">桃色=心拍数、青=1分移動平均、teal破線=全期間平均、背景の色帯=心拍ゾーン（年齢設定時）。縦軸は表示範囲に合わせて自動スケールします。</div>
+  </div>
+</div>
+
+<h2>👤 プロフィール（ゾーン・カロリー用）</h2>
+<div class="panel">
+  <div class="cfg-row">
+    <span class="lbl">あなたの情報</span>
+    <label>年齢 <input type="number" id="prAge" min="5" max="120" placeholder="--"></label>
+    <label>体重 <input type="number" id="prWeight" min="20" max="200" step="0.1" placeholder="--"> kg</label>
+    <label>性別 <select id="prSex"><option value="">--</option><option value="m">男性</option><option value="f">女性</option></select></label>
+    <button class="btn btn-sm" id="btnPrClear">クリア</button>
+  </div>
+  <div class="table-wrap">
+    <table id="zoneTable">
+      <thead><tr><th>ゾーン</th><th>%HRmax</th><th>心拍数</th><th>感覚・用途</th></tr></thead>
+      <tbody id="zoneTbody"></tbody>
+    </table>
+  </div>
+  <div class="note">
+    最大心拍数は HRmax=220−年齢 の簡易式による目安（個人差±10bpm程度）。年齢を入れるとゾーンのbpm範囲・グラフの色帯・現在ゾーン表示が有効になります。
+    消費カロリーはKeytelらの推定式（有酸素運動域向け）による目安で、安静時・低強度ではほぼ0になります。年齢・体重・性別の3つが必要です。
+    入力はこのブラウザ（localStorage）にのみ保存され、送信されません。
+  </div>
+</div>
+
+<h2>🖥️ 外部ウィンドウ（ゲーム・VR用）</h2>
+<div class="panel">
+  <div class="btn-row" style="margin-top:0;">
+    <button class="btn" id="btnPopup">🗗 外部ウィンドウを開く</button>
+  </div>
+  <div class="cfg-row">
+    <span class="lbl">表示項目</span>
+    <label><input type="checkbox" id="cfgBpm"> ♥心拍数</label>
+    <label><input type="checkbox" id="cfgZone"> ゾーン（要年齢）</label>
+    <label><input type="checkbox" id="cfgMax"> 最大</label>
+    <label><input type="checkbox" id="cfgMin"> 最小</label>
+    <label><input type="checkbox" id="cfgTime"> 計測時間</label>
+    <label><input type="checkbox" id="cfgClock"> 現在時刻</label>
+    <label><input type="checkbox" id="cfgKcal"> 推定カロリー</label>
+    <label>グラフ <select id="cfgGraphSec">
+      <option value="0">なし</option>
+      <option value="10">10秒</option>
+      <option value="30">30秒</option>
+    </select></label>
+  </div>
+  <div class="cfg-row">
+    <span class="lbl">色</span>
+    <label>背景 <input type="color" id="cfgBg"></label>
+    <label>心拍数 <input type="color" id="cfgFg"></label>
+    <label><input type="checkbox" id="cfgZoneColor"> ゾーン色連動（年齢設定時）</label>
+  </div>
+  <div class="cfg-row">
+    <span class="lbl">しきい値</span>
+    <label><input type="checkbox" id="cfgThrOn"> <input type="number" id="cfgThrVal" min="30" max="220" step="1"> bpm を超えたら</label>
+    <label>この色に変更 <input type="color" id="cfgThrColor"></label>
+  </div>
+  <div class="cfg-row">
+    <span class="lbl">アラート音</span>
+    <label><input type="checkbox" id="cfgAlertOn"> しきい値超えを音で知らせる（10秒ごと）</label>
+    <label>音量 <input type="range" id="cfgAlertVol" min="0" max="100"></label>
+    <button class="btn btn-sm" id="btnBeepTest">🔊 テスト</button>
+  </div>
+  <div class="note">
+    現在のbpmだけの超シンプル表示。<b>ウィンドウ幅に合わせて文字が拡大</b>します。
+    対応ブラウザ（Chrome / Edge）では<b>常に手前に表示</b>されるミニウィンドウ（Document Picture-in-Picture）で開きます。
+    排他フルスクリーンのゲームには重ねられないため、ゲーム側は「ボーダーレスウィンドウ」表示がおすすめ。設定はこのブラウザに保存されます。
+  </div>
+</div>
+
+<h2>💡 使い方・対応環境</h2>
+<div class="guide">
+  <div class="guide-item">
+    <div class="q">使い方</div>
+    <div class="a">センサーを装着 →「計測開始」→ ペア設定ダイアログでデバイスを選択。停止すると切断されます。再度開始すると続きに追記、「リセット」でデータを消去します。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">対応デバイス</div>
+    <div class="a">BLEの標準 <b>Heart Rate Profile</b> 対応機（胸ベルト型：Polar H10、Garmin HRM-Dual、CooSpo、Mageneなど）。スマートウォッチは通常そのままでは接続できませんが、機種により「心拍転送（ブロードキャスト）モード」をONにすると接続できるものがあります（要・機種の仕様確認）。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">対応ブラウザ</div>
+    <div class="a">Web Bluetooth対応の <b>Chrome / Edge</b>（PC・Android）。Firefox・iOS Safariは非対応です。HTTPS（またはlocalhost）で開いた場合のみ動作します。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">データの扱い</div>
+    <div class="a">計測値はブラウザのメモリ上だけに保持され、外部送信はありません。CSVは「日時 / 経過秒 / bpm」の3列で、Excelでそのまま開けます（UTF-8 BOM付き）。</div>
+  </div>
+</div>
+
+<div class="warnbox">
+  <b>⚠ 医療用途には使えません。</b>表示値はセンサーの測定値をそのまま表示した目安です。体調管理・診断には医療機器を使用してください。
+</div>
+
+<footer>
+  すべての処理はブラウザ内で完結します。計測値・統計は目安です。<br>
+  @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — heartRateMonitor.html
+</footer>
+
+<script>
+'use strict';
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ---- 状態 ----
+  const samples = [];          // {t: epoch ms, bpm}
+  let sumBpm = 0;
+  let maxBpm = -Infinity;
+  let minBpm = Infinity;
+  let recording = false;
+  let demoMode = false;
+  let bleDevice = null;
+  let hrChar = null;
+  let lastBpm = 0;
+  let kcalTotal = 0;
+  let lastBeepAt = 0;
+
+  // ---- プロフィール・心拍ゾーン・カロリー ----
+  const PR_KEY = 'heartRateMonitor.profile';
+  const profile = { age: null, weight: null, sex: '' };
+  try {
+    const p = JSON.parse(localStorage.getItem(PR_KEY) || '{}');
+    if (p && typeof p === 'object') {
+      if (Number.isFinite(p.age)) profile.age = p.age;
+      if (Number.isFinite(p.weight)) profile.weight = p.weight;
+      if (p.sex === 'm' || p.sex === 'f') profile.sex = p.sex;
+    }
+  } catch (_) {}
+
+  const ZONES = [
+    { n: 'Rest', lo: 0, hi: 50, color: '#a6adc8', use: '安静・回復・日常' },
+    { n: 'Z1 ウォームアップ', lo: 50, hi: 60, color: '#89dceb', use: '準備運動・クールダウン' },
+    { n: 'Z2 脂肪燃焼', lo: 60, hi: 70, color: '#89b4fa', use: '長時間の有酸素・脂肪燃焼' },
+    { n: 'Z3 有酸素', lo: 70, hi: 80, color: '#a6e3a1', use: '持久力アップ' },
+    { n: 'Z4 無酸素', lo: 80, hi: 90, color: '#fab387', use: '高強度インターバル' },
+    { n: 'Z5 最大', lo: 90, hi: Infinity, color: '#f38ba8', use: '全力・ごく短時間' },
+  ];
+  function hrMax() { return profile.age ? 220 - profile.age : null; }
+  function zoneOf(bpm) {
+    const m = hrMax();
+    if (!m || !(bpm > 0)) return null;
+    const pct = bpm / m * 100;
+    return ZONES.find(z => pct >= z.lo && pct < z.hi) || ZONES[ZONES.length - 1];
+  }
+  // Keytelらの推定式（有酸素運動域向け・目安）。kcal/min
+  function kcalPerMin(bpm) {
+    if (!profile.age || !profile.weight || !profile.sex) return null;
+    const k = profile.sex === 'm'
+      ? -55.0969 + 0.6309 * bpm + 0.1988 * profile.weight + 0.2017 * profile.age
+      : -20.4022 + 0.4472 * bpm - 0.1263 * profile.weight + 0.074 * profile.age;
+    return Math.max(0, k / 4.184);
+  }
+  const profileComplete = () => kcalPerMin(100) !== null;
+
+  function buildZoneTable() {
+    const m = hrMax();
+    $('zoneTbody').innerHTML = ZONES.map((z, i) => {
+      const pctTxt = z.hi === Infinity ? z.lo + '%〜' : z.lo + '〜' + z.hi + '%';
+      const range = m
+        ? (z.hi === Infinity
+            ? Math.round(m * z.lo / 100) + ' bpm〜'
+            : Math.round(m * z.lo / 100) + '〜' + Math.round(m * z.hi / 100) + ' bpm')
+        : '--';
+      return '<tr data-zi="' + i + '"><td><span class="zdot" style="background:' + z.color + '"></span>'
+        + z.n + '</td><td>' + pctTxt + '</td><td>' + range + '</td><td>' + z.use + '</td></tr>';
+    }).join('');
+  }
+  function updateZoneUi(bpm) {
+    const el = $('zoneInfo');
+    const z = zoneOf(bpm);
+    const rows = $('zoneTbody').querySelectorAll('tr');
+    rows.forEach(r => r.classList.toggle('zone-active', z !== null && ZONES[+r.dataset.zi] === z));
+    if (!z) {
+      el.textContent = 'ゾーン: ' + (hrMax() ? '--' : '--（年齢未設定）');
+      el.style.color = '#a6adc8';
+      return;
+    }
+    el.textContent = 'ゾーン: ' + z.n + '（HRmaxの' + Math.round(bpm / hrMax() * 100) + '%）';
+    el.style.color = z.color;
+  }
+
+  // ---- UI表示 ----
+  function setChip(text, cls) {
+    const el = $('stateChip');
+    el.textContent = text;
+    el.className = 'state-chip ' + cls;
+  }
+  function setStatus(msg, isErr) {
+    const el = $('statusNote');
+    el.textContent = msg || '';
+    el.className = isErr ? 'err' : '';
+  }
+  function fmtElapsed(ms) {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return m + ':' + String(s % 60).padStart(2, '0');
+  }
+  function updateStats() {
+    const n = samples.length;
+    $('stCount').textContent = n || '--';
+    if (n === 0) {
+      $('stAvg').textContent = $('stMax').textContent = $('stMin').textContent = $('stTime').textContent = '--';
+      $('stKcal').textContent = '--';
+      return;
+    }
+    $('stAvg').textContent = (sumBpm / n).toFixed(1);
+    $('stMax').textContent = maxBpm;
+    $('stMin').textContent = minBpm;
+    $('stTime').textContent = fmtElapsed(samples[n - 1].t - samples[0].t);
+    $('stKcal').innerHTML = profileComplete() ? kcalTotal.toFixed(1) + '<small>kcal</small>' : '--';
+  }
+  function updateButtons() {
+    $('btnStart').disabled = recording;
+    $('btnDemo').disabled = recording;
+    $('btnStop').disabled = !recording;
+    $('btnCsv').disabled = samples.length === 0;
+    $('btnReset').disabled = samples.length === 0;   // 計測中でもリセット可
+  }
+
+  function addSample(bpm) {
+    lastBpm = bpm;
+    $('bpmValue').textContent = bpm;
+    const prev = samples.length ? samples[samples.length - 1] : null;
+    const t = Date.now();
+    samples.push({ t, bpm });
+    sumBpm += bpm;
+    if (bpm > maxBpm) maxBpm = bpm;
+    if (bpm < minBpm) minBpm = bpm;
+    // 消費カロリー積算（中断ギャップは5秒までとして数える）
+    const rate = kcalPerMin(bpm);
+    if (rate !== null && prev && rate > 0) {
+      kcalTotal += rate * Math.min((t - prev.t) / 1000, 5) / 60;
+    }
+    updateZoneUi(bpm);
+    // しきい値超えアラート音
+    if (cfg.thrOn && cfg.alertOn && bpm > cfg.thrVal) {
+      if (t - lastBeepAt > 10000) { lastBeepAt = t; beep(); }
+    } else {
+      lastBeepAt = 0;   // 下回ったら次の超過で即鳴らす
+    }
+    updateStats();
+    updateButtons();
+    drawChart();
+    updatePopup();
+  }
+
+  // ---- BLE ----
+  function parseHrm(dv) {
+    const flags = dv.getUint8(0);
+    const bpm = (flags & 0x01) ? dv.getUint16(1, true) : dv.getUint8(1);
+    return {
+      bpm,
+      contactSupported: !!(flags & 0x04),
+      contactDetected: !!(flags & 0x02),
+    };
+  }
+  function onHrm(e) {
+    const { bpm, contactSupported, contactDetected } = parseHrm(e.target.value);
+    $('contactInfo').textContent = 'センサー接触: ' +
+      (contactSupported ? (contactDetected ? 'OK' : 'なし') : '（非対応）');
+    if (bpm > 0) {
+      addSample(bpm);
+    } else {
+      $('bpmValue').textContent = '--';   // 装着前は0が来ることがある
+    }
+  }
+  function onDisconnected() {
+    if (recording && !demoMode) {
+      stopMeasure('デバイスとの接続が切れました。', true);
+    }
+  }
+  async function readBattery(server) {
+    try {
+      const svc = await server.getPrimaryService('battery_service');
+      const ch = await svc.getCharacteristic('battery_level');
+      const v = await ch.readValue();
+      $('stBatt').innerHTML = v.getUint8(0) + '<small>%</small>';
+    } catch (_) {
+      $('stBatt').textContent = '--';    // 電池サービスなしの機種もある
+    }
+  }
+
+  async function startBle() {
+    if (!navigator.bluetooth) {
+      setStatus('このブラウザはWeb Bluetooth非対応です（Chrome/Edgeで開いてください）。デモモードは使えます。', true);
+      return;
+    }
+    try {
+      setChip('接続中…', 'chip-yellow');
+      setStatus('ペア設定ダイアログでデバイスを選択してください。');
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ services: ['heart_rate'] }],
+        optionalServices: ['battery_service'],
+      });
+      bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+      const server = await bleDevice.gatt.connect();
+      const svc = await server.getPrimaryService('heart_rate');
+      hrChar = await svc.getCharacteristic('heart_rate_measurement');
+      hrChar.addEventListener('characteristicvaluechanged', onHrm);
+      await hrChar.startNotifications();
+      readBattery(server);
+      $('devName').textContent = 'デバイス: ' + (bleDevice.name || '(名称なし)');
+      demoMode = false;
+      recording = true;
+      setChip('計測中', 'chip-green');
+      setStatus('');
+      updateButtons();
+    } catch (err) {
+      setChip('未接続', 'chip-gray');
+      if (err.name === 'NotFoundError') {
+        setStatus('デバイスが選択されませんでした。');
+      } else {
+        setStatus('接続エラー: ' + err.message, true);
+      }
+      cleanupBle();
+    }
+  }
+  function cleanupBle() {
+    if (hrChar) {
+      try { hrChar.removeEventListener('characteristicvaluechanged', onHrm); } catch (_) {}
+      hrChar = null;
+    }
+    if (bleDevice) {
+      try {
+        bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+        if (bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+      } catch (_) {}
+      bleDevice = null;
+    }
+  }
+
+  // ---- デモモード ----
+  // データ生成はrAFでなくsetTimeoutチェーン（非表示タブではrAFが止まるため。
+  // 実機BLEは通知イベント駆動なので非表示でも記録が続く＝それに合わせる）
+  const demoState = { bpm: 72, target: 75, until: 0 };
+  let demoTimer = null;
+  function startDemo() {
+    demoMode = true;
+    recording = true;
+    demoState.bpm = 65 + Math.random() * 15;
+    demoState.until = 0;
+    $('devName').textContent = 'デバイス: デモ（擬似データ）';
+    $('contactInfo').textContent = 'センサー接触: --';
+    setChip('デモ計測中', 'chip-purple');
+    setStatus('擬似データを1秒ごとに生成しています。');
+    updateButtons();
+    clearTimeout(demoTimer);
+    scheduleDemoSample();
+  }
+  function scheduleDemoSample() {
+    demoTimer = setTimeout(() => {
+      if (!recording || !demoMode) return;
+      genDemoSample();
+      scheduleDemoSample();
+    }, 1000);
+  }
+  function genDemoSample() {
+    const now = performance.now();
+    if (now > demoState.until) {
+      const targets = [62, 72, 85, 100, 120, 140, 155, 110, 78];
+      demoState.target = targets[Math.floor(Math.random() * targets.length)];
+      demoState.until = now + 12000 + Math.random() * 18000;
+    }
+    demoState.bpm += (demoState.target - demoState.bpm) * 0.08 + (Math.random() - 0.5) * 3;
+    demoState.bpm = Math.min(200, Math.max(45, demoState.bpm));
+    addSample(Math.round(demoState.bpm));
+  }
+
+  // ---- 開始・停止・リセット ----
+  function stopMeasure(msg, isErr) {
+    recording = false;
+    demoMode = false;
+    clearTimeout(demoTimer);
+    cleanupBle();
+    setChip('未接続', 'chip-gray');
+    setStatus(msg || '停止しました。「計測開始」で続きに追記できます。', !!isErr);
+    updateButtons();
+    updatePopup();
+  }
+  function resetAll() {
+    samples.length = 0;
+    sumBpm = 0;
+    maxBpm = -Infinity;
+    minBpm = Infinity;
+    kcalTotal = 0;
+    if (recording) {
+      // 計測は続けたままデータだけ消す（接続・デバイス表示は維持）
+      setStatus('計測データをリセットしました。計測は継続中です。');
+    } else {
+      lastBpm = 0;
+      $('bpmValue').textContent = '--';
+      $('devName').textContent = 'デバイス: --';
+      $('contactInfo').textContent = 'センサー接触: --';
+      $('stBatt').textContent = '--';
+      updateZoneUi(0);
+      setStatus('');
+    }
+    updateStats();
+    updateButtons();
+    drawChart();
+    updatePopup();
+  }
+
+  // ---- CSV ----
+  function fmtDateTime(d) {
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  function saveCsv() {
+    if (samples.length === 0) return;
+    const t0 = samples[0].t;
+    const lines = ['time,elapsed_sec,bpm'];
+    for (const s of samples) {
+      lines.push(fmtDateTime(new Date(s.t)) + ',' + ((s.t - t0) / 1000).toFixed(1) + ',' + s.bpm);
+    }
+    const bom = String.fromCharCode(0xFEFF);  // BOM付き＝Excelで文字化けしないため
+    const blob = new Blob([bom + lines.join('\r\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'heartrate_' + fmtDateTime(new Date(t0)).replace(' ', '_').replaceAll(':', '') + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ---- 外部ウィンドウ（ゲーム・VR用ミニ表示） ----
+  const CFG_KEY = 'heartRateMonitor.popupCfg';
+  const cfgDefaults = {
+    showBpm: true, showZone: false, showMax: true, showMin: false, showTime: true, showClock: false, showKcal: false, graphSec: 0,
+    bg: '#11111b', fg: '#a6e3a1', zoneColorOn: false,
+    thrOn: true, thrVal: 100, thrColor: '#f38ba8',
+    alertOn: false, alertVol: 50,
+  };
+  let cfg = { ...cfgDefaults };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') {
+      cfg = { ...cfgDefaults, ...saved };
+      if (saved.showGraph && saved.graphSec === undefined) cfg.graphSec = 30;   // 旧設定の移行
+      delete cfg.showGraph;
+    }
+  } catch (_) {}
+
+  let popupWin = null;
+  const popupOpen = () => popupWin && !popupWin.closed;
+
+  function updatePopupBtn() {
+    $('btnPopup').textContent = popupOpen() ? '🗗 外部ウィンドウを閉じる' : '🗗 外部ウィンドウを開く';
+  }
+  async function togglePopup() {
+    if (popupOpen()) {
+      popupWin.close();
+      popupWin = null;
+      updatePopupBtn();
+      return;
+    }
+    popupWin = null;
+    if (window.documentPictureInPicture) {
+      // 常に手前に表示されるミニウィンドウ（Chrome/Edge）
+      try {
+        popupWin = await documentPictureInPicture.requestWindow({ width: 520, height: 150 });
+      } catch (_) { /* 開けない環境では通常ポップアップにフォールバック */ }
+    }
+    if (!popupWin) {
+      try {
+        popupWin = window.open('', 'hrPopup', 'width=520,height=150,popup=yes');
+      } catch (err) {
+        setStatus('外部ウィンドウを開けませんでした: ' + err.message, true);
+        return;
+      }
+    }
+    if (!popupWin) {
+      setStatus('ポップアップがブロックされました。ブラウザの設定を確認してください。', true);
+      return;
+    }
+    const doc = popupWin.document;
+    doc.title = '❤ 心拍';
+    const style = doc.createElement('style');
+    style.textContent = [
+      'html,body{height:100%;}',
+      'body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;',
+      '  gap:1vh;font-family:Consolas,monospace;overflow:hidden;user-select:none;cursor:default;}',
+      '#pRow{display:flex;align-items:baseline;gap:.35em;white-space:nowrap;font-weight:bold;line-height:1;}',
+      '#pHeart{transform-origin:50% 55%;}',
+      '#pGraph{width:94%;flex:1 1 auto;min-height:0;margin-bottom:1vh;}',
+    ].join('\n');
+    doc.head.appendChild(style);
+    doc.body.innerHTML = '<div id="pRow">'
+      + '<span id="pHeart">♥</span><span id="pBpm">--</span><span id="pZone"></span>'
+      + '<span id="pMax"></span><span id="pMin"></span><span id="pTime"></span>'
+      + '<span id="pKcal"></span><span id="pClock"></span></div>'
+      + '<canvas id="pGraph" style="display:none"></canvas>';
+    popupWin.addEventListener('pagehide', () => { popupWin = null; updatePopupBtn(); });
+    popupWin.addEventListener('resize', fitPopup);
+    startPopupLoops();
+    updatePopup();
+    updatePopupBtn();
+  }
+  // 時計・ハート拍動はポップアップ側のタイマー/rAFで回す
+  // （ゲーム中はメインページがバックグラウンドになりrAFが止まるため）
+  function startPopupLoops() {
+    const win = popupWin;
+    const doc = win.document;
+    const alive = () => popupWin === win && !win.closed;
+    const secTick = () => {
+      if (!alive()) return;
+      const el = doc.getElementById('pClock');
+      if (el && cfg.showClock) el.textContent = clockStr();
+      drawPopupGraph();   // 30秒窓を横にスライドさせる
+      win.setTimeout(secTick, 1000);
+    };
+    win.setTimeout(secTick, 1000);
+    const heartAnim = now => {
+      if (!alive()) return;
+      const h = doc.getElementById('pHeart');
+      if (h) {
+        if (recording && lastBpm > 0) {
+          const period = 60000 / lastBpm;
+          const p = (now % period) / period;
+          const s = p < 0.18 ? 1 + 0.13 * Math.sin(p / 0.18 * Math.PI) : 1;
+          h.style.transform = 'scale(' + s.toFixed(3) + ')';
+        } else {
+          h.style.transform = '';
+        }
+      }
+      win.requestAnimationFrame(heartAnim);
+    };
+    win.requestAnimationFrame(heartAnim);
+  }
+  function clockStr() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  // 表示内容の量とウィンドウサイズに合わせて文字サイズを自動調整
+  function fitPopup() {
+    if (!popupOpen()) return;
+    const doc = popupWin.document;
+    const row = doc.getElementById('pRow');
+    if (!row) return;
+    row.style.fontSize = '100px';
+    const tw = row.scrollWidth || 1;
+    // グラフ表示時は下半分をグラフに譲る
+    const hBudget = popupWin.innerHeight * (cfg.graphSec > 0 ? 0.42 : 0.72);
+    const size = Math.min(100 * (popupWin.innerWidth * 0.94) / tw, hBudget);
+    row.style.fontSize = size.toFixed(1) + 'px';
+    drawPopupGraph();
+  }
+  // 直近N秒のスパークライン（10秒/30秒）
+  function drawPopupGraph() {
+    if (!popupOpen() || !(cfg.graphSec > 0)) return;
+    const cv = popupWin.document.getElementById('pGraph');
+    if (!cv) return;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    const dpr = popupWin.devicePixelRatio || 1;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, w, h);
+    const winMs = cfg.graphSec * 1000;
+    const now = Date.now();
+    const t0 = now - winMs;
+    const pts = samples.filter(s => s.t >= t0 - 1000);   // 左端の線が途切れないよう1秒分余分に
+    if (pts.length < 2) return;
+    let lo = Infinity, hi = -Infinity;
+    for (const s of pts) { if (s.bpm < lo) lo = s.bpm; if (s.bpm > hi) hi = s.bpm; }
+    lo -= 5; hi += 5;
+    if (hi - lo < 20) { const m = (hi + lo) / 2; lo = m - 10; hi = m + 10; }
+    const x = t => (t - t0) / winMs * w;
+    const y = v => h - 2 - (v - lo) / (hi - lo) * (h - 4);
+    if (cfg.thrOn && cfg.thrVal >= lo && cfg.thrVal <= hi) {
+      c.strokeStyle = cfg.thrColor;
+      c.globalAlpha = 0.6;
+      c.setLineDash([4, 4]);
+      c.beginPath();
+      c.moveTo(0, y(cfg.thrVal));
+      c.lineTo(w, y(cfg.thrVal));
+      c.stroke();
+      c.setLineDash([]);
+      c.globalAlpha = 1;
+    }
+    c.strokeStyle = cfg.fg;
+    c.lineWidth = Math.max(2, h * 0.03);
+    c.lineJoin = 'round';
+    c.beginPath();
+    pts.forEach((s, i) => {
+      if (i === 0) c.moveTo(x(s.t), y(s.bpm));
+      else c.lineTo(x(s.t), y(s.bpm));
+    });
+    c.stroke();
+  }
+  function updatePopup() {
+    if (!popupOpen()) return;
+    const doc = popupWin.document;
+    const el = id => doc.getElementById(id);
+    if (!el('pRow')) return;
+    doc.body.style.background = cfg.bg;
+    // 色の優先順: ゾーン色連動 > しきい値超え > 基本色
+    let mainColor = cfg.fg;
+    const zn = cfg.zoneColorOn ? zoneOf(lastBpm) : null;
+    if (zn) mainColor = zn.color;
+    else if (cfg.thrOn && lastBpm > cfg.thrVal) mainColor = cfg.thrColor;
+    el('pHeart').style.color = mainColor;
+    el('pBpm').style.color = mainColor;
+    el('pBpm').textContent = lastBpm > 0 ? lastBpm : '--';
+    el('pHeart').style.display = cfg.showBpm ? '' : 'none';
+    el('pBpm').style.display = cfg.showBpm ? '' : 'none';
+    const n = samples.length;
+    const setPart = (id, text) => {
+      const s = el(id);
+      s.textContent = text;
+      s.style.display = text ? '' : 'none';
+      s.style.color = cfg.fg;
+    };
+    const zCur = zoneOf(lastBpm);
+    setPart('pZone', cfg.showZone && zCur ? zCur.n.split(' ')[0] : '');   // 「Z3」「安静」など
+    if (zCur) el('pZone').style.color = zCur.color;
+    setPart('pMax', cfg.showMax && n ? '▲' + maxBpm : '');
+    setPart('pMin', cfg.showMin && n ? '▼' + minBpm : '');
+    setPart('pTime', cfg.showTime && n ? fmtElapsed(samples[n - 1].t - samples[0].t) : '');
+    setPart('pKcal', cfg.showKcal && n && profileComplete() ? Math.round(kcalTotal) + 'kcal' : '');
+    setPart('pClock', cfg.showClock ? clockStr() : '');
+    const cv = el('pGraph');
+    if (cv) cv.style.display = cfg.graphSec > 0 ? 'block' : 'none';
+    fitPopup();
+  }
+
+  // ---- しきい値超えアラート音（WebAudio） ----
+  let audioCtx = null;
+  function beep() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const vol = (cfg.alertVol || 0) / 100 * 0.4;
+      if (vol <= 0) return;
+      const t0 = audioCtx.currentTime;
+      [0, 0.25].forEach(off => {   // ピッ・ピッと2回
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880;
+        g.gain.setValueAtTime(0, t0 + off);
+        g.gain.linearRampToValueAtTime(vol, t0 + off + 0.02);
+        g.gain.setValueAtTime(vol, t0 + off + 0.12);
+        g.gain.linearRampToValueAtTime(0, t0 + off + 0.16);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(t0 + off);
+        o.stop(t0 + off + 0.2);
+      });
+    } catch (_) {}
+  }
+
+  const cfgIds = ['cfgBpm', 'cfgZone', 'cfgMax', 'cfgMin', 'cfgTime', 'cfgClock', 'cfgKcal', 'cfgGraphSec', 'cfgBg', 'cfgFg', 'cfgZoneColor', 'cfgThrOn', 'cfgThrVal', 'cfgThrColor', 'cfgAlertOn', 'cfgAlertVol'];
+  function applyCfgToInputs() {
+    $('cfgBpm').checked = cfg.showBpm;
+    $('cfgZone').checked = cfg.showZone;
+    $('cfgMax').checked = cfg.showMax;
+    $('cfgMin').checked = cfg.showMin;
+    $('cfgTime').checked = cfg.showTime;
+    $('cfgClock').checked = cfg.showClock;
+    $('cfgKcal').checked = cfg.showKcal;
+    $('cfgGraphSec').value = String(cfg.graphSec);
+    $('cfgBg').value = cfg.bg;
+    $('cfgFg').value = cfg.fg;
+    $('cfgZoneColor').checked = cfg.zoneColorOn;
+    $('cfgThrOn').checked = cfg.thrOn;
+    $('cfgThrVal').value = cfg.thrVal;
+    $('cfgThrColor').value = cfg.thrColor;
+    $('cfgAlertOn').checked = cfg.alertOn;
+    $('cfgAlertVol').value = cfg.alertVol;
+  }
+  function readCfgFromInputs() {
+    cfg.showBpm = $('cfgBpm').checked;
+    cfg.showZone = $('cfgZone').checked;
+    cfg.showMax = $('cfgMax').checked;
+    cfg.showMin = $('cfgMin').checked;
+    cfg.showTime = $('cfgTime').checked;
+    cfg.showClock = $('cfgClock').checked;
+    cfg.showKcal = $('cfgKcal').checked;
+    cfg.graphSec = parseInt($('cfgGraphSec').value, 10) || 0;
+    cfg.bg = $('cfgBg').value;
+    cfg.fg = $('cfgFg').value;
+    cfg.zoneColorOn = $('cfgZoneColor').checked;
+    cfg.thrOn = $('cfgThrOn').checked;
+    const v = parseInt($('cfgThrVal').value, 10);
+    if (Number.isFinite(v)) cfg.thrVal = Math.min(220, Math.max(30, v));
+    cfg.thrColor = $('cfgThrColor').value;
+    cfg.alertOn = $('cfgAlertOn').checked;
+    cfg.alertVol = parseInt($('cfgAlertVol').value, 10) || 0;
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (_) {}
+    updatePopup();
+  }
+  cfgIds.forEach(id => $(id).addEventListener('input', readCfgFromInputs));
+  applyCfgToInputs();
+
+  // ---- グラフ ----
+  const canvas = $('chart');
+  const ctx = canvas.getContext('2d');
+  let graphRange = 'all';   // 'all' | '5min'
+  function setGraphRange(r) {
+    graphRange = r;
+    $('rangeAll').classList.toggle('active', r === 'all');
+    $('range5m').classList.toggle('active', r === '5min');
+    drawChart();
+  }
+  const CHART_VIS_KEY = 'heartRateMonitor.chartVisible';
+  let chartVisible = localStorage.getItem(CHART_VIS_KEY) !== '0';
+  function applyChartVisible() {
+    $('chartWrap').style.display = chartVisible ? '' : 'none';
+    $('rangeAll').style.display = chartVisible ? '' : 'none';
+    $('range5m').style.display = chartVisible ? '' : 'none';
+    $('btnChartToggle').textContent = chartVisible ? '📈 グラフを隠す' : '📈 グラフを表示';
+    if (chartVisible) drawChart();
+  }
+  function toggleChart() {
+    chartVisible = !chartVisible;
+    try { localStorage.setItem(CHART_VIS_KEY, chartVisible ? '1' : '0'); } catch (_) {}
+    applyChartVisible();
+  }
+  function drawChart() {
+    if (!chartVisible) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (canvas.width !== Math.round(w * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const padL = 40, padR = 10, padT = 12, padB = 24;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    if (samples.length === 0) {
+      ctx.fillStyle = '#585b70';
+      ctx.font = '14px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('計測を開始するとここにグラフが描かれます', w / 2, h / 2);
+      return;
+    }
+
+    // 表示範囲（全期間 or 直近5分）
+    let pts = samples;
+    if (graphRange === '5min') {
+      const cut = samples[samples.length - 1].t - 300000;
+      pts = samples.filter(s => s.t >= cut);
+    }
+
+    // Y範囲（表示範囲の値から10刻みに丸めて自動スケール）
+    let vMin = Infinity, vMax = -Infinity;
+    for (const s of pts) { if (s.bpm < vMin) vMin = s.bpm; if (s.bpm > vMax) vMax = s.bpm; }
+    let yMin = Math.floor((vMin - 8) / 10) * 10;
+    let yMax = Math.ceil((vMax + 8) / 10) * 10;
+    yMin = Math.max(20, yMin);
+    yMax = Math.min(230, Math.max(yMax, yMin + 30));
+    const yStep = (yMax - yMin) > 80 ? 20 : 10;
+
+    const t0 = pts[0].t;
+    const t1 = pts[pts.length - 1].t;
+    const span = Math.max(t1 - t0, 10000);   // 最低10秒スケール
+    const x = t => padL + (t - t0) / span * plotW;
+    const y = v => padT + (yMax - v) / (yMax - yMin) * plotH;
+
+    // 心拍ゾーンの色帯（年齢設定時のみ）
+    const m = hrMax();
+    if (m) {
+      ctx.globalAlpha = 0.09;
+      for (const z of ZONES) {
+        const a = Math.max(m * z.lo / 100, yMin);
+        const b = Math.min(z.hi === Infinity ? yMax : m * z.hi / 100, yMax);
+        if (b <= a) continue;
+        ctx.fillStyle = z.color;
+        ctx.fillRect(padL, y(b), plotW, y(a) - y(b));
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // グリッド + Y軸ラベル
+    ctx.font = '11px Consolas, monospace';
+    ctx.strokeStyle = '#313244';
+    ctx.fillStyle = '#a6adc8';
+    ctx.lineWidth = 1;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let v = yMin; v <= yMax; v += yStep) {
+      ctx.beginPath();
+      ctx.moveTo(padL, y(v));
+      ctx.lineTo(w - padR, y(v));
+      ctx.stroke();
+      ctx.fillText(v, padL - 6, y(v));
+    }
+    // X軸ラベル（経過 mm:ss、4分割）
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let i = 0; i <= 4; i++) {
+      const t = t0 + span * i / 4;
+      ctx.fillText(fmtElapsed(t - t0), x(t), h - padB + 6);
+    }
+
+    // 平均線
+    const avg = sumBpm / samples.length;
+    if (avg >= yMin && avg <= yMax) {
+      ctx.strokeStyle = '#94e2d5';
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(padL, y(avg));
+      ctx.lineTo(w - padR, y(avg));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 1分移動平均（青）。全データで計算し、表示範囲分を描画
+    if (samples.length >= 2) {
+      const mavg = new Array(samples.length);
+      let acc = 0, j0 = 0;
+      for (let i = 0; i < samples.length; i++) {
+        acc += samples[i].bpm;
+        while (samples[j0].t < samples[i].t - 60000) { acc -= samples[j0].bpm; j0++; }
+        mavg[i] = acc / (i - j0 + 1);
+      }
+      const off = samples.length - pts.length;
+      ctx.strokeStyle = '#89b4fa';
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      pts.forEach((s, i) => {
+        const v = Math.min(yMax, Math.max(yMin, mavg[off + i]));
+        if (i === 0) ctx.moveTo(x(s.t), y(v));
+        else ctx.lineTo(x(s.t), y(v));
+      });
+      ctx.stroke();
+    }
+
+    // 心拍ライン
+    ctx.strokeStyle = '#f38ba8';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.forEach((s, i) => {
+      if (i === 0) ctx.moveTo(x(s.t), y(s.bpm));
+      else ctx.lineTo(x(s.t), y(s.bpm));
+    });
+    ctx.stroke();
+    if (pts.length === 1) {
+      ctx.fillStyle = '#f38ba8';
+      ctx.beginPath();
+      ctx.arc(x(t0), y(pts[0].bpm), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  window.addEventListener('resize', drawChart);
+
+  // ---- アニメーションループ（setIntervalは使わない） ----
+  const heartEl = $('heartShape');
+  let heartVisible = true;
+  new IntersectionObserver(es => { heartVisible = es[0].isIntersecting; })
+    .observe($('bpmValue'));
+  function heartTick(now) {
+    if (!heartVisible) return;
+    if (!recording || lastBpm <= 0) {
+      heartEl.style.transform = '';
+      return;
+    }
+    const period = 60000 / lastBpm;
+    const p = (now % period) / period;
+    const s = p < 0.18 ? 1 + 0.13 * Math.sin(p / 0.18 * Math.PI) : 1;
+    heartEl.style.transform = 'scale(' + s.toFixed(3) + ')';
+  }
+  const tickers = [heartTick];
+  function frame(now) {
+    requestAnimationFrame(frame);
+    for (const t of tickers) t(now);
+  }
+  requestAnimationFrame(frame);
+
+  // ---- イベント ----
+  $('btnStart').addEventListener('click', startBle);
+  $('btnDemo').addEventListener('click', startDemo);
+  $('btnStop').addEventListener('click', () => stopMeasure());
+  $('btnCsv').addEventListener('click', saveCsv);
+  $('btnReset').addEventListener('click', resetAll);
+  $('btnPopup').addEventListener('click', togglePopup);
+  $('rangeAll').addEventListener('click', () => setGraphRange('all'));
+  $('range5m').addEventListener('click', () => setGraphRange('5min'));
+  $('btnChartToggle').addEventListener('click', toggleChart);
+  applyChartVisible();
+  // クリック（ユーザー操作）の時点でAudioContextを起動しておく＝後の自動ビープが確実に鳴る
+  $('btnBeepTest').addEventListener('click', beep);
+  $('cfgAlertOn').addEventListener('change', () => { if ($('cfgAlertOn').checked) beep(); });
+
+  // プロフィール入力
+  function readProfileInputs() {
+    const a = parseInt($('prAge').value, 10);
+    const w = parseFloat($('prWeight').value);
+    profile.age = Number.isFinite(a) && a >= 5 && a <= 120 ? a : null;
+    profile.weight = Number.isFinite(w) && w >= 20 && w <= 200 ? w : null;
+    profile.sex = $('prSex').value;
+    try { localStorage.setItem(PR_KEY, JSON.stringify(profile)); } catch (_) {}
+    buildZoneTable();
+    updateZoneUi(lastBpm);
+    updateStats();
+    drawChart();
+    updatePopup();
+  }
+  ['prAge', 'prWeight', 'prSex'].forEach(id => $(id).addEventListener('input', readProfileInputs));
+  $('btnPrClear').addEventListener('click', () => {
+    $('prAge').value = '';
+    $('prWeight').value = '';
+    $('prSex').value = '';
+    readProfileInputs();   // null保存・ゾーン表/統計/グラフ/外部ウィンドウも未設定状態に更新
+  });
+  $('prAge').value = profile.age ?? '';
+  $('prWeight').value = profile.weight ?? '';
+  $('prSex').value = profile.sex;
+  buildZoneTable();
+  updateZoneUi(0);
+
+  if (!navigator.bluetooth) {
+    setStatus('このブラウザはWeb Bluetooth非対応のようです。実機接続にはChrome/Edgeを使ってください（デモは動きます）。', true);
+  }
+  drawChart();
+})();
+</script>
+</body>
+</html>

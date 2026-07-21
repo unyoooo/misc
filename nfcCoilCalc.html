@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFC 13.56MHz コイル共振計算機</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  h3 { color: #89b4fa; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono {
+    font-family: "Consolas", monospace;
+    background: #11111b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #a6e3a1;
+  }
+
+  .btn { background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit; font-weight: bold; }
+  .btn:hover { border-color: #89b4fa; }
+
+  .circuit {
+    background: #181825; border: 1px solid #45475a; border-radius: 10px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+  .pin-box {
+    display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;
+  }
+  .schem {
+    display: block; width: 100%; height: auto;
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 8px; margin-bottom: 12px;
+  }
+  .schem text { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .slider-row label { width: 150px; color: #a6adc8; font-size: 13px; font-weight: bold; }
+  .slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: #89b4fa; }
+  .slider-row input[type=number] {
+    width: 100px; padding: 7px 9px; background: #11111b; color: #f9e2af; font-weight: bold;
+    border: 1px solid #585b70; border-radius: 6px;
+    font-family: Consolas, monospace; font-size: 15px; text-align: right;
+  }
+  .slider-row input[type=number]:disabled { color: #6c7086; }
+  .slider-row .unit { color: #a6adc8; font-size: 13px; font-weight: bold; min-width: 30px; }
+
+  .readout { min-width: 320px; flex: 1; font-size: 15px; }
+  .state-chip {
+    display: inline-block; padding: 5px 16px; border-radius: 6px;
+    font-weight: bold; font-size: 19px; background: #11111b;
+    border: 2px solid #a6adc8; color: #a6adc8; margin-bottom: 10px;
+  }
+  .readout .row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed #45475a; padding: 7px 0; }
+  .readout .row .k { color: #a6adc8; font-size: 14px; }
+  .readout .row .v { font-family: Consolas, monospace; color: #f9e2af; text-align: right; font-size: 16px; }
+  .readout .row .v.big { font-size: 26px; color: #a6e3a1; }
+  .readout .note-dyn { color: #cdd6f4; font-size: 15px; margin-top: 12px; background: #232334; border-radius: 6px; padding: 12px 14px; min-height: 70px; border-left: 3px solid #94e2d5; }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 8px;
+    font-size: 14px; min-width: 560px;
+  }
+  th, td { border: 1px solid #45475a; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item { background: #232334; border-radius: 8px; padding: 12px 14px; border-left: 3px solid #a6e3a1; }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  .warnbox {
+    background: #45302e; color: #fab387; border: 2px solid #fab387;
+    border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+  }
+  .warnbox b { color: #f9e2af; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+
+  #dialNeedle { transition: transform .25s ease; }
+  #nfcWaves path { animation: wave 1.6s ease-out infinite; opacity: 0; }
+  #nfcWaves path:nth-child(2) { animation-delay: .35s; }
+  #nfcWaves path:nth-child(3) { animation-delay: .7s; }
+  @keyframes wave { 0% { opacity: 0; } 30% { opacity: .9; } 100% { opacity: 0; } }
+</style>
+</head>
+<body>
+  <h1>📡 NFC 13.56MHz コイル共振計算機</h1>
+
+  <div class="lead">
+    iPhoneなどのNFCリーダーにかざすと<b>電池なしでLEDが光る</b>、あの回路（LC共振タグ）の設計用計算機。
+    光ることで、<b>iPhoneの読み取りタイミングの確認や、どこから電波（磁界）が出ているのか</b>を確実に確認できます。
+    NFCの搬送波 <b>13.56MHz</b> にコイル＋コンデンサの共振周波数 <b>f = 1/(2π√LC)</b> を合わせるほど、
+    磁界からエネルギーを効率よく拾えて明るく光ります。
+    共振の山は意外とブロードなので、<b>完璧に合っていなくても「だいたい近ければ」光ります</b>。合わせ込むほど明るくなるイメージでOK。
+    <span class="note">※ 計算は目安（±10〜20%）。最後は現物合わせで微調整します。</span>
+  </div>
+
+  <h2>🎛 共振周波数を計算する</h2>
+  <div class="circuit">
+    <div class="pin-box">
+      <div style="flex:1;min-width:320px;">
+        <svg class="schem" viewBox="0 0 560 185" role="img" aria-label="NFC LEDタグの回路図">
+          <!-- iPhone -->
+          <rect x="22" y="30" width="72" height="126" rx="10" fill="#181825" stroke="#585b70" stroke-width="2"/>
+          <rect x="30" y="44" width="56" height="86" rx="3" fill="#1e2433"/>
+          <circle cx="58" cy="143" r="5" fill="none" stroke="#585b70" stroke-width="1.5"/>
+          <text x="58" y="95" text-anchor="middle" fill="#89b4fa" font-size="11" font-weight="bold">iPhone</text>
+          <text x="58" y="20" text-anchor="middle" fill="#a6adc8" font-size="10">NFCリーダー</text>
+          <!-- 磁界の波 -->
+          <g id="nfcWaves" fill="none" stroke="#94e2d5" stroke-width="2">
+            <path d="M 104 73 q 12 20 0 40"/>
+            <path d="M 118 63 q 18 30 0 60"/>
+            <path d="M 132 53 q 24 40 0 80"/>
+          </g>
+          <text x="122" y="165" text-anchor="middle" fill="#94e2d5" font-size="10">13.56MHz 磁界</text>
+          <!-- 並列共振回路: レール -->
+          <line x1="205" y1="45" x2="480" y2="45" stroke="#cdd6f4" stroke-width="2"/>
+          <line x1="205" y1="140" x2="480" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+          <!-- コイル -->
+          <line x1="205" y1="45" x2="205" y2="58" stroke="#cdd6f4" stroke-width="2"/>
+          <path d="M 205 58 a 8 8 0 0 1 0 16 a 8 8 0 0 1 0 16 a 8 8 0 0 1 0 16 a 8 8 0 0 1 0 16" fill="none" stroke="#f9e2af" stroke-width="2.5"/>
+          <line x1="205" y1="122" x2="205" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+          <text id="ccL" x="222" y="90" fill="#f9e2af" font-size="12" font-weight="bold">L = 1.62 µH</text>
+          <text x="222" y="106" fill="#a6adc8" font-size="10">巻いたコイル</text>
+          <!-- コンデンサ -->
+          <line x1="360" y1="45" x2="360" y2="83" stroke="#cdd6f4" stroke-width="2"/>
+          <line x1="342" y1="83" x2="378" y2="83" stroke="#89b4fa" stroke-width="2.5"/>
+          <line x1="342" y1="95" x2="378" y2="95" stroke="#89b4fa" stroke-width="2.5"/>
+          <line x1="360" y1="95" x2="360" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+          <text id="ccC" x="386" y="86" fill="#89b4fa" font-size="12" font-weight="bold">C = 82 pF</text>
+          <text x="386" y="102" fill="#a6adc8" font-size="10">NP0/C0G推奨</text>
+          <!-- LED -->
+          <line x1="480" y1="45" x2="480" y2="75" stroke="#cdd6f4" stroke-width="2"/>
+          <polygon points="468,75 492,75 480,97" fill="none" stroke="#f38ba8" stroke-width="2.5"/>
+          <line x1="468" y1="97" x2="492" y2="97" stroke="#f38ba8" stroke-width="2.5"/>
+          <line x1="480" y1="97" x2="480" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+          <line x1="494" y1="66" x2="504" y2="56" stroke="#f38ba8" stroke-width="2"/>
+          <polygon points="504,56 497,58 502,63" fill="#f38ba8"/>
+          <line x1="500" y1="76" x2="510" y2="66" stroke="#f38ba8" stroke-width="2"/>
+          <polygon points="510,66 503,68 508,73" fill="#f38ba8"/>
+          <text x="480" y="158" text-anchor="middle" fill="#f38ba8" font-size="11">LED（整流も兼ねる）</text>
+        </svg>
+        <svg class="schem" viewBox="0 0 560 120" role="img" aria-label="共振周波数ダイヤル">
+          <text x="14" y="20" fill="#a6adc8" font-size="11">共振周波数（5〜30MHz）</text>
+          <!-- 目標帯 13.56±5% -->
+          <rect x="187.6" y="52" width="27.2" height="16" rx="3" fill="#a6e3a1" fill-opacity="0.25"/>
+          <line x1="201.2" y1="40" x2="201.2" y2="80" stroke="#a6e3a1" stroke-width="2"/>
+          <text x="201.2" y="36" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">🎯 13.56</text>
+          <!-- 軸 -->
+          <line x1="30" y1="60" x2="530" y2="60" stroke="#585b70" stroke-width="2"/>
+          <g stroke="#585b70" stroke-width="1.5">
+            <line x1="30" y1="55" x2="30" y2="65"/><line x1="130" y1="55" x2="130" y2="65"/>
+            <line x1="230" y1="55" x2="230" y2="65"/><line x1="330" y1="55" x2="330" y2="65"/>
+            <line x1="430" y1="55" x2="430" y2="65"/><line x1="530" y1="55" x2="530" y2="65"/>
+          </g>
+          <g fill="#585b70" font-size="10" text-anchor="middle">
+            <text x="30" y="80">5</text><text x="130" y="80">10</text><text x="230" y="80">15</text>
+            <text x="330" y="80">20</text><text x="430" y="80">25</text><text x="530" y="80">30 MHz</text>
+          </g>
+          <!-- 針 -->
+          <g id="dialNeedle" transform="translate(201,0)">
+            <polygon points="0,58 -7,44 7,44" fill="#f38ba8"/>
+            <line x1="0" y1="58" x2="0" y2="66" stroke="#f38ba8" stroke-width="2.5"/>
+          </g>
+          <text id="dialTxt" x="280" y="108" text-anchor="middle" fill="#f9e2af" font-size="16" font-weight="bold" font-family="Consolas, monospace">13.80 MHz</text>
+        </svg>
+      </div>
+      <div class="readout">
+        <span class="state-chip" id="rChip">◎ ドンピシャ</span>
+        <div class="row"><span class="k">コイルのインダクタンス L</span><span class="v" id="rL">1.62 µH</span></div>
+        <div class="row"><span class="k">共振周波数 f</span><span class="v big" id="rF">13.80 MHz</span></div>
+        <div class="row"><span class="k">13.56MHzとのズレ</span><span class="v" id="rDiff">+1.8 %</span></div>
+        <div class="row"><span class="k">このコイルを13.56MHzにするC</span><span class="v" id="rCfor">84.9 pF</span></div>
+        <div class="row"><span class="k">このCに必要なL（参考）</span><span class="v" id="rLfor">1.68 µH</span></div>
+        <div class="row"><span class="k">このC・直径で13.56MHzにする巻き数</span><span class="v" id="rNfor">3.0 回</span></div>
+        <div class="row"><span class="k">銅線の長さ ≈ π×直径×巻き数</span><span class="v" id="rWire">47.1 cm</span></div>
+        <div class="note-dyn" id="rNote"></div>
+      </div>
+    </div>
+
+    <div class="slider-row" style="margin-top:14px;">
+      <label for="inD">コイルの直径</label>
+      <input type="range" id="inD" min="5" max="60" step="0.5" value="34">
+      <input type="number" id="numD" value="34" min="1" max="200" step="any"><span class="unit">mm</span>
+    </div>
+    <div class="slider-row">
+      <label for="inN">巻き数</label>
+      <input type="range" id="inN" min="1" max="20" step="1" value="3">
+      <input type="number" id="numN" value="3" min="1" max="100" step="1"><span class="unit">回</span>
+    </div>
+    <div class="slider-row">
+      <label for="inW">線径（銅線の太さ）</label>
+      <input type="range" id="inW" min="0.1" max="1.2" step="0.01" value="0.4">
+      <input type="number" id="numW" value="0.4" min="0.02" max="3" step="any"><span class="unit">mm</span>
+    </div>
+    <div class="slider-row">
+      <label for="numL">コイルの長さ（巻き幅）</label>
+      <label style="width:auto;display:flex;align-items:center;gap:6px;font-weight:normal;">
+        <input type="checkbox" id="autoL" checked> 密着巻きで自動（巻き数×線径）
+      </label>
+      <input type="number" id="numL" value="1.2" min="0.1" max="100" step="any" disabled><span class="unit">mm</span>
+    </div>
+    <div class="slider-row">
+      <label for="inC">コンデンサ C</label>
+      <input type="range" id="inC" min="10" max="470" step="1" value="220">
+      <input type="number" id="numC" value="220" min="1" max="10000" step="any"><span class="unit">pF</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <span class="note" style="margin:0;">C（E12系列）:</span>
+      <button class="btn" data-c="10">10p</button>
+      <button class="btn" data-c="15">15p</button>
+      <button class="btn" data-c="22">22p</button>
+      <button class="btn" data-c="33">33p</button>
+      <button class="btn" data-c="47">47p</button>
+      <button class="btn" data-c="68">68p</button>
+      <button class="btn" data-c="82">82p</button>
+      <button class="btn" data-c="100">100p</button>
+      <button class="btn" data-c="120">120p</button>
+      <button class="btn" data-c="150">150p</button>
+      <button class="btn" data-c="180">180p</button>
+      <button class="btn" data-c="220">220p</button>
+      <button class="btn" data-c="270">270p</button>
+      <button class="btn" data-c="330">330p</button>
+      <button class="btn" data-c="390">390p</button>
+      <button class="btn" data-c="470">470p</button>
+      <span class="note" style="margin:0 0 0 12px;">レシピ:</span>
+      <button class="btn" data-r="34,3,0.4,220">デフォルト 34mm</button>
+      <button class="btn" data-r="25,6,0.4,82">定番 25mm</button>
+      <button class="btn" data-r="15,9,0.29,68">小型 15mm</button>
+      <button class="btn" data-r="40,5,0.5,68">大型 40mm</button>
+      <button class="btn" id="urlCopy" style="margin-left:12px;">🔗 設定URLをコピー</button>
+    </div>
+  </div>
+
+  <h2>📋 定番レシピ（そのまま作れる組み合わせ）</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>直径</th><th>巻き数</th><th>線径</th><th>C</th><th>計算f</th><th>銅線の目安</th><th>ひとこと</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">15 mm</td><td class="mono">9</td><td class="mono">0.29 mm</td><td class="mono">68 pF</td><td class="mono">≈13.9 MHz</td><td class="mono">約42 cm</td><td>ネイルチップやお守りに入る小型サイズ</td></tr>
+        <tr><td class="mono">25 mm</td><td class="mono">6</td><td class="mono">0.4 mm</td><td class="mono">82 pF</td><td class="mono">≈13.8 MHz</td><td class="mono">約47 cm</td><td>一番作りやすい定番。単3電池に巻くとほぼこの径</td></tr>
+        <tr><td class="mono">30 mm</td><td class="mono">5</td><td class="mono">0.4 mm</td><td class="mono">100 pF</td><td class="mono">≈13.3 MHz</td><td class="mono">約47 cm</td><td>500mLペットボトルのキャップよりひと回り大きい</td></tr>
+        <tr><td class="mono">34 mm</td><td class="mono">3</td><td class="mono">0.4 mm</td><td class="mono">220 pF</td><td class="mono">≈13.6 MHz</td><td class="mono">約32 cm</td><td>巻き数少なめで作りやすい（このページの初期値）</td></tr>
+        <tr><td class="mono">40 mm</td><td class="mono">5</td><td class="mono">0.5 mm</td><td class="mono">68 pF</td><td class="mono">≈13.9 MHz</td><td class="mono">約63 cm</td><td>拾える磁束が多く明るくなりやすい</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">※ いずれも計算値。実物は±10%程度ずれるので、光りが弱ければCを1段上下（E12系列）して一番明るい組み合わせを探す。</p>
+
+  <h2>🛠 作り方（電池レスNFC LED）</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">① コイルを巻く</div><div class="a">ポリウレタン線（UEW線）を丸い型（電池・ボトルキャップ・ペン等）に <b style="color:#cdd6f4;">目標の直径・巻き数</b> で巻き、テープや瞬間接着剤で固定。両端の被膜をはんだごて・やすりで剥がす。</div></div>
+    <div class="guide-item"><div class="q">② C と LED を並列につなぐ</div><div class="a">コイルの両端に<b style="color:#cdd6f4;">セラミックコンデンサとLEDを並列</b>にはんだ付けするだけ。極性はどちらでもOK（LEDは半周期だけ光る）。<b style="color:#cdd6f4;">LEDを2個逆並列</b>にすると両半周期で光り、LEDの逆電圧保護にもなる。</div></div>
+    <div class="guide-item"><div class="q">③ iPhoneでかざして確認</div><div class="a">iPhone（XS以降）は<b style="color:#cdd6f4;">背面上部にNFCアンテナ</b>がある。ロック画面でのバックグラウンド読み取りや、ショートカットの「NFCタグをスキャン」、Suica読み取りアプリなどでNFCを動かした状態で近づける。</div></div>
+    <div class="guide-item"><div class="q">④ 明るさで微調整</div><div class="a">暗い・光らない → <b style="color:#cdd6f4;">Cを1段ずつ変えて一番明るい値を探す</b>のが実戦的。コイル側は巻き数±1で大きく動く。位置も重要（アンテナの真上あたりを探す）。</div></div>
+  </div>
+
+  <h2>💡 LEDの選び方（色でVfが違う）</h2>
+  <p class="note">拾える電圧は限られているので、<b style="color:#cdd6f4;">順方向電圧（Vf）の低い色ほど光りやすい</b>。まずは赤で成功させてから他の色へ。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>色</th><th>Vfの目安</th><th>光りやすさ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>赤</td><td class="mono">1.8〜2.2 V</td><td>◎ いちばん光りやすい定番。まずはこれ</td></tr>
+        <tr><td>橙・黄</td><td class="mono">2.0〜2.2 V</td><td>◎ 赤に次いで有利</td></tr>
+        <tr><td>黄緑（従来型）</td><td class="mono">2.0〜2.2 V</td><td>○ 昔ながらの黄緑はVfが低い</td></tr>
+        <tr><td>純緑・青・白</td><td class="mono">2.9〜3.4 V</td><td>△ 電圧が届きにくく暗くなりがち。結合を強く（密着）すれば可</td></tr>
+        <tr><td>UV（紫外）</td><td class="mono">3.2〜3.8 V</td><td>△〜✕ いちばん不利</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pin-box" style="background:#181825;border:1px solid #45475a;border-radius:10px;padding:16px 18px;">
+    <svg class="schem" style="max-width:380px;flex:1;margin-bottom:0;" viewBox="0 0 380 160" role="img" aria-label="LED2個の逆並列接続">
+      <line x1="60" y1="30" x2="290" y2="30" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="60" y1="130" x2="290" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="60" y1="30" x2="60" y2="42" stroke="#cdd6f4" stroke-width="2"/>
+      <path d="M 60 42 a 7 7 0 0 1 0 14 a 7 7 0 0 1 0 14 a 7 7 0 0 1 0 14 a 7 7 0 0 1 0 14" fill="none" stroke="#f9e2af" stroke-width="2.5"/>
+      <line x1="60" y1="112" x2="60" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="76" y="84" fill="#f9e2af" font-size="11" font-weight="bold">コイル</text>
+      <!-- 共振用コンデンサ -->
+      <line x1="138" y1="30" x2="138" y2="70" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="122" y1="70" x2="154" y2="70" stroke="#89b4fa" stroke-width="2.5"/>
+      <line x1="122" y1="82" x2="154" y2="82" stroke="#89b4fa" stroke-width="2.5"/>
+      <line x1="138" y1="82" x2="138" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="138" y="103" text-anchor="middle" fill="#89b4fa" font-size="11" font-weight="bold">C</text>
+      <!-- LED1 下向き -->
+      <line x1="200" y1="30" x2="200" y2="58" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon points="189,58 211,58 200,78" fill="none" stroke="#f38ba8" stroke-width="2.5"/>
+      <line x1="189" y1="78" x2="211" y2="78" stroke="#f38ba8" stroke-width="2.5"/>
+      <line x1="200" y1="78" x2="200" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- LED2 上向き -->
+      <line x1="290" y1="30" x2="290" y2="58" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="279" y1="58" x2="301" y2="58" stroke="#f38ba8" stroke-width="2.5"/>
+      <polygon points="279,78 301,78 290,58" fill="none" stroke="#f38ba8" stroke-width="2.5"/>
+      <line x1="290" y1="78" x2="290" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="220" y="152" text-anchor="middle" fill="#f38ba8" font-size="11">コイル・C・LED2個（向きを互い違いに）をぜんぶ並列</text>
+    </svg>
+    <div style="font-size:14px;flex:1;min-width:240px;">
+      <b style="color:#f38ba8;">おすすめ：LED2個の逆並列</b><br>
+      誘導電圧は交流なので、向きを互い違いにした2個を並列にすると<b style="color:#cdd6f4;">両方の半周期で光り（明るさ約2倍）</b>、
+      さらに<b style="color:#cdd6f4;">お互いが逆電圧のクランプになってLEDを保護</b>できる。1個でも動くが、2個構成が定番。
+    </div>
+  </div>
+
+  <h2>🎯 チューニングの方向</h2>
+  <p class="note"><b style="color:#a6e3a1;">まず前提：完璧じゃなくても光ります。</b>±5〜10%ずれていても案外光ることが多い（結合が強い＝ほぼ密着なら特に）。
+  「もっと明るくしたい」「距離を伸ばしたい」ときに、以下の方向で追い込みます。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>状態</th><th>原因</th><th>対処</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>f が 13.56MHz より<b>高い</b></td><td>L か C が小さい</td><td><b>Cを1段大きく</b>（例: 82p→100p）／巻き数を1増やす</td></tr>
+        <tr><td>f が 13.56MHz より<b>低い</b></td><td>L か C が大きい</td><td><b>Cを1段小さく</b>（例: 100p→82p）／巻き数を1減らす</td></tr>
+        <tr><td>合ってるはずなのに暗い</td><td>結合が弱い／Q が低い</td><td>コイル位置をアンテナ直上に。直径を大きく。細すぎる線を太めに（0.3〜0.5mm）</td></tr>
+        <tr><td>全く光らない</td><td>断線・被膜剥がし忘れが大半</td><td>被膜（ポリウレタン）はテスター導通で確認。LEDの向きは関係なし</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>🔬 実測とキャリブレーション</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">NanoVNAで共振点を見る（本命）</div><div class="a">1〜2巻きのプローブコイル（カップリングループ）をNanoVNAにつなぎ、タグに近づけて<b style="color:#cdd6f4;">S11を見ると共振周波数にディップ</b>が出る。数千円で買える測定器としては最強の答え合わせ。</div></div>
+    <div class="guide-item"><div class="q">既知のCでLを逆算</div><div class="a">LCメーターがなくても、精度の良いC（NP0の±5%品など）と組み合わせて共振fを測れば <code>L = 1/((2πf)²C)</code> で手巻きコイルの実力値が分かる。以後はその実測Lで設計できる。</div></div>
+    <div class="guide-item"><div class="q">E12総当たり（理屈抜きの実戦法）</div><div class="a">ワニ口クリップやソケットでCを差し替えながら、<b style="color:#cdd6f4;">いちばん明るい／いちばん遠くで光る値</b>を採用する。このページの計算値の前後2〜3個を試せば十分見つかる。</div></div>
+    <div class="guide-item"><div class="q">スマホだけで調整</div><div class="a"><b style="color:#cdd6f4;">反応する距離</b>を目安にする（距離が伸びる＝共振が合ってきている）。タグをiPhone背面の上でゆっくり動かし、いちばん光る位置＝アンテナ位置も同時に把握できる。</div></div>
+  </div>
+
+  <h2>🖨 プリント基板のスパイラルコイルで作る場合</h2>
+  <p class="note">SMDで基板化するなら、コイルも<b style="color:#cdd6f4;">銅箔パターンの渦巻き</b>で作れます。平面スパイラル用のMohan近似（電流シート法）で計算します。</p>
+  <div class="circuit">
+    <svg class="schem" style="max-width:460px;" viewBox="0 0 460 170" role="img" aria-label="スパイラルコイルの形状見本（四角・八角形・円形）">
+      <g transform="translate(20,15)">
+        <path d="M 10 10 H 110 V 110 H 20 V 30 H 90 V 90 H 40 V 50 H 70" fill="none" stroke="#fab387" stroke-width="4" stroke-linecap="round"/>
+        <text x="60" y="140" text-anchor="middle" fill="#a6adc8" font-size="12">四角スパイラル</text>
+      </g>
+      <g transform="translate(170,15)">
+        <path d="M 112 60 L 94.8 94.8 L 60 106.4 L 29.2 90.8 L 19.2 60 L 33.1 33.1 L 60 24.8 L 82.9 37.1 L 89.6 60 L 79 79 L 60 84 L 45 75 L 41.6 60 L 49 49 L 60 47.2 L 67.1 52.9" fill="none" stroke="#fab387" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="60" y="140" text-anchor="middle" fill="#a6adc8" font-size="12">八角形スパイラル</text>
+      </g>
+      <g transform="translate(320,15)">
+        <path d="M 112 60 A 52 52 0 0 1 8 60 A 44 44 0 0 1 96 60 A 36 36 0 0 1 24 60 A 28 28 0 0 1 80 60" fill="none" stroke="#fab387" stroke-width="4" stroke-linecap="round"/>
+        <text x="60" y="140" text-anchor="middle" fill="#a6adc8" font-size="12">円形スパイラル</text>
+      </g>
+      <text x="230" y="165" text-anchor="middle" fill="#585b70" font-size="10">銅箔パターンを渦巻き状に引く（オレンジ＝銅箔）</text>
+    </svg>
+    <div class="slider-row" style="margin-top:0;">
+      <label for="spShape">パターン形状</label>
+      <select id="spShape" style="padding:7px 9px;background:#11111b;color:#cdd6f4;border:1px solid #585b70;border-radius:6px;font-family:Consolas,monospace;font-size:14px;">
+        <option value="sq" selected>四角スパイラル（作りやすい定番）</option>
+        <option value="oct">八角形スパイラル</option>
+        <option value="cir">円形スパイラル</option>
+      </select>
+    </div>
+    <div class="slider-row">
+      <label>外径</label>
+      <input type="number" id="spDout" value="34" min="2" step="any"><span class="unit">mm</span>
+      <label style="width:auto;">巻き数</label>
+      <input type="number" id="spN" value="4" min="1" step="1"><span class="unit">回</span>
+    </div>
+    <div class="slider-row">
+      <label>パターン幅</label>
+      <input type="number" id="spW" value="1" min="0.05" step="any"><span class="unit">mm</span>
+      <label style="width:auto;">パターン間隔</label>
+      <input type="number" id="spS" value="0.5" min="0.05" step="any"><span class="unit">mm</span>
+    </div>
+    <div class="slider-row">
+      <label>コンデンサ C</label>
+      <input type="number" id="spC" value="150" min="1" step="any"><span class="unit">pF</span>
+    </div>
+    <div class="readout" style="max-width:640px;">
+      <span class="state-chip" id="spChip">◎</span>
+      <div class="row"><span class="k">内径（自動計算）</span><span class="v" id="spDin">-</span></div>
+      <div class="row"><span class="k">インダクタンス L</span><span class="v" id="spL">-</span></div>
+      <div class="row"><span class="k">共振周波数 f</span><span class="v big" id="spF">-</span></div>
+      <div class="row"><span class="k">13.56MHzとのズレ</span><span class="v" id="spDiff">-</span></div>
+      <div class="row"><span class="k">13.56MHzにするC</span><span class="v" id="spCfor">-</span></div>
+    </div>
+    <p class="note">※ 内径 = 外径 − 2×(巻き数×パターン幅 + (巻き数−1)×間隔)。基板は寄生容量が乗りやすいので、<b style="color:#cdd6f4;">Cは計算値よりやや小さめから</b>試すのがコツ。1.6mm両面板なら裏面のベタは共振エリアから抜くこと。</p>
+  </div>
+
+  <div class="warnbox">
+    ⚠ <b>部品と精度の注意</b><br>
+    ・コンデンサは<b>セラミックの NP0/C0G 特性</b>（温度で容量が変わらない）が最適。積層セラミックの高誘電率系（X7R等）でも動くが、ずれやすい。<br>
+    ・この計算（Wheeler近似）は<b>±10〜20%の目安</b>。巻きの密着度・寄生容量・近くの金属や手でも共振はずれる。<br>
+    ・LEDは<b>Vfの低い赤色</b>が一番光りやすい（青・白はVfが高く不利）。<br>
+    ・これは「LEDが光るだけのLC回路」で、<b>NFCタグとしての通信機能はありません</b>（リーダーの搬送波エネルギーを拾っているだけ）。
+  </div>
+
+  <h2>💡 なぜ電池なしで光るのか</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">① 電磁誘導</div><div class="a">NFCリーダーはアンテナコイルに13.56MHzの電流を流し、<b style="color:#cdd6f4;">交流磁界</b>を出している。手作りコイルがその磁界の中に入ると、変圧器の二次側のように<b style="color:#cdd6f4;">誘導電圧</b>が発生する（ワイヤレス給電と同じ原理）。</div></div>
+    <div class="guide-item"><div class="q">② 共振で電圧が跳ね上がる</div><div class="a">コイル単体で拾える電圧はわずかだが、<b style="color:#cdd6f4;">LとCの共振周波数を13.56MHzに合わせる</b>と、ブランコを揺らすタイミングが合ったときのようにエネルギーが蓄積し、電圧が<b style="color:#cdd6f4;">Q倍（数倍〜数十倍）</b>に増幅されてLEDのVfを超える。</div></div>
+    <div class="guide-item"><div class="q">③ LEDが整流も兼ねる</div><div class="a">誘導電圧は13.56MHzの交流だが、LED自体がダイオードなので<b style="color:#cdd6f4;">順方向の半周期だけ電流が流れて発光</b>する。1600万回/秒の点滅なので目には連続点灯に見える。</div></div>
+    <div class="guide-item"><div class="q">市販品も同じ原理</div><div class="a">「NFCネイルシール」「光るICカードステッカー」はこの回路をフィルム上に印刷したもの。改札やスマホ決済でカードが光るのは、リーダーの磁界を拾っているから。</div></div>
+  </div>
+
+  <h2>📻 豆知識：身近にある電波・電磁波の周波数マップ</h2>
+  <p class="note">13.56MHzが電波の世界のどのへんにいるのか、身の回りのものと並べてみると位置づけが分かります（周波数の低い順）。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>周波数</th><th>身近なもの</th><th>ひとこと</th><th>LEDを光らせられる？</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">40 / 60 kHz</td><td>電波時計（JJY標準電波）</td><td>福島と九州の送信所から全国の時計へ。時計側は受信するだけ</td><td>✕ 数百km先からの微弱電波。時刻を読み取るので精一杯</td></tr>
+        <tr><td class="mono">20〜100 kHz</td><td>IH調理器</td><td>磁界で鍋そのものを発熱させる「加熱に全振りした無線給電」</td><td>◎ 原理的には余裕…だが強力すぎて部品が焼けるレベル。鍋検知で動かない機種も（危険なので非推奨）</td></tr>
+        <tr><td class="mono">110〜205 kHz</td><td>Qiワイヤレス充電</td><td>スマホを置くと磁界結合で5〜15Wを伝送。原理はNFC LEDと同じ仲間</td><td>○ 光る。「相手いる？」の確認パルスに同期してチカチカ点滅する</td></tr>
+        <tr><td class="mono">526.5〜1606.5 kHz</td><td>AMラジオ</td><td>波が長く、山を越えて遠くまで届く</td><td>△ 送信所のすぐ近くの強電界なら可能性あり。普通の場所ではµW級で無理</td></tr>
+        <tr style="outline:2px solid #a6e3a1;"><td class="mono"><b>13.56 MHz</b></td><td><b>🎯 NFC・FeliCa・交通系IC（このページ）</b></td><td>磁界結合。かざす距離（数cm）専用。世界共通のISMバンド</td><td><b>◎ まさにこのページ。かざせば数mW拾えて光る</b></td></tr>
+        <tr><td class="mono">76〜95 MHz</td><td>FMラジオ</td><td>音質のよい近距離放送。ワイドFM込み</td><td>✕ 拾えるのはµW以下</td></tr>
+        <tr><td class="mono">470〜710 MHz</td><td>地上デジタルTV</td><td>UHF帯。屋根の魚の骨アンテナ（八木アンテナ）で受ける</td><td>✕ 同じくµW以下</td></tr>
+        <tr><td class="mono">920 MHz帯</td><td>物流用RFIDタグ・LPWA</td><td>アパレルのタグやセルフレジ。NFCと違い数m先から一括で読める</td><td>○ リーダーの近くなら光る。実際にLED付きRFIDタグが市販されている</td></tr>
+        <tr><td class="mono">約1.5 GHz</td><td>GPS</td><td>2万km上空の衛星からの超微弱電波を受信（受け取るだけ）</td><td>✕ 届くのは10⁻¹⁶W級。桁が12個くらい足りない</td></tr>
+        <tr><td class="mono">2.4 GHz</td><td>Wi-Fi・Bluetooth・<b>電子レンジ</b></td><td>免許不要のISMバンドに同居。レンジ稼働中にWi-Fiが遅くなるのは同じ帯域だから</td><td>△ Wi-Fiでは無理（µW級）。電子レンジは<b>稼働中の本体近くの漏れ電波</b>で光る場合がある（ただしこの周波数ではコイルではなく<b>ダイポール等のアンテナ形状</b>が必要）。庫内に入れるのは壊れる＆危険で絶対NG</td></tr>
+        <tr><td class="mono">5〜6 GHz</td><td>Wi-Fi（5GHz帯・6E）</td><td>速いが壁に弱い。レンジと干渉しないのが利点</td><td>✕ µW級で無理</td></tr>
+        <tr><td class="mono">28 GHz</td><td>5G ミリ波</td><td>超高速だが障害物にとても弱い。基地局のすぐ近く専用</td><td>✕ そもそも電波がほぼ届かない</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">※ 周波数が低いほど「遠くまで届く・情報量が少ない」、高いほど「情報量が多い・障害物に弱い」のが大まかな傾向。</p>
+
+  <h2>🤓 こぼれ話：共振タグの裏側</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">このタグはSuicaの妨害もできてしまう</div><div class="a">このLC回路を交通系ICカードに重ねると、リーダーの磁界エネルギーを<b style="color:#cdd6f4;">共振で横取り</b>して、カードに届く電力が減り読み取りエラーになることがある。「カード2枚重ねでエラー」や「電磁波干渉防止シート」と同じ理屈。<b style="color:#fab387;">改札で試すのは迷惑なのでNG</b>。</div></div>
+    <div class="guide-item"><div class="q">なぜ「だいたい」で光るのか（Q値）</div><div class="a">共振の山の幅は <code>f ÷ Q</code>。このタグのQはせいぜい10〜30なので山の幅は±数%あり、多少ずれても山の中腹に乗れる。しかも<b style="color:#cdd6f4;">LEDが導通すると負荷でQが下がって山がさらに広がる</b>ので、実際はもっと寛容。Qが高いほど鋭く明るいがシビアになる、というトレードオフ。</div></div>
+  </div>
+
+  <h2>⚡ コラム：無線給電と消費電力のはなし</h2>
+  <p class="note">送信側の電源が入って動作している前提で、<b style="color:#cdd6f4;">受け取り側がいない時</b>と<b style="color:#cdd6f4;">いる時</b>で消費電力がどう変わるかの目安。
+  「相手がいないと送らない賢い組」と「相手に関係なく出しっぱなしの組」に分かれます。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>機器（動作中）</th><th>送っている時（受け取り側なし）</th><th>送っている時（受け取り側あり）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>NFCリーダー（スマホ・読み取り中）</td><td class="mono">数百mW（タグを探して磁界を出す）</td><td class="mono">ほぼ同じ＋タグが吸う数mW分だけ増える</td></tr>
+        <tr><td>Qiワイヤレス充電器</td><td class="mono">0.1〜0.5W（確認パルスのみ・本送電しない）</td><td class="mono">5〜15W ＋損失2〜3割（要求された分だけ送る）</td></tr>
+        <tr><td>Wi-Fiルーター</td><td class="mono">5〜10W（誰もいなくてもビーコン送信・回路が常時稼働）</td><td class="mono">ほぼ同じ（通信量で少し増える程度）</td></tr>
+        <tr><td>電子レンジ（運転中）</td><td class="mono">1000〜1500W（食品なしでも同じだけ消費。行き場のないマイクロ波が跳ね返って自分を傷める＝空焚きNGの理由）</td><td class="mono">1000〜1500W（うち500〜1000Wが食品に吸収される）</td></tr>
+        <tr><td>IH調理器</td><td class="mono">ほぼ0（鍋検知が働いて発振しない）</td><td class="mono">1000〜3000W（磁界で鍋を直接発熱）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">賢い組：受け手がいないと送らない（Qi・IH）</div><div class="a">Qiは<b style="color:#cdd6f4;">「誰かいる？」の確認パルス</b>を間欠的に出すだけで、受信側の応答があって初めて本送電する。IHも鍋検知で鍋がなければ発振しない。だから<b style="color:#cdd6f4;">置きっぱなしのQi充電器はほぼ電気を食わない</b>。さらにQiは受信側が「もっと欲しい／足りてる」をフィードバックし、<b style="color:#cdd6f4;">必要な分だけ</b>送信電力を調整する（異物検出で金属だけなら送電停止）。</div></div>
+    <div class="guide-item"><div class="q">出しっぱなし組：受け手に関係なく同じだけ出す（NFC・Wi-Fi・レンジ）</div><div class="a">NFCリーダーは読み取り中、タグがいてもいなくても<b style="color:#cdd6f4;">同じ磁界を出し続ける</b>。Wi-Fiルーターも誰もいなくてもビーコンを送信し続け、消費のほとんどは電波でなく<b style="color:#cdd6f4;">常時動いている回路</b>（電波出力自体は最大0.1W程度）。差が出るのは<b style="color:#cdd6f4;">「受け手が吸った分」だけ</b>。電子レンジも同じだけ出すが、吸ってくれる食品がないと反射波が戻ってマグネトロンを傷める。</div></div>
+    <div class="guide-item"><div class="q">磁界結合 vs 電波通信</div><div class="a">NFC・Qi・IHは<b style="color:#cdd6f4;">磁界結合</b>：トランスの片割れ同士のような関係で、<b style="color:#cdd6f4;">近距離ならW級のエネルギー</b>を効率よく渡せる（そのかわり数cm〜数mmしか届かない）。Wi-FiやBluetoothは<b style="color:#cdd6f4;">電波</b>：遠くまで届くが目的は情報伝達で、距離とともにエネルギーは急激に薄まり、離れた場所で拾えるのは<b style="color:#cdd6f4;">µW級</b>。遠距離ワイヤレス給電が難しいのはこのため。</div></div>
+    <div class="guide-item"><div class="q">このLEDタグが拾っているのは</div><div class="a">リーダーの磁界からの<b style="color:#cdd6f4;">数mW</b>（＝リーダーから見ると「受け手が吸った分」のわずかな増加）。本物のNFCタグは、拾った電力で動きつつ<b style="color:#cdd6f4;">自分の負荷をわざと変える（負荷変調）</b>ことでリーダーに情報を返している。「電力を拾う」と「通信する」が同じコイルで同時に起きているのがNFCの面白いところ。</div></div>
+  </div>
+
+  <h2>📐 計算式</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">共振周波数</div><div class="a"><code>f = 1 / (2π√(LC))</code><br>L：コイルのインダクタンス、C：コンデンサ容量。</div></div>
+    <div class="guide-item"><div class="q">コイルのL（Wheeler近似）</div><div class="a"><code>L[µH] = r²N² / (228.6r + 254ℓ)</code><br>r：半径mm、N：巻き数、ℓ：巻き幅mm。単層空芯コイルの実用近似式。</div></div>
+    <div class="guide-item"><div class="q">13.56MHzに合わせるC</div><div class="a"><code>C = 1 / ((2π×13.56MHz)² × L)</code><br>コイルを先に巻いて、この計算値に近いE12系列のCを選ぶのが楽。</div></div>
+    <div class="guide-item"><div class="q">PCBスパイラルのL（Mohan近似）</div><div class="a"><code>L = (µ₀n²d_avg·c₁/2)(ln(c₂/ρ)+c₃ρ+c₄ρ²)</code><br>d_avg=(外径+内径)/2、ρ=(外径−内径)/(外径+内径)。係数c₁〜c₄は形状（四角/八角/円）で変わる。</div></div>
+  </div>
+
+  <footer>
+    計算は単層空芯コイルのWheeler近似によるおおよその目安です。実際の共振は寄生成分・巻き方・周囲の影響でずれるため、現物合わせで調整してください。<br>
+    関連ページ: <a href="ohmGuide.html">オームの法則</a> ／ <a href="diodeGuide.html">ダイオード早見表</a> ／ <a href="ampWattGuide.html">電流・電力ものさし</a><br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — nfcCoilCalc.html
+  </footer>
+
+<script>
+  const byId = id => document.getElementById(id);
+  const F0 = 13.56e6;
+
+  const fmtL = h => {   // H → 表示
+    const uH = h * 1e6;
+    if (uH >= 1) return uH.toPrecision(3) + ' µH';
+    return (uH * 1000).toPrecision(3) + ' nH';
+  };
+  const fmtC = f => {   // F → 表示
+    const pF = f * 1e12;
+    if (pF >= 1000) return (pF / 1000).toPrecision(3) + ' nF';
+    return pF.toPrecision(3) + ' pF';
+  };
+  const fmtF = hz => {
+    if (hz >= 1e6) return (hz / 1e6).toPrecision(4) + ' MHz';
+    return (hz / 1e3).toPrecision(3) + ' kHz';
+  };
+
+  /* range⇔number の双方向同期（numberが真の値） */
+  function pair(rangeId, numId) {
+    const r = byId(rangeId), n = byId(numId);
+    r.addEventListener('input', () => { n.value = r.value; updAll(); });
+    n.addEventListener('input', () => {
+      const v = parseFloat(n.value);
+      if (!isNaN(v)) { r.value = Math.min(parseFloat(r.max), Math.max(parseFloat(r.min), v)); updAll(); }
+    });
+  }
+  pair('inD', 'numD');
+  pair('inN', 'numN');
+  pair('inW', 'numW');
+  pair('inC', 'numC');
+  byId('numL').addEventListener('input', updAll);
+  byId('autoL').addEventListener('change', () => {
+    byId('numL').disabled = byId('autoL').checked;
+    updAll();
+  });
+  document.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
+    byId('numC').value = b.dataset.c;
+    byId('inC').value = b.dataset.c;
+    updAll();
+  }));
+  document.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
+    const [d, n, w, c] = b.dataset.r.split(',');
+    byId('numD').value = d; byId('inD').value = d;
+    byId('numN').value = n; byId('inN').value = n;
+    byId('numW').value = w; byId('inW').value = w;
+    byId('numC').value = c; byId('inC').value = c;
+    byId('autoL').checked = true; byId('numL').disabled = true;
+    updAll();
+  }));
+
+  function updAll() {
+    const D = parseFloat(byId('numD').value);   // mm
+    const N = parseFloat(byId('numN').value);
+    const dw = parseFloat(byId('numW').value);  // mm
+    const Cp = parseFloat(byId('numC').value);  // pF
+    if ([D, N, dw, Cp].some(v => isNaN(v) || v <= 0)) return;
+
+    // 巻き幅
+    let l = byId('autoL').checked ? N * dw : parseFloat(byId('numL').value);
+    if (byId('autoL').checked) byId('numL').value = +l.toPrecision(3);
+    if (isNaN(l) || l <= 0) return;
+
+    // Wheeler近似（単層空芯）: L[µH] = r²N²/(228.6r + 254ℓ)  r,ℓ:mm
+    const r = D / 2;
+    const L = (r * r * N * N) / (228.6 * r + 254 * l) * 1e-6; // H
+    const C = Cp * 1e-12; // F
+
+    const f = 1 / (2 * Math.PI * Math.sqrt(L * C));
+    const diff = (f - F0) / F0 * 100;
+    const cFor = 1 / (Math.pow(2 * Math.PI * F0, 2) * L);
+    const lFor = 1 / (Math.pow(2 * Math.PI * F0, 2) * C);
+    const wireMm = Math.PI * D * N;
+
+    byId('rL').textContent = fmtL(L);
+    byId('rF').textContent = fmtF(f);
+    byId('rDiff').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(1) + ' %';
+    byId('rCfor').textContent = fmtC(cFor);
+    byId('rLfor').textContent = fmtL(lFor);
+    // このC・直径で13.56MHzにする巻き数（密着巻きなら ℓ=N×線径 を織り込んで2次方程式で解く）
+    const LtU = lFor * 1e6; // 目標L [µH]
+    let nIdeal;
+    if (byId('autoL').checked) {
+      const bq = LtU * 254 * dw, cq = LtU * 228.6 * r;
+      nIdeal = (bq + Math.sqrt(bq * bq + 4 * r * r * cq)) / (2 * r * r);
+    } else {
+      nIdeal = Math.sqrt(LtU * (228.6 * r + 254 * l)) / r;
+    }
+    byId('rNfor').textContent = nIdeal.toFixed(1) + ' 回';
+    byId('rWire').textContent = (wireMm / 10).toFixed(1) + ' cm';
+
+    // 判定チップとアドバイス
+    const ad = Math.abs(diff);
+    const chip = byId('rChip'), note = byId('rNote');
+    let col, label, msg;
+    const dirHigh = 'fが高い → <b style="color:#cdd6f4;">Cを1段大きく</b>（' + fmtC(cFor) + ' が理想値）するか、巻き数を増やす。';
+    const dirLow = 'fが低い → <b style="color:#cdd6f4;">Cを1段小さく</b>（' + fmtC(cFor) + ' が理想値）するか、巻き数を減らす。';
+    if (ad <= 2) { col = '#a6e3a1'; label = '◎ ドンピシャ'; msg = 'このまま作ってOK。実物は寄生容量などで数%ずれるので、光りが弱ければCを1段だけ上下して一番明るい値を探す。'; }
+    else if (ad <= 5) { col = '#94e2d5'; label = '○ ほぼOK'; msg = '共振の山が広めなので、この程度なら十分光ることが多い。' + (diff > 0 ? dirHigh : dirLow); }
+    else if (ad <= 10) { col = '#f9e2af'; label = '△ 要調整'; msg = (diff > 0 ? dirHigh : dirLow); }
+    else { col = '#f38ba8'; label = '✕ 大きくずれ'; msg = 'このままではほぼ光らない。' + (diff > 0 ? dirHigh : dirLow); }
+    chip.textContent = label;
+    chip.style.borderColor = chip.style.color = col;
+    note.innerHTML = msg;
+
+    // ダイヤル
+    const fM = f / 1e6;
+    const x = 30 + (Math.min(30, Math.max(5, fM)) - 5) / 25 * 500;
+    byId('dialNeedle').setAttribute('transform', 'translate(' + x.toFixed(1) + ',0)');
+    byId('dialTxt').textContent = fM >= 5 && fM <= 30 ? fM.toFixed(2) + ' MHz' : fM.toFixed(2) + ' MHz（目盛り外）';
+    byId('dialTxt').setAttribute('fill', col);
+
+    // 回路図ラベル
+    byId('ccL').textContent = 'L = ' + fmtL(L);
+    byId('ccC').textContent = 'C = ' + fmtC(C);
+    syncUrl();
+  }
+
+  /* ---- 設定のURL保存（ブックマーク・共有用） ---- */
+  function syncUrl() {
+    try {
+      const p = new URLSearchParams();
+      p.set('d', byId('numD').value);
+      p.set('n', byId('numN').value);
+      p.set('w', byId('numW').value);
+      p.set('c', byId('numC').value);
+      if (!byId('autoL').checked) p.set('l', byId('numL').value);
+      history.replaceState(null, '', location.pathname + '?' + p.toString());
+    } catch (e) { /* file://等でreplaceState不可なら黙ってスキップ */ }
+  }
+  (function loadUrl() {
+    const q = new URLSearchParams(location.search);
+    const set = (numId, rangeId, key) => {
+      if (q.has(key)) {
+        byId(numId).value = q.get(key);
+        if (rangeId) byId(rangeId).value = q.get(key);
+      }
+    };
+    set('numD', 'inD', 'd');
+    set('numN', 'inN', 'n');
+    set('numW', 'inW', 'w');
+    set('numC', 'inC', 'c');
+    if (q.has('l')) {
+      byId('autoL').checked = false;
+      byId('numL').disabled = false;
+      byId('numL').value = q.get('l');
+    }
+  })();
+  byId('urlCopy').addEventListener('click', async () => {
+    const b = byId('urlCopy');
+    try {
+      await navigator.clipboard.writeText(location.href);
+      b.textContent = '✓ コピーしました';
+    } catch (e) { b.textContent = '✕ 失敗（手動でURL欄からどうぞ）'; }
+    setTimeout(() => { b.textContent = '🔗 設定URLをコピー'; }, 1500);
+  });
+
+  updAll();
+
+  /* ---- PCBスパイラルコイル（Mohanの電流シート近似） ---- */
+  const SP_COEF = {
+    sq:  [1.27, 2.07, 0.18, 0.13],
+    oct: [1.07, 2.29, 0.00, 0.19],
+    cir: [1.00, 2.46, 0.00, 0.20]
+  };
+  const judge = diff => {
+    const ad = Math.abs(diff);
+    return ad <= 2 ? ['◎ ドンピシャ', '#a6e3a1']
+      : ad <= 5 ? ['○ ほぼOK', '#94e2d5']
+      : ad <= 10 ? ['△ 要調整', '#f9e2af']
+      : ['✕ 大きくずれ', '#f38ba8'];
+  };
+  function updSp() {
+    const dout = parseFloat(byId('spDout').value);
+    const n = parseFloat(byId('spN').value);
+    const w = parseFloat(byId('spW').value);
+    const s = parseFloat(byId('spS').value);
+    const Cp = parseFloat(byId('spC').value);
+    if ([dout, n, w, s, Cp].some(v => isNaN(v) || v <= 0)) return;
+    const din = dout - 2 * (n * w + (n - 1) * s);
+    const chip = byId('spChip');
+    if (din <= 0) {
+      byId('spDin').textContent = 'マイナス！';
+      byId('spL').textContent = byId('spF').textContent = byId('spDiff').textContent = byId('spCfor').textContent = '-';
+      chip.textContent = '✕ 巻けない';
+      chip.style.borderColor = chip.style.color = '#f38ba8';
+      return;
+    }
+    byId('spDin').textContent = din.toPrecision(3) + ' mm';
+    const davg = (dout + din) / 2 * 1e-3;              // m
+    const rho = (dout - din) / (dout + din);
+    const [c1, c2, c3, c4] = SP_COEF[byId('spShape').value];
+    const L = (4 * Math.PI * 1e-7 * n * n * davg * c1 / 2) * (Math.log(c2 / rho) + c3 * rho + c4 * rho * rho);
+    const C = Cp * 1e-12;
+    const f = 1 / (2 * Math.PI * Math.sqrt(L * C));
+    const diff = (f - F0) / F0 * 100;
+    byId('spL').textContent = fmtL(L);
+    byId('spF').textContent = fmtF(f);
+    byId('spDiff').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(1) + ' %';
+    byId('spCfor').textContent = fmtC(1 / (Math.pow(2 * Math.PI * F0, 2) * L));
+    const [label, col] = judge(diff);
+    chip.textContent = label;
+    chip.style.borderColor = chip.style.color = col;
+  }
+  ['spShape', 'spDout', 'spN', 'spW', 'spS', 'spC'].forEach(id => byId(id).addEventListener('input', updSp));
+  updSp();
+</script>
+</body>
+</html>

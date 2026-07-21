@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>理想ダイオードのしくみと使い方</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; margin: 0; padding: 20px; background: #1e1e2e; color: #cdd6f4; line-height: 1.7; min-height: 100vh; }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 { color: #89b4fa; border-bottom: 2px solid #45475a; padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: #89b4fa; }
+  a { color: #89b4fa; }
+  code { font-family: Consolas, monospace; background: #11111b; padding: 1px 6px; border-radius: 4px; color: #a6e3a1; }
+  .lead { background: #313244; padding: 14px 18px; border-radius: 8px; border-left: 4px solid #f9e2af; margin-bottom: 20px; }
+  .lead b { color: #f9e2af; }
+  .panel { background: #181825; border: 1px solid #45475a; border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; }
+
+  .btn { background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 8px; padding: 8px 16px; font-size: 14px; cursor: pointer; font-family: inherit; font-weight: bold; }
+  .btn:hover { border-color: #89b4fa; }
+
+  .schem { display: block; max-width: 460px; width: 100%; height: auto; background: #11111b; border: 1px solid #45475a; border-radius: 8px; margin: 12px 0; }
+  .schem text { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .slider-row label { width: 130px; color: #a6adc8; font-size: 13px; font-weight: bold; }
+  .slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: #89b4fa; }
+  .slider-row .val { font-family: Consolas, monospace; color: #f9e2af; min-width: 70px; text-align: right; }
+  .slider-row select, .slider-row input[type=number] { padding: 7px 9px; background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 6px; font-family: Consolas, monospace; font-size: 14px; }
+  .slider-row input[type=number] { width: 90px; }
+
+  .bars { margin-top: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .bar-row .name { width: 52px; font-size: 13px; font-weight: bold; }
+  .bar-row .track { flex: 1; background: #11111b; border-radius: 6px; height: 22px; overflow: hidden; border: 1px solid #45475a; }
+  .bar-row .fill { height: 100%; width: 0; transition: width .15s; }
+  .bar-row .fill.real { background: #f38ba8; }
+  .bar-row .fill.ideal { background: #a6e3a1; }
+  .bar-row .pw { font-family: Consolas, monospace; min-width: 78px; text-align: right; }
+  .bar-row .pw.real { color: #f38ba8; } .bar-row .pw.ideal { color: #a6e3a1; }
+
+  .readout { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  .readout .item { background: #11111b; border-radius: 8px; padding: 8px 14px; border-left: 3px solid #89b4fa; }
+  .readout .item .k { font-size: 11px; color: #a6adc8; }
+  .readout .item .v { font-family: Consolas, monospace; font-size: 18px; color: #a6e3a1; font-weight: bold; }
+
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item { background: #232334; border-radius: 8px; padding: 12px 14px; border-left: 3px solid #a6e3a1; }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; min-width: 560px; }
+  th, td { border: 1px solid #45475a; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 8px; }
+  .warnbox { background: #45302e; color: #fab387; border: 2px solid #fab387; border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+  .warnbox b { color: #f9e2af; }
+  .pn { color: #a6e3a1; font-family: Consolas, monospace; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>🚦 理想ダイオードのしくみと使い方</h1>
+
+  <div class="lead">
+    ダイオードは電気の<b>一方通行の弁</b>。<b>理想ダイオード</b>とは、その弁が「完璧」になったもの——
+    <b>順方向はまったく抵抗なく（電圧を1ミリも落とさず）通し</b>、<b>逆方向は完全に止める</b> 夢のダイオードです。
+    本物のダイオードには「順方向で約0.6V落ちる（＝発熱・ロス）」という弱点があり、それを<b>MOSFET</b>でほぼ無くしたのが
+    「理想ダイオード（回路）」。仕組みをアニメで見てみましょう。
+    <span class="note">※ 値・式は学習用の目安です。</span>
+  </div>
+
+  <!-- ============ 概念アニメ ============ -->
+  <h2>🚦 理想ダイオードってなに？（一方通行）</h2>
+  <p class="note">下のボタンで電池の向きを切り替えてみてください。<b style="color:#a6e3a1;">順方向</b>では電流（粒）が流れ、<b style="color:#f38ba8;">逆方向</b>ではピタッと止まります。これがダイオードの「一方通行」。理想ダイオードはこれを<b style="color:#cdd6f4;">電圧を落とさず</b>に行います。</p>
+  <div class="panel">
+    <svg class="schem" viewBox="0 0 360 230" xmlns="http://www.w3.org/2000/svg">
+      <path id="p-ideal" d="M 70 55 H 290 V 185 H 70 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <!-- 電池 -->
+      <line x1="56" y1="108" x2="84" y2="108" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="63" y1="122" x2="77" y2="122" stroke="#a6adc8" stroke-width="3"/>
+      <text id="bat-lbl" x="48" y="118" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">電池</text>
+      <!-- ダイオード（→向き：左アノード・右カソード） -->
+      <polygon id="d-tri" points="165,45 165,65 188,55" fill="#a6e3a1"/>
+      <line id="d-bar" x1="188" y1="45" x2="188" y2="65" stroke="#a6e3a1" stroke-width="3"/>
+      <text id="d-status" x="180" y="34" text-anchor="middle" fill="#a6e3a1" font-size="13" font-weight="bold">通す（順方向）</text>
+      <text id="d-block" x="176" y="63" text-anchor="middle" fill="#f38ba8" font-size="24" font-weight="bold" opacity="0">✕</text>
+      <!-- 負荷 -->
+      <rect x="266" y="98" width="40" height="44" rx="4" fill="#1e1e2e" stroke="#89b4fa" stroke-width="2"/>
+      <text x="286" y="124" text-anchor="middle" fill="#89b4fa" font-size="11" font-weight="bold">負荷</text>
+      <g id="g-ideal"></g>
+    </svg>
+    <button class="btn" id="dirBtn">逆方向にする</button>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">順方向（通す）</div><div class="a">電池の＋からダイオードの矢印の向きに電流が流れる。理想なら<b style="color:#cdd6f4;">電圧降下ゼロ</b>でそのまま通過。</div></div>
+    <div class="guide-item"><div class="q">逆方向（止める）</div><div class="a">逆につなぐと、ダイオードが壁になって<b style="color:#cdd6f4;">電流を完全に遮断</b>。理想なら漏れもゼロ。</div></div>
+    <div class="guide-item"><div class="q">記号の見方</div><div class="a">三角形が指す向き（→）が電流を通す向き。縦棒（カソード／帯）側へは流れない。</div></div>
+  </div>
+
+  <!-- ============ 理想 vs 実物 ============ -->
+  <h2>⚖ 理想 vs 実物ダイオード（ロスの違い）</h2>
+  <p class="note">どちらも電流は通しますが、<b style="color:#f38ba8;">実物は順方向で電圧が約0.6V落ち</b>、その分が<b style="color:#f38ba8;">熱（ロス）</b>になります（損失 P＝Vf×電流）。<b style="color:#a6e3a1;">理想ダイオード</b>は電圧降下がほぼ0で、ロスがとても小さい。電流を変えて比べてみてください。</p>
+  <div class="panel">
+    <div class="slider-row">
+      <label for="cmpI">流す電流 I</label>
+      <input id="cmpI" type="range" min="0.1" max="5" step="0.1" value="1">
+      <span class="val" id="cmpIval">1.0 A</span>
+    </div>
+    <div class="slider-row">
+      <label for="cmpVf">実物のVf</label>
+      <select id="cmpVf">
+        <option value="0.7">0.7V（一般シリコン）</option>
+        <option value="0.6" selected>0.6V（標準）</option>
+        <option value="0.3">0.3V（ショットキー）</option>
+        <option value="0.2">0.2V（低Vfショットキー）</option>
+      </select>
+      <label for="cmpRds" style="width:auto;">理想のRds(on)</label>
+      <input id="cmpRds" type="number" min="1" step="1" value="20"><span class="note" style="margin:0;">mΩ</span>
+    </div>
+    <svg class="schem" viewBox="0 0 440 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- 実物（上） -->
+      <text x="14" y="56" fill="#f38ba8" font-size="12" font-weight="bold">実物</text>
+      <text x="60" y="40" fill="#a6adc8" font-size="10">電流 I →</text>
+      <path id="p-real" d="M 60 60 H 400" fill="none" stroke="#585b70" stroke-width="3"/>
+      <polygon points="150,50 150,70 173,60" fill="#fab387"/>
+      <line x1="173" y1="50" x2="173" y2="70" stroke="#fab387" stroke-width="3"/>
+      <text x="160" y="92" text-anchor="middle" fill="#f38ba8" font-size="10">−Vf 降下</text>
+      <text id="real-heat" x="205" y="55" font-size="14">🔥</text>
+      <rect x="350" y="48" width="46" height="24" rx="3" fill="#1e1e2e" stroke="#89b4fa" stroke-width="2"/>
+      <text x="373" y="64" text-anchor="middle" fill="#89b4fa" font-size="10">負荷</text>
+      <g id="g-real"></g>
+      <!-- 理想（下） -->
+      <text x="14" y="156" fill="#a6e3a1" font-size="12" font-weight="bold">理想</text>
+      <path id="p-ideal2" d="M 60 160 H 400" fill="none" stroke="#585b70" stroke-width="3"/>
+      <polygon points="150,150 150,170 173,160" fill="#a6e3a1"/>
+      <line x1="173" y1="150" x2="173" y2="170" stroke="#a6e3a1" stroke-width="3"/>
+      <text x="160" y="192" text-anchor="middle" fill="#a6e3a1" font-size="10">≈ 0V（ほぼロス無し）</text>
+      <rect x="350" y="148" width="46" height="24" rx="3" fill="#1e1e2e" stroke="#89b4fa" stroke-width="2"/>
+      <text x="373" y="164" text-anchor="middle" fill="#89b4fa" font-size="10">負荷</text>
+      <g id="g-ideal2"></g>
+    </svg>
+    <div class="bars">
+      <div class="bar-row"><span class="name" style="color:#f38ba8;">実物</span><div class="track"><div class="fill real" id="realBar"></div></div><span class="pw real" id="realLoss">-</span></div>
+      <div class="bar-row"><span class="name" style="color:#a6e3a1;">理想</span><div class="track"><div class="fill ideal" id="idealBar"></div></div><span class="pw ideal" id="idealLoss">-</span></div>
+    </div>
+    <div class="readout">
+      <div class="item"><div class="k">実物の損失 P=Vf×I</div><div class="v" id="realLoss2" style="color:#f38ba8;">-</div></div>
+      <div class="item"><div class="k">理想の損失 P=I²×Rds</div><div class="v" id="idealLoss2">-</div></div>
+      <div class="item"><div class="k">減らせるロス</div><div class="v" id="saveLoss" style="color:#f9e2af;">-</div></div>
+    </div>
+    <div class="note">バーは損失の大きさ（＝発熱）。電流が大きいほど実物のロスが目立ち、理想ダイオードの効果が大きくなります。</div>
+  </div>
+
+  <!-- ============ なぜうれしい ============ -->
+  <h2>⚡ なぜ理想ダイオードがうれしいの？</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">電圧をムダにしない</div><div class="a">実物は約0.6V落ちる。例えば<b style="color:#cdd6f4;">3.3Vや5Vの低電圧</b>では0.6Vのロスは大きな割合。理想ならほぼ全電圧を負荷へ届けられる。</div></div>
+    <div class="guide-item"><div class="q">発熱が少ない</div><div class="a">損失 = 電圧降下 × 電流。<b style="color:#cdd6f4;">大電流</b>ほど 0.6V×I の発熱が増える（例：5Aで3W！）。理想は I²×Rds でごくわずか。</div></div>
+    <div class="guide-item"><div class="q">電池が長持ち</div><div class="a">ムダな発熱が減る＝消費が減る。電池駆動やソーラーなど、効率が大事な用途で効く。</div></div>
+    <div class="guide-item"><div class="q">バッテリー切替に最適</div><div class="a">複数の電源をつなぐ「ORing（オアリング）」で、ロスなく自動的に高い方から給電できる。</div></div>
+  </div>
+
+  <!-- ============ 逆流が起きる例 ============ -->
+  <h2>⚡ 逆流が起きる身近な例</h2>
+  <p class="note">「逆流（電流が想定と逆向きに流れる）」が起きると、電源どうしがケンカしたり、機器や電池が傷みます。理想ダイオードはこれを<b style="color:#cdd6f4;">低ロスで防ぐ</b>のが仕事。</p>
+  <div class="guide">
+    <div class="guide-item"><div class="q">USB給電中に別のアダプタを挿す</div><div class="a">2つの電源がつながると、電圧の高い方から低い方へ<b style="color:#cdd6f4;">電流が逆流</b>。USBポートや相手の電源に負担。各入力に理想ダイオードを入れて防ぐ。</div></div>
+    <div class="guide-item"><div class="q">電池とUSBの併用</div><div class="a">USBをつないだとき、<b style="color:#cdd6f4;">電池側へ電流が逆流</b>すると充電できない電池では危険。逆流防止で切り分ける。</div></div>
+    <div class="guide-item"><div class="q">太陽電池の夜間</div><div class="a">暗くなるとパネルが発電せず<b style="color:#cdd6f4;">負荷（抵抗）に変わり</b>、バッテリーからパネルへ逆流して放電。逆流防止ダイオードが定番。</div></div>
+    <div class="guide-item"><div class="q">電池の並列接続</div><div class="a">電圧差のある電池を並列にすると、<b style="color:#cdd6f4;">電池どうしの間で電流が回り</b>発熱・劣化。各電池にダイオードを入れる。</div></div>
+    <div class="guide-item"><div class="q">電源を切った瞬間</div><div class="a">大容量コンデンサや別系統から、切った電源側へ<b style="color:#cdd6f4;">電気が逆戻り</b>することがある。</div></div>
+  </div>
+
+  <!-- ============ ORing ============ -->
+  <h2>🔀 ORing（電源の自動切替・バックアップ）</h2>
+  <p class="note">2つの電源それぞれに理想ダイオードを入れて出力をまとめると、<b style="color:#cdd6f4;">電圧が高い方から自動で給電</b>し、低い方へは逆流しません。停電時に電池へ<b style="color:#cdd6f4;">無瞬断で切り替わる</b>バックアップが作れます。スライダーで電源Bの電圧を変えてみてください。</p>
+  <div class="panel">
+    <div class="slider-row">
+      <label>電源A</label>
+      <span class="val" style="color:#cdd6f4;">5.0 V（固定）</span>
+    </div>
+    <div class="slider-row">
+      <label for="or-bSlider">電源B の電圧</label>
+      <input id="or-bSlider" type="range" min="3" max="6" step="0.1" value="4.2">
+      <span class="val" id="or-bV2">4.2 V</span>
+    </div>
+    <svg class="schem" viewBox="0 0 460 230" xmlns="http://www.w3.org/2000/svg">
+      <line x1="40" y1="200" x2="400" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <text x="34" y="204" text-anchor="end" fill="#a6adc8" font-size="10">GND</text>
+      <!-- 電源A -->
+      <rect x="40" y="46" width="56" height="36" rx="5" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="68" y="63" text-anchor="middle" fill="#cdd6f4" font-size="10" font-weight="bold">電源A</text>
+      <text id="or-aV" x="68" y="76" text-anchor="middle" fill="#a6e3a1" font-size="10">5.0V</text>
+      <line x1="50" y1="82" x2="50" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="96" y1="64" x2="150" y2="64" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon id="or-dAtri" points="150,54 150,74 170,64" fill="#a6e3a1"/>
+      <line id="or-dAbar" x1="170" y1="54" x2="170" y2="74" stroke="#a6e3a1" stroke-width="3"/>
+      <text id="or-xA" x="160" y="49" text-anchor="middle" fill="#f38ba8" font-size="15" font-weight="bold" opacity="0">✕</text>
+      <line x1="170" y1="64" x2="300" y2="64" stroke="#cdd6f4" stroke-width="2"/>
+      <text id="or-aBadge" x="232" y="58" text-anchor="middle" fill="#f9e2af" font-size="9" font-weight="bold">給電中</text>
+      <!-- 電源B -->
+      <rect x="40" y="150" width="56" height="36" rx="5" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="68" y="167" text-anchor="middle" fill="#cdd6f4" font-size="10" font-weight="bold">電源B</text>
+      <text id="or-bV" x="68" y="180" text-anchor="middle" fill="#a6e3a1" font-size="10">4.2V</text>
+      <line x1="50" y1="186" x2="50" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="96" y1="168" x2="150" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon id="or-dBtri" points="150,158 150,178 170,168" fill="#a6e3a1"/>
+      <line id="or-dBbar" x1="170" y1="158" x2="170" y2="178" stroke="#a6e3a1" stroke-width="3"/>
+      <text id="or-xB" x="160" y="193" text-anchor="middle" fill="#f38ba8" font-size="15" font-weight="bold" opacity="0">✕</text>
+      <line x1="170" y1="168" x2="300" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <text id="or-bBadge" x="232" y="184" text-anchor="middle" fill="#f9e2af" font-size="9" font-weight="bold" opacity="0">給電中</text>
+      <!-- 合流 → 負荷 -->
+      <line x1="300" y1="64" x2="300" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="300" cy="116" r="3" fill="#cdd6f4"/>
+      <line x1="300" y1="116" x2="340" y2="116" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="340" y="96" width="46" height="40" rx="4" fill="#1e1e2e" stroke="#fab387" stroke-width="2"/>
+      <text x="363" y="120" text-anchor="middle" fill="#fab387" font-size="10" font-weight="bold">負荷</text>
+      <line x1="363" y1="136" x2="363" y2="200" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="363" cy="200" r="3" fill="#cdd6f4"/>
+      <!-- アニメ -->
+      <path id="p-orA" d="M 96 64 H 300 V 116 H 363 V 196" fill="none" stroke="none"/>
+      <path id="p-orB" d="M 96 168 H 300 V 116 H 363 V 196" fill="none" stroke="none"/>
+      <g id="g-orA"></g>
+      <g id="g-orB"></g>
+      <text id="or-status" x="230" y="222" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">電源A が給電中</text>
+    </svg>
+    <div class="guide">
+      <div class="guide-item"><div class="q">高い方が自動で給電</div><div class="a">電圧が高い電源のダイオードが通電し、低い方は<b style="color:#cdd6f4;">逆流ブロック</b>で待機。電圧の上下が入れ替わると給電元も自動で切替。</div></div>
+      <div class="guide-item"><div class="q">無瞬断バックアップ</div><div class="a">主電源（A）が落ちて電圧が下がると、即座に電池（B）へ切替。機器は止まらない。</div></div>
+      <div class="guide-item"><div class="q">普通のダイオードORとの違い</div><div class="a">同じ構成を普通のダイオードで作ると<b style="color:#cdd6f4;">0.6Vロス＋発熱</b>。理想ダイオードならほぼロスなしで効率的。</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 電池バックアップ ============ -->
+  <h2>🔋 電池バックアップ回路の具体例（5V昇圧リチウム）</h2>
+  <p class="note">負荷に <b style="color:#cdd6f4;">5V</b> が必要なケース。<b style="color:#cdd6f4;">主電源(5V)</b> と、<b style="color:#cdd6f4;">リチウム電池(3.7V)を5Vに昇圧</b>したものを、それぞれ理想ダイオードで ORing します。昇圧側を<b style="color:#cdd6f4;">少し低め</b>（ここでは主5.0V／電池昇圧4.9V）にして<b style="color:#cdd6f4;">主電源を優先</b>。停電すると昇圧した電池側へ<b style="color:#cdd6f4;">無瞬断で切替</b>。ボタンで停電させてみてください。</p>
+  <div class="panel">
+    <svg class="schem" viewBox="0 0 460 230" xmlns="http://www.w3.org/2000/svg">
+      <line x1="40" y1="200" x2="400" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <text x="34" y="204" text-anchor="end" fill="#a6adc8" font-size="10">GND</text>
+      <!-- 主電源 -->
+      <rect x="38" y="46" width="60" height="36" rx="5" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="68" y="63" text-anchor="middle" fill="#cdd6f4" font-size="10" font-weight="bold">主電源</text>
+      <text id="bk-mV" x="68" y="76" text-anchor="middle" fill="#a6e3a1" font-size="10">5.0V</text>
+      <line x1="50" y1="82" x2="50" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="98" y1="64" x2="150" y2="64" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon id="bk-d1tri" points="150,54 150,74 170,64" fill="#a6e3a1"/>
+      <line id="bk-d1bar" x1="170" y1="54" x2="170" y2="74" stroke="#a6e3a1" stroke-width="3"/>
+      <text id="bk-x1" x="160" y="49" text-anchor="middle" fill="#f38ba8" font-size="15" font-weight="bold" opacity="0">✕</text>
+      <line x1="170" y1="64" x2="300" y2="64" stroke="#cdd6f4" stroke-width="2"/>
+      <text id="bk-mBadge" x="234" y="58" text-anchor="middle" fill="#f9e2af" font-size="9" font-weight="bold">給電中</text>
+      <!-- 電池 -->
+      <rect x="32" y="150" width="48" height="36" rx="5" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="56" y="166" text-anchor="middle" fill="#cdd6f4" font-size="10" font-weight="bold">電池</text>
+      <text id="bk-bV" x="56" y="179" text-anchor="middle" fill="#a6e3a1" font-size="9">3.7V</text>
+      <line x1="44" y1="186" x2="44" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="80" y1="168" x2="92" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- 昇圧 -->
+      <rect id="bk-boost" x="92" y="150" width="54" height="36" rx="5" fill="#1e1e2e" stroke="#fab387" stroke-width="2"/>
+      <text x="119" y="165" text-anchor="middle" fill="#fab387" font-size="9" font-weight="bold">昇圧</text>
+      <text x="119" y="178" text-anchor="middle" fill="#a6adc8" font-size="8">→4.9V</text>
+      <line x1="110" y1="186" x2="110" y2="200" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="146" y1="168" x2="186" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <polygon id="bk-d2tri" points="186,158 186,178 206,168" fill="#a6e3a1"/>
+      <line id="bk-d2bar" x1="206" y1="158" x2="206" y2="178" stroke="#a6e3a1" stroke-width="3"/>
+      <text id="bk-x2" x="196" y="193" text-anchor="middle" fill="#f38ba8" font-size="15" font-weight="bold" opacity="0">✕</text>
+      <line x1="206" y1="168" x2="300" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <text id="bk-bBadge" x="252" y="184" text-anchor="middle" fill="#f9e2af" font-size="9" font-weight="bold" opacity="0">給電中</text>
+      <!-- 合流 → 負荷 -->
+      <line x1="300" y1="64" x2="300" y2="168" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="300" cy="116" r="3" fill="#cdd6f4"/>
+      <line x1="300" y1="116" x2="340" y2="116" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="340" y="96" width="46" height="40" rx="4" fill="#1e1e2e" stroke="#fab387" stroke-width="2"/>
+      <text x="363" y="120" text-anchor="middle" fill="#fab387" font-size="10" font-weight="bold">負荷</text>
+      <line x1="363" y1="136" x2="363" y2="200" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="363" cy="200" r="3" fill="#cdd6f4"/>
+      <!-- 理想ダイオードのラベル -->
+      <text x="160" y="48" text-anchor="middle" fill="#a6adc8" font-size="8">理想D</text>
+      <text x="196" y="152" text-anchor="middle" fill="#a6adc8" font-size="8">理想D</text>
+      <!-- アニメ -->
+      <path id="p-bkM" d="M 98 64 H 300 V 116 H 363 V 196" fill="none" stroke="none"/>
+      <path id="p-bkB" d="M 80 168 H 300 V 116 H 363 V 196" fill="none" stroke="none"/>
+      <g id="g-bkM"></g>
+      <g id="g-bkB"></g>
+      <text id="bk-status" x="230" y="222" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">主電源（5V）が給電中</text>
+    </svg>
+    <button class="btn" id="bkBtn">停電させる</button>
+    <div class="guide">
+      <div class="guide-item"><div class="q">普段（主電源あり）</div><div class="a">主5.0V＞電池昇圧4.9V なので<b style="color:#cdd6f4;">主電源が優先</b>。電池側は逆流ブロックで<b style="color:#cdd6f4;">放電しない</b>（昇圧も止めておけば待機電流も節約）。</div></div>
+      <div class="guide-item"><div class="q">停電したら</div><div class="a">主電源が0Vに落ちると、昇圧した電池側(4.9V)が一番高くなり<b style="color:#cdd6f4;">即座に給電</b>。負荷は止まらない（無瞬断）。</div></div>
+      <div class="guide-item"><div class="q">優先順位の作り方</div><div class="a">両方ぴったり5Vだと取り合いになるので、<b style="color:#cdd6f4;">昇圧出力を少し低め</b>に。または「主電源あり」を検知して<b style="color:#cdd6f4;">昇圧をEnableで止める</b>と省エネ。</div></div>
+      <div class="guide-item"><div class="q">充電・保護は別に</div><div class="a">このORingは電池を<b style="color:#cdd6f4;">充電しない</b>。充電IC（<span class="pn">TP4056</span>等）と保護回路つき電池を。過放電に注意。</div></div>
+      <div class="guide-item"><div class="q">専用IC／モジュールが楽</div><div class="a"><b style="color:#cdd6f4;">充電＋5V昇圧＋切替</b>を1つで行うICが定番：<span class="pn">LTC4040</span>・<span class="pn">TPS61094</span>、パワーバンク系（<span class="pn">IP5306</span>等）。Pi用UPSモジュールもこれ系。</div></div>
+    </div>
+  </div>
+
+  <!-- ============ MOSFETで作る ============ -->
+  <h2>🔌 MOSFETで「理想ダイオード」を作る</h2>
+  <p class="note">理想ダイオードは、<b style="color:#cdd6f4;">MOSFET＋コントローラ（コンパレータ）</b>で実現します。電流の向きを見張り、<b>順方向のときだけMOSFETをON</b>。MOSFETの低い <code>Rds(on)</code> を通すので電圧降下がごくわずかになります。</p>
+  <div class="panel">
+    <svg class="schem" viewBox="0 0 460 210" xmlns="http://www.w3.org/2000/svg">
+      <!-- 入力 -->
+      <text x="14" y="84" fill="#f38ba8" font-size="12" font-weight="bold">入力+</text>
+      <line x1="60" y1="80" x2="150" y2="80" stroke="#cdd6f4" stroke-width="2"/>
+      <!-- MOSFET -->
+      <rect x="150" y="52" width="90" height="60" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="195" y="78" text-anchor="middle" fill="#cdd6f4" font-size="13" font-weight="bold">MOSFET</text>
+      <text x="160" y="100" fill="#a6e3a1" font-size="10">D</text>
+      <text x="224" y="100" text-anchor="end" fill="#f38ba8" font-size="10">S</text>
+      <text x="195" y="100" text-anchor="middle" fill="#cba6f7" font-size="10">G</text>
+      <!-- 出力 -->
+      <line x1="240" y1="80" x2="330" y2="80" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="338" y="84" fill="#a6e3a1" font-size="12" font-weight="bold">出力+</text>
+      <!-- ボディダイオード（入力→出力の向き） -->
+      <text x="195" y="150" text-anchor="middle" fill="#94e2d5" font-size="10">内蔵ボディダイオード（入力→出力）</text>
+      <polygon points="178,124 178,140 196,132" fill="#94e2d5"/>
+      <line x1="196" y1="124" x2="196" y2="140" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="160" y1="132" x2="178" y2="132" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="196" y1="132" x2="232" y2="132" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="160" y1="112" x2="160" y2="132" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="232" y1="112" x2="232" y2="132" stroke="#94e2d5" stroke-width="2"/>
+      <!-- コントローラ -->
+      <rect x="150" y="14" width="160" height="26" rx="5" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="230" y="31" text-anchor="middle" fill="#f9e2af" font-size="11" font-weight="bold">コントローラ（向きを監視）</text>
+      <line x1="195" y1="40" x2="195" y2="52" stroke="#f9e2af" stroke-width="2"/>
+      <line x1="160" y1="80" x2="160" y2="60" stroke="#a6adc8" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <line x1="160" y1="60" x2="165" y2="60" stroke="#a6adc8" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <line x1="290" y1="80" x2="290" y2="40" stroke="#a6adc8" stroke-width="1.5" stroke-dasharray="3 3"/>
+    </svg>
+    <div class="guide">
+      <div class="guide-item"><div class="q">① 起動：まずボディダイオード</div><div class="a">電源を入れた瞬間はMOSFETはOFF。でもMOSFET内蔵の<b style="color:#94e2d5;">ボディダイオード</b>が入力→出力の向きなので、まず約0.6Vで通電が始まる。</div></div>
+      <div class="guide-item"><div class="q">② コントローラがONに</div><div class="a">順方向を検知して<b style="color:#cdd6f4;">MOSFETをON</b>。すると電流は抵抗の小さいチャネル(Rds(on))を通り、電圧降下が<b style="color:#cdd6f4;">数十mVまで激減</b>＝理想ダイオードに近づく。</div></div>
+      <div class="guide-item"><div class="q">③ 逆流したら即OFF</div><div class="a">出力の方が電圧が高くなる（逆流しそう）と、コントローラが<b style="color:#cdd6f4;">MOSFETをOFF</b>。ボディダイオードも逆向きなので電流を止める。</div></div>
+      <div class="guide-item"><div class="q">部品</div><div class="a">専用IC（<span class="pn">LTC4359</span> <span class="pn">LM74700</span> など）や、簡易版はP-ch MOSFET＋抵抗。MOSFETの使い方は <a href="mosfetGuide.html">mosfetGuide.html</a> の「逆接続保護」も参照。</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 専用IC・モジュール ============ -->
+  <h2>🧩 専用IC・モジュールを使う（CH213K など）</h2>
+  <p class="note">自分で回路を組まなくても、理想ダイオード用の<b style="color:#cdd6f4;">専用コントローラIC</b>や、それを載せた<b style="color:#cdd6f4;">完成モジュール</b>が安価に売られています。配線するだけで「低損失の逆流防止／逆接続保護」が手に入ります。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>型番</th><th>種類</th><th>ざっくり用途・特徴</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="pn">CH213K</span></td><td><b>MOSFET内蔵の集積型</b>・低電圧理想ダイオード（3ピン SOT-23）</td><td>2.2〜5.5V・〜0.5A級の小電流向け。1チップで逆接続/逆流防止＋過電流・短絡・過温保護。外付けMOSFET不要</td></tr>
+        <tr><td><span class="pn">XC8111</span><br>(AA01MR-G)</td><td><b>理想ダイオード機能つきロードスイッチ</b>（MOSFET内蔵・CE付き / Torex）</td><td>1.5〜6V・最大1A。<b>CEでマイコンからON/OFF</b>、過電流・突入電流制限・サーマルシャットダウン。USB↔外部電源のORing/逆流防止</td></tr>
+        <tr><td><span class="pn">LM74700-Q1</span></td><td>理想ダイオード・<b>コントローラ</b>（TI / 車載対応・外付けN-ch MOSFET）</td><td>低消費・逆流防止。外付けMOSFETで大電流に対応</td></tr>
+        <tr><td><span class="pn">LTC4359</span></td><td>理想ダイオード・コントローラ（高機能）</td><td>ORing・高耐圧・高速応答。電源バックアップ用途に強い</td></tr>
+        <tr><td>P-ch＋抵抗</td><td>ICなしの簡易版</td><td>低コスト・小規模向け（→ mosfetGuide.html の逆接続保護）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">⚠ <b style="color:#cdd6f4;">正確な耐圧・最大電流はデータシート／モジュール仕様を必ず確認</b>。電流容量は主に<b style="color:#cdd6f4;">（外付け or 搭載）MOSFETと基板の放熱</b>で決まります。</p>
+
+  <div class="panel">
+    <h3 style="margin-top:0;">① 完成モジュール（基板）を使う場合</h3>
+    <p class="note">IC＋MOSFET＋抵抗が載った基板。端子は <b style="color:#cdd6f4;">IN＋ / IN− / OUT＋ / OUT−</b> の4つだけなので、配線するだけで使えます。</p>
+    <svg class="schem" viewBox="0 0 440 230" xmlns="http://www.w3.org/2000/svg">
+      <!-- 電流ループ（上=+ライン、下=−ライン/GND返り道） -->
+      <path id="p-mod" d="M 70 60 H 370 V 190 H 70 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <!-- 電源（左・＋が上） -->
+      <line x1="58" y1="108" x2="82" y2="108" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="64" y1="122" x2="76" y2="122" stroke="#a6adc8" stroke-width="3"/>
+      <text x="50" y="116" text-anchor="end" fill="#f38ba8" font-size="11" font-weight="bold">電源</text>
+      <!-- モジュール（上の+ライン上） -->
+      <rect id="mod-box" x="150" y="43" width="140" height="34" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="220" y="58" text-anchor="middle" fill="#cdd6f4" font-size="11" font-weight="bold">理想ダイオードモジュール</text>
+      <text x="220" y="71" text-anchor="middle" fill="#a6adc8" font-size="9">（＋ラインだけ制御）</text>
+      <text x="150" y="38" text-anchor="middle" fill="#f38ba8" font-size="9">IN+</text>
+      <text x="290" y="38" text-anchor="middle" fill="#a6e3a1" font-size="9">OUT+</text>
+      <!-- IN−/OUT−（モジュール下→GND線へ。中で直結） -->
+      <line x1="170" y1="77" x2="170" y2="190" stroke="#a6adc8" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <line x1="270" y1="77" x2="270" y2="190" stroke="#a6adc8" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="170" cy="190" r="3" fill="#cdd6f4"/>
+      <circle cx="270" cy="190" r="3" fill="#cdd6f4"/>
+      <text x="170" y="98" text-anchor="middle" fill="#a6adc8" font-size="9">IN−</text>
+      <text x="270" y="98" text-anchor="middle" fill="#a6adc8" font-size="9">OUT−</text>
+      <text x="220" y="212" text-anchor="middle" fill="#94e2d5" font-size="10">IN−とOUT−は中で直結（−／GNDは素通し＝返り道）</text>
+      <!-- 負荷（右） -->
+      <rect x="348" y="98" width="44" height="44" rx="4" fill="#1e1e2e" stroke="#89b4fa" stroke-width="2"/>
+      <text x="370" y="124" text-anchor="middle" fill="#89b4fa" font-size="10">負荷</text>
+      <text x="370" y="90" text-anchor="middle" fill="#a6adc8" font-size="9">負荷/電池</text>
+      <!-- 状態 -->
+      <text id="mod-status" x="220" y="24" text-anchor="middle" fill="#a6e3a1" font-size="12" font-weight="bold">順方向：通す</text>
+      <text id="mod-block" x="312" y="55" text-anchor="middle" fill="#f38ba8" font-size="22" font-weight="bold" opacity="0">✕</text>
+      <g id="g-mod"></g>
+    </svg>
+    <button class="btn" id="modBtn">逆電流にする</button>
+    <div class="guide">
+      <div class="guide-item"><div class="q">基本のつなぎ方</div><div class="a"><b style="color:#cdd6f4;">IN＋/IN−に電源、OUT＋/OUT−に負荷（や電池）</b>を、＋−の極性を合わせてつなぐだけ。間に入れる「ロスの少ないダイオード」として働く。</div></div>
+      <div class="guide-item"><div class="q">向きが大事</div><div class="a">電流を流したい向き（IN→OUT）で入れる。逆向きや電源の逆挿しは<b style="color:#cdd6f4;">自動で遮断</b>。GND(−)は共通でつなぐ。</div></div>
+      <div class="guide-item"><div class="q">ORing（電源の合流）</div><div class="a">2系統の電源それぞれにモジュールを入れ、<b style="color:#cdd6f4;">OUT同士を束ねる</b>と、高い方から給電・逆流なしのバックアップになる。</div></div>
+      <div class="guide-item"><div class="q">CH213Kの中身</div><div class="a">アノード/カソード間の電圧を監視し、順方向のとき外付けN-ch MOSFETの<b style="color:#cdd6f4;">ゲートをONに駆動</b>。逆流しそうになると即OFFにする、という理想ダイオード動作を行うIC。</div></div>
+    </div>
+    <h3>② CH213K（MOSFET内蔵・3ピンの集積タイプ）</h3>
+    <p class="note">CH213K は<b style="color:#cdd6f4;">MOSFETまで1チップに内蔵</b>した集積タイプの理想ダイオード（3ピン SOT-23）。外付けMOSFETは不要で、<b style="color:#cdd6f4;">IN／OUT／GND をつなぐだけ</b>。低電圧（2.2〜5.5V）・小電流（〜0.5A級）向けで、逆接続・逆流の保護に加え、過電流・短絡・過温保護も内蔵しています。</p>
+    <svg class="schem" viewBox="0 0 460 215" xmlns="http://www.w3.org/2000/svg">
+      <!-- +ライン：入力 → CH213K(内蔵FET) → 出力 -->
+      <text x="14" y="100" fill="#f38ba8" font-size="11" font-weight="bold">入力+</text>
+      <line x1="50" y1="96" x2="160" y2="96" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="150" cy="96" r="3" fill="#cdd6f4"/>
+      <!-- CH213K チップ（MOSFET内蔵） -->
+      <rect id="ch-box" x="160" y="66" width="140" height="60" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="230" y="86" text-anchor="middle" fill="#cdd6f4" font-size="12" font-weight="bold">CH213K</text>
+      <text x="230" y="100" text-anchor="middle" fill="#a6adc8" font-size="9">理想ダイオード内蔵（FET込み）</text>
+      <text id="ch-mos" x="230" y="116" text-anchor="middle" fill="#a6e3a1" font-size="10" font-weight="bold">内部FET: ON</text>
+      <text x="166" y="62" fill="#f38ba8" font-size="9">IN(+)</text>
+      <text x="294" y="62" text-anchor="end" fill="#a6e3a1" font-size="9">OUT(+)</text>
+      <line x1="300" y1="96" x2="370" y2="96" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="310" cy="96" r="3" fill="#cdd6f4"/>
+      <text x="378" y="100" fill="#a6e3a1" font-size="11" font-weight="bold">出力+</text>
+      <text id="ch-block" x="330" y="88" text-anchor="middle" fill="#f38ba8" font-size="20" font-weight="bold" opacity="0">✕</text>
+      <!-- GNDピン -->
+      <line x1="230" y1="126" x2="230" y2="160" stroke="#a6adc8" stroke-width="2"/>
+      <text x="236" y="143" fill="#a6adc8" font-size="9">GND</text>
+      <!-- GNDレール -->
+      <line x1="50" y1="160" x2="370" y2="160" stroke="#a6adc8" stroke-width="2"/>
+      <circle cx="230" cy="160" r="3" fill="#cdd6f4"/>
+      <text x="14" y="164" fill="#a6adc8" font-size="11">入力−</text>
+      <text x="376" y="164" text-anchor="start" fill="#a6adc8" font-size="11">出力−</text>
+      <!-- 電流アニメ用パス（+ライン順方向 / −ライン返り） -->
+      <path id="p-ch" d="M 54 96 H 366" fill="none" stroke="none"/>
+      <path id="p-chg" d="M 366 160 H 54" fill="none" stroke="none"/>
+      <g id="g-ch"></g>
+      <g id="g-chg"></g>
+      <text id="ch-status" x="230" y="202" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">順方向：内部FET ON → 低損失で通す</text>
+    </svg>
+    <button class="btn" id="chBtn">逆接続にする</button>
+    <div class="warnbox">
+      ⚠ CH213K は<b>低電圧・小電流（2.2〜5.5V・〜0.5A級）</b>向けの集積タイプです。もっと<b>高い電圧や大電流</b>が必要なときは、コントローラIC（<span class="pn">LM74700</span> / <span class="pn">LTC4359</span> 等）＋外付け大電力MOSFET や、対応モジュールを使います。端子名・極性は必ずデータシート／基板のシルクで確認を。
+    </div>
+
+    <h3>📋 CH213K のスペック（WCH 南京沁恒）</h3>
+    <p class="note">メーカー／流通の公開情報にもとづく代表値。最終的には<b style="color:#f38ba8;">データシートで確認</b>してください。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>項目</th><th>値</th></tr></thead>
+        <tbody>
+          <tr><td>メーカー / 種類</td><td>WCH（南京沁恒）／ MOSFET内蔵・低圧降下の集積型 理想ダイオード（電流制限つき）</td></tr>
+          <tr><td>パッケージ</td><td>SOT-23-3（3ピン）</td></tr>
+          <tr><td>動作（入力）電圧</td><td>2.2 〜 5.5V</td></tr>
+          <tr><td>定格</td><td>5V / 0.5A（5Vで最大1A程度までの直流用途）</td></tr>
+          <tr><td>導通抵抗 Rds(on)</td><td>約 240 mΩ</td></tr>
+          <tr><td>順方向電圧 Vf</td><td>約 240 mV</td></tr>
+          <tr><td>静止電流 Iq</td><td>約 3.6 µA</td></tr>
+          <tr><td>内蔵保護</td><td>逆接続（極性）保護・逆流ブロック・過電流／電流制限・短絡保護・過温保護</td></tr>
+          <tr><td>主な用途</td><td>低電圧機器の逆接続保護・逆流防止・電源ORing</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">出典：WCH（南京沁恒）製品情報・LCSC（立創商城）などの公開情報。値は代表値で、正式にはデータシートをご確認ください。</p>
+
+    <p class="note">💡 <b style="color:#cdd6f4;">外付けコンデンサ</b>：出力側に <b style="color:#cdd6f4;">10〜100µF</b> くらいを置くと扱いやすいです。データシートの応用例では <b style="color:#cdd6f4;">入力側 1〜10µF・出力側 10〜470µF</b> の例が出ています。ただし<b style="color:#cdd6f4;">出力コンデンサが大きいほど起動時の充電に時間がかかる</b>点に注意。</p>
+
+    <h3>CH213K でできること</h3>
+    <div class="guide">
+      <div class="guide-item"><div class="q">USBから基板への逆流防止</div><div class="a">USBから基板へは通しつつ、<b style="color:#cdd6f4;">外部電源をつないだときにUSB側へ電流が戻るのを防ぐ</b>。</div></div>
+      <div class="guide-item"><div class="q">逆接続時の保護</div><div class="a">電源を逆向きに挿しても回路を守る。</div></div>
+      <div class="guide-item"><div class="q">ショート時の電流制限</div><div class="a">短絡したときに電流を制限して保護する。</div></div>
+      <div class="guide-item"><div class="q">過熱シャットダウン</div><div class="a">熱くなったときに自動で遮断（過温保護）。</div></div>
+      <div class="guide-item"><div class="q">低い電圧降下で通す</div><div class="a"><b style="color:#cdd6f4;">ショットキーダイオードより低い電圧降下</b>で電源を通せる。</div></div>
+      <div class="guide-item"><div class="q">電圧ロスが小さい</div><div class="a">普通のダイオードより<b style="color:#cdd6f4;">電圧ロス（発熱）が小さい</b>ので、低電圧でも効率よく電源を通せる。</div></div>
+    </div>
+    <p class="note">まとめ：<b style="color:#cdd6f4;">3V／5V DC で 500mA まで</b>の用途に使える低ドロップ・ダイオードとして説明されており、<b style="color:#cdd6f4;">逆接続・過電流・短絡・過熱保護</b>に対応します。</p>
+
+    <h3>📋 XC8111AA01MR-G のスペック（Torex）</h3>
+    <p class="note">XC8111 シリーズは、理想ダイオードを再現する<b style="color:#cdd6f4;">ロードスイッチIC</b>。<b style="color:#cdd6f4;">CEピンでマイコンからON/OFF</b>でき、過電流制限・突入電流制限・サーマルシャットダウンを備えます。逆流防止は <b style="color:#cdd6f4;">VOUT が VIN−20mV 以上になると内蔵FETをOFF</b>、<b style="color:#cdd6f4;">VOUT が VIN＋20mV 以上になると内部電源を VOUT 側へ切り替え</b>て電流の逆戻りを防ぐ設計です。CH213Kとの違いは、<b style="color:#cdd6f4;">最大1Aまで使える</b>こと、そして<b style="color:#cdd6f4;">CEピンでマイコンからON/OFF制御できる</b>点。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>項目</th><th>値</th></tr></thead>
+        <tbody>
+          <tr><td>メーカー / 種類</td><td>Torex（トレックス）／ 理想ダイオード機能つきロードスイッチ（MOSFET内蔵・CE付き）</td></tr>
+          <tr><td>入力電圧 VIN</td><td>1.5 〜 6.0V</td></tr>
+          <tr><td>出力電流</td><td>最大 1A（<b>VIN > 2.0V</b> の条件で 1A 仕様化）</td></tr>
+          <tr><td>順方向電圧 VF</td><td>約 20mV（VOUT を VIN−20mV に制御。ショットキーの約 1/20）</td></tr>
+          <tr><td>逆流電流</td><td>ほぼ 0（VOUT→VIN の逆方向電流 約 0.8µA）</td></tr>
+          <tr><td>制御</td><td><b>CE ピン</b>でON/OFF（マイコンから制御可）</td></tr>
+          <tr><td>保護</td><td>過電流制限（約1700mA・短絡時フォールドバックで約50mA）・突入電流制限・サーマルシャットダウン</td></tr>
+          <tr><td>消費電流</td><td>スタンバイ 約0.65µA ／ 動作時 約3.6µA</td></tr>
+          <tr><td>逆流防止の動作</td><td>VOUT ≧ VIN−20mV で内蔵FETをOFF／VOUT ≧ VIN＋20mV で内部電源をVOUT側へ切替</td></tr>
+          <tr><td>パッケージ</td><td>SOT-25 / USP-6B06 / WLP-4-02（末尾 MR = SOT-25）</td></tr>
+          <tr><td>主な用途</td><td>USB↔外部電源の切替（ORing）・逆流防止・電池バックアップ・CEでの電源スイッチ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">出典：Torex Semiconductor 製品ページ（XC8110/XC8111 シリーズ）。値は代表値で、正式にはデータシートをご確認ください。</p>
+
+    <h3>🔌 XC8111 の接続例（CEでON/OFF）</h3>
+    <p class="note">VIN に電源、VOUT に負荷、GND は共通。<b style="color:#cdd6f4;">CEピンをマイコンのGPIO</b>につなぎ、High で出力ON（VIN→VOUTを低損失で通す＋逆流防止）、Low で出力OFF。入力側に 1〜10µF、出力側に 10〜470µF のコンデンサを付けます。下のボタンでCEを切り替えてみてください。</p>
+    <svg class="schem" viewBox="0 0 460 230" xmlns="http://www.w3.org/2000/svg">
+      <path id="p-xc" d="M 60 90 H 360 V 190 H 60 Z" fill="none" stroke="#585b70" stroke-width="3"/>
+      <!-- 電源（左） -->
+      <line x1="48" y1="126" x2="72" y2="126" stroke="#f38ba8" stroke-width="3"/>
+      <line x1="54" y1="140" x2="66" y2="140" stroke="#a6adc8" stroke-width="3"/>
+      <text x="44" y="120" text-anchor="end" fill="#f38ba8" font-size="10" font-weight="bold">入力</text>
+      <text x="44" y="156" text-anchor="end" fill="#a6adc8" font-size="9">電源</text>
+      <!-- XC8111 チップ -->
+      <rect id="xc-box" x="160" y="66" width="100" height="48" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="210" y="86" text-anchor="middle" fill="#cdd6f4" font-size="11" font-weight="bold">XC8111</text>
+      <text id="xc-mos" x="210" y="102" text-anchor="middle" fill="#a6e3a1" font-size="10" font-weight="bold">出力 ON</text>
+      <text id="xc-block" x="300" y="84" text-anchor="middle" fill="#f38ba8" font-size="18" font-weight="bold" opacity="0">✕</text>
+      <text x="156" y="84" text-anchor="end" fill="#f38ba8" font-size="9">VIN</text>
+      <text x="264" y="84" fill="#a6e3a1" font-size="9">VOUT</text>
+      <text x="216" y="126" fill="#a6adc8" font-size="9">GND</text>
+      <line x1="210" y1="114" x2="210" y2="190" stroke="#a6adc8" stroke-width="2"/>
+      <circle cx="210" cy="190" r="3" fill="#cdd6f4"/>
+      <!-- CE → マイコン -->
+      <line id="xc-ce" x1="210" y1="66" x2="210" y2="40" stroke="#f9e2af" stroke-width="2"/>
+      <rect x="150" y="14" width="120" height="26" rx="5" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="210" y="31" text-anchor="middle" fill="#f9e2af" font-size="10" font-weight="bold">マイコン GPIO → CE</text>
+      <!-- Cin -->
+      <line x1="120" y1="90" x2="120" y2="150" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="108" y1="150" x2="132" y2="150" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="113" y1="156" x2="127" y2="156" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="120" y1="156" x2="120" y2="190" stroke="#94e2d5" stroke-width="2"/>
+      <circle cx="120" cy="90" r="3" fill="#cdd6f4"/>
+      <text x="136" y="146" fill="#94e2d5" font-size="9">Cin</text>
+      <text x="136" y="158" fill="#a6adc8" font-size="8">1〜10µF</text>
+      <!-- Cout -->
+      <line x1="310" y1="90" x2="310" y2="150" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="298" y1="150" x2="322" y2="150" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="303" y1="156" x2="317" y2="156" stroke="#94e2d5" stroke-width="2"/>
+      <line x1="310" y1="156" x2="310" y2="190" stroke="#94e2d5" stroke-width="2"/>
+      <circle cx="310" cy="90" r="3" fill="#cdd6f4"/>
+      <text x="326" y="146" fill="#94e2d5" font-size="9">Cout</text>
+      <text x="326" y="158" fill="#a6adc8" font-size="8">10〜470µF</text>
+      <!-- 負荷（右） -->
+      <rect x="340" y="118" width="40" height="44" rx="4" fill="#1e1e2e" stroke="#fab387" stroke-width="2"/>
+      <text x="360" y="144" text-anchor="middle" fill="#fab387" font-size="10" font-weight="bold">負荷</text>
+      <text x="58" y="204" fill="#a6adc8" font-size="9">GND（共通）</text>
+      <g id="g-xc"></g>
+      <text id="xc-status" x="210" y="220" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">CE = High → 出力ON</text>
+    </svg>
+    <button class="btn" id="xcBtn">CE = Low（OFF）にする</button>
+    <button class="btn" id="xcRevBtn">逆接続にする</button>
+    <div class="guide">
+      <div class="guide-item"><div class="q">CEでマイコン制御</div><div class="a">GPIOを <b style="color:#cdd6f4;">High で通電・Low で遮断</b>。理想ダイオードに加えて「電源スイッチ」としても使える。</div></div>
+      <div class="guide-item"><div class="q">入出力コンデンサ</div><div class="a">Cin 1〜10µF・Cout 10〜470µF が目安。<b style="color:#cdd6f4;">Cout が大きいほど起動時の充電に時間</b>がかかる。</div></div>
+      <div class="guide-item"><div class="q">逆流もブロック</div><div class="a">ON中でも理想ダイオードとして働き、<b style="color:#cdd6f4;">VOUT＞VIN になると内蔵FETをOFF</b>して逆流を防ぐ。</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 選び分け ============ -->
+  <h2>🧭 実物ダイオード vs 理想ダイオード 選び分けガイド</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>こんなとき</th><th>おすすめ</th><th>理由</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>小信号・整流・とにかく安く</td><td>普通のダイオード（シリコン）</td><td>1個で安い。Vf 0.6〜0.7V のロスが許容できる用途に</td></tr>
+        <tr><td>電圧降下を減らしたい・中電流</td><td>ショットキーダイオード</td><td>Vf 0.2〜0.4V でロスが小さい。逆方向の漏れはやや多め</td></tr>
+        <tr><td>低電圧・大電流・効率最優先<br>逆接続保護・ORing</td><td><b>理想ダイオード</b>（MOSFET＋専用IC）</td><td>Vf ほぼ0で発熱・ロス最小。ただし部品・コストは増える</td></tr>
+        <tr><td>マイコンでON/OFFもしたい</td><td>ロードスイッチ型（<span class="pn">XC8111</span> 等）</td><td>理想ダイオード＋CE制御。電源スイッチも兼ねられる</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">ざっくり：<b style="color:#cdd6f4;">困らないなら普通orショットキー</b>、<b style="color:#cdd6f4;">低電圧で0.6Vがもったいない／大電流で発熱が嫌／逆流を確実に防ぎたい</b>なら理想ダイオード。</p>
+
+  <!-- ============ 仲間の違い ============ -->
+  <h2>🧩 理想ダイオード / ロードスイッチ / ホットスワップ / ORing の違い</h2>
+  <p class="note">どれも「<b style="color:#cdd6f4;">電源ラインに直列のMOSFET＋制御IC</b>」という形は同じで親戚同士。<b style="color:#cdd6f4;">何を制御したいか</b>で呼び方と用途が変わります。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>名前</th><th>主な目的</th><th>特徴</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>理想ダイオード</b></td><td>逆流を止める／低損失で通す</td><td>向き（逆流）の制御が主役。Vfほぼ0。普通のダイオードの置き換え</td></tr>
+        <tr><td><b>ORing</b></td><td>複数電源の合流・自動切替</td><td>理想ダイオードを複数使い、<b>電圧が高い方から給電</b>・逆流防止。電源バックアップ</td></tr>
+        <tr><td><b>ロードスイッチ</b></td><td>電源のON/OFF（CE制御）</td><td>CEで入り切り＋突入電流制限・過電流保護。理想ダイオード機能つきの品も（XC8111など）</td></tr>
+        <tr><td><b>ホットスワップ</b></td><td>活線挿抜の突入電流抑制・遮断</td><td>通電中の機器に基板を抜き挿しする時、<b>突入電流をゆるやかに</b>＋過電流/短絡でブレーカー遮断</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">ざっくり覚え方</div><div class="a"><b style="color:#cdd6f4;">向き（逆流）を制御＝理想ダイオード</b>／<b style="color:#cdd6f4;">入れた瞬間の電流を制御＝ホットスワップ</b>／<b style="color:#cdd6f4;">ON/OFF＝ロードスイッチ</b>／<b style="color:#cdd6f4;">電源の合流＝ORing</b>。</div></div>
+    <div class="guide-item"><div class="q">よく一緒に使う</div><div class="a">サーバ・通信機器では <b style="color:#cdd6f4;">電源側にORing用FET＋基板側にホットスワップ用FET</b> の併用が定番。役割が違うので両方入れる。</div></div>
+    <div class="guide-item"><div class="q">機能が重なる品も</div><div class="a">低電力のロードスイッチ（<span class="pn">XC8111</span>等）は<b style="color:#cdd6f4;">理想ダイオード＋突入電流制限＋過電流保護</b>を内蔵し、ミニ・ホットスワップ的にも働く。</div></div>
+  </div>
+
+  <!-- ============ 注意 ============ -->
+  <h2>⚠ 注意点・限界</h2>
+  <div class="warnbox">
+    ⚠ 「理想」はあくまで<b>理論上</b>。実物のMOSFET版でも、Rds(on)分のわずかな電圧降下・コントローラの消費電流・切替の遅れ（一瞬の逆流）はゼロではありません。
+  </div>
+  <div class="guide">
+    <div class="guide-item"><div class="q">完全に0ではない</div><div class="a">電圧降下 = I × Rds(on)。大電流ではこれも無視できなくなる。低Rds(on)のMOSFETを選ぶ。</div></div>
+    <div class="guide-item"><div class="q">起動時はボディダイオード分</div><div class="a">ONするまでの一瞬は約0.6V落ちる。完全に常時0Vではない。</div></div>
+    <div class="guide-item"><div class="q">コストと部品</div><div class="a">普通のダイオード1個より、MOSFET＋コントローラで部品・コストが増える。小信号や低電流なら普通のダイオードで十分なことも。</div></div>
+    <div class="guide-item"><div class="q">向き・Vの監視が必要</div><div class="a">逆流検知が遅れると一瞬逆電流が流れる。ORing用途では専用ICの応答速度が大事。</div></div>
+  </div>
+
+  <!-- ============ 用語 ============ -->
+  <h2>📖 用語解説</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">順方向 / 逆方向</div><div class="a">ダイオードが電流を通す向きが順方向、通さない向きが逆方向。</div></div>
+    <div class="guide-item"><div class="q">順方向電圧 Vf</div><div class="a">順方向に電流を流したとき落ちる電圧。シリコンで約0.6〜0.7V、ショットキーで約0.2〜0.4V。理想は0V。</div></div>
+    <div class="guide-item"><div class="q">Rds(on)</div><div class="a">MOSFETがONのときのドレイン-ソース間抵抗。小さいほど理想ダイオードの電圧降下・損失が小さい。</div></div>
+    <div class="guide-item"><div class="q">ボディダイオード</div><div class="a">MOSFETに構造上できる内蔵ダイオード。理想ダイオード回路では起動時の通電路になる。</div></div>
+    <div class="guide-item"><div class="q">ORing（オアリング）</div><div class="a">複数の電源をダイオードでまとめ、逆流を防ぎつつ高い方から給電する構成。</div></div>
+    <div class="guide-item"><div class="q">損失（電力ロス）</div><div class="a">部品で消費されてしまう電力。ダイオードでは Vf×I、理想（MOSFET）では I²×Rds。熱になる。</div></div>
+  </div>
+
+  <footer>
+    値・式は学習用の目安です。実際の設計では各IC・MOSFETのデータシート（Rds(on)・耐圧・応答速度・消費電流）を確認してください。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — idealDiodeGuide.html
+  </footer>
+
+<script>
+  const byId = id => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const fmtW = w => (!isFinite(w) ? '-' : w < 1 ? (w * 1000).toFixed(0) + ' mW' : w.toFixed(2) + ' W');
+
+  /* ---- 粒の流れアニメ ---- */
+  const flows = [];
+  function addFlow(pathId, groupId, count, color, speedFn) {
+    const path = byId(pathId), group = byId(groupId), len = path.getTotalLength();
+    const dots = [];
+    for (let i = 0; i < count; i++) {
+      const c = document.createElementNS(SVGNS, 'circle');
+      c.setAttribute('r', '4.5'); c.setAttribute('fill', color);
+      group.appendChild(c);
+      dots.push({ el: c, off: (i / count) * len });
+    }
+    flows.push({ path, len, dots, speedFn });
+  }
+  let last = null;
+  function frame(t) {
+    if (last === null) last = t;
+    let dt = (t - last) / 1000; last = t; if (dt > 0.1) dt = 0.1;
+    for (const f of flows) {
+      const sp = f.speedFn();
+      for (const d of f.dots) {
+        d.off = (d.off + sp * dt) % f.len; if (d.off < 0) d.off += f.len;
+        const p = f.path.getPointAtLength(d.off);
+        d.el.setAttribute('cx', p.x.toFixed(1)); d.el.setAttribute('cy', p.y.toFixed(1));
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---- 概念：順/逆トグル ---- */
+  let fwd = true;
+  function setDir(f) {
+    fwd = f;
+    const col = f ? '#a6e3a1' : '#f38ba8';
+    byId('d-tri').setAttribute('fill', col);
+    byId('d-bar').setAttribute('stroke', col);
+    byId('d-status').setAttribute('fill', col);
+    byId('d-status').textContent = f ? '通す（順方向）' : 'ブロック（逆方向）';
+    byId('d-block').setAttribute('opacity', f ? '0' : '1');
+    byId('bat-lbl').textContent = f ? '電池' : '電池(逆)';
+    byId('dirBtn').textContent = f ? '逆方向にする' : '順方向にする';
+  }
+  byId('dirBtn').addEventListener('click', () => setDir(!fwd));
+  addFlow('p-ideal', 'g-ideal', 10, '#f9e2af', () => fwd ? 130 : 0);
+
+  /* ---- 理想 vs 実物 ---- */
+  function updCompare() {
+    const I = parseFloat(byId('cmpI').value);
+    const Vf = parseFloat(byId('cmpVf').value);
+    const Rds = parseFloat(byId('cmpRds').value) / 1000;
+    byId('cmpIval').textContent = I.toFixed(1) + ' A';
+    const realLoss = Vf * I, idealLoss = I * I * Rds;
+    byId('realLoss').textContent = fmtW(realLoss);
+    byId('idealLoss').textContent = fmtW(idealLoss);
+    byId('realLoss2').textContent = fmtW(realLoss);
+    byId('idealLoss2').textContent = fmtW(idealLoss);
+    byId('saveLoss').textContent = fmtW(Math.max(0, realLoss - idealLoss));
+    const maxL = Math.max(realLoss, idealLoss, 1e-6);
+    byId('realBar').style.width = (realLoss / maxL * 100) + '%';
+    byId('idealBar').style.width = (idealLoss / maxL * 100) + '%';
+    const heat = byId('real-heat');
+    heat.setAttribute('font-size', Math.min(12 + realLoss * 7, 30));
+    heat.textContent = realLoss > 0.6 ? '🔥' : (realLoss > 0.15 ? '♨' : '·');
+  }
+  ['cmpI', 'cmpVf', 'cmpRds'].forEach(id => byId(id).addEventListener('input', updCompare));
+  byId('cmpVf').addEventListener('change', updCompare);
+  addFlow('p-real', 'g-real', 8, '#f9e2af', () => parseFloat(byId('cmpI').value) * 45 + 12);
+  addFlow('p-ideal2', 'g-ideal2', 8, '#a6e3a1', () => parseFloat(byId('cmpI').value) * 45 + 12);
+
+  /* ---- モジュール図（IN→OUTの流れ・順/逆トグル） ---- */
+  let modFwd = true;
+  function setModDir(f) {
+    modFwd = f;
+    byId('mod-box').setAttribute('stroke', f ? '#cba6f7' : '#f38ba8');
+    byId('mod-status').setAttribute('fill', f ? '#a6e3a1' : '#f38ba8');
+    byId('mod-status').textContent = f ? '順方向：通す' : '逆電流：ブロック（止まる）';
+    byId('mod-block').setAttribute('opacity', f ? '0' : '1');
+    byId('modBtn').textContent = f ? '逆電流にする' : '順方向にもどす';
+  }
+  byId('modBtn').addEventListener('click', () => setModDir(!modFwd));
+  addFlow('p-mod', 'g-mod', 8, '#a6e3a1', () => modFwd ? 95 : 0);
+
+  /* ---- ORing（電源自動切替） ---- */
+  const OR_A = 5.0; // 電源A 固定
+  let orActive = 'A';
+  function updOr() {
+    const b = parseFloat(byId('or-bSlider').value);
+    const aActive = (OR_A >= b);
+    orActive = aActive ? 'A' : 'B';
+    byId('or-bV2').textContent = b.toFixed(1) + ' V';
+    byId('or-bV').textContent = b.toFixed(1) + 'V';
+    // A側ダイオード
+    byId('or-dAtri').setAttribute('fill', aActive ? '#a6e3a1' : '#f38ba8');
+    byId('or-dAbar').setAttribute('stroke', aActive ? '#a6e3a1' : '#f38ba8');
+    byId('or-xA').setAttribute('opacity', aActive ? '0' : '1');
+    byId('or-aBadge').setAttribute('opacity', aActive ? '1' : '0');
+    // B側ダイオード
+    byId('or-dBtri').setAttribute('fill', !aActive ? '#a6e3a1' : '#f38ba8');
+    byId('or-dBbar').setAttribute('stroke', !aActive ? '#a6e3a1' : '#f38ba8');
+    byId('or-xB').setAttribute('opacity', !aActive ? '0' : '1');
+    byId('or-bBadge').setAttribute('opacity', !aActive ? '1' : '0');
+    byId('or-status').setAttribute('fill', '#a6e3a1');
+    byId('or-status').textContent = aActive
+      ? '電源A（' + OR_A.toFixed(1) + 'V）が給電中 ／ 電源B側は逆流ブロック'
+      : '電源B（' + b.toFixed(1) + 'V）が給電中 ／ 電源A側は逆流ブロック';
+  }
+  byId('or-bSlider').addEventListener('input', updOr);
+  addFlow('p-orA', 'g-orA', 9, '#a6e3a1', () => orActive === 'A' ? 120 : 0);
+  addFlow('p-orB', 'g-orB', 9, '#a6e3a1', () => orActive === 'B' ? 120 : 0);
+
+  /* ---- 電池バックアップ（停電トグル） ---- */
+  let bkMain = true;          // 主電源あり
+  let bkSupplier = 'M';       // 給電元 M=主電源 / B=電池
+  function updBk() {
+    const mainActive = bkMain; // 5V > 3.7V なので主電源あれば主電源が給電
+    bkSupplier = mainActive ? 'M' : 'B';
+    byId('bk-mV').textContent = bkMain ? '5.0V' : '0V (停電)';
+    byId('bk-mV').setAttribute('fill', bkMain ? '#a6e3a1' : '#f38ba8');
+    // D1 主電源側
+    byId('bk-d1tri').setAttribute('fill', mainActive ? '#a6e3a1' : '#f38ba8');
+    byId('bk-d1bar').setAttribute('stroke', mainActive ? '#a6e3a1' : '#f38ba8');
+    byId('bk-x1').setAttribute('opacity', mainActive ? '0' : '1');
+    byId('bk-mBadge').setAttribute('opacity', mainActive ? '1' : '0');
+    // D2 電池側＋昇圧
+    byId('bk-d2tri').setAttribute('fill', !mainActive ? '#a6e3a1' : '#f38ba8');
+    byId('bk-d2bar').setAttribute('stroke', !mainActive ? '#a6e3a1' : '#f38ba8');
+    byId('bk-x2').setAttribute('opacity', !mainActive ? '0' : '1');
+    byId('bk-bBadge').setAttribute('opacity', !mainActive ? '1' : '0');
+    byId('bk-boost').setAttribute('stroke', !mainActive ? '#fab387' : '#585b70');
+    byId('bk-status').setAttribute('fill', '#a6e3a1');
+    byId('bk-status').textContent = mainActive
+      ? '主電源（5.0V）が給電中 ／ 電池（昇圧4.9V）は待機・放電しない'
+      : '停電！ 昇圧した電池（4.9V）へ無瞬断で切替 ／ 負荷は止まらない';
+    byId('bkBtn').textContent = bkMain ? '停電させる' : '主電源を復旧する';
+  }
+  byId('bkBtn').addEventListener('click', () => { bkMain = !bkMain; updBk(); });
+  addFlow('p-bkM', 'g-bkM', 9, '#a6e3a1', () => bkSupplier === 'M' ? 120 : 0);
+  addFlow('p-bkB', 'g-bkB', 9, '#a6e3a1', () => bkSupplier === 'B' ? 120 : 0);
+
+  /* ---- CH213K 3ピンIC図（順/逆トグル） ---- */
+  let chFwd = true;
+  function setChDir(f) {
+    chFwd = f;
+    byId('ch-box').setAttribute('stroke', f ? '#cba6f7' : '#f38ba8');
+    byId('ch-mos').textContent = f ? '内部FET: ON' : '内部FET: OFF';
+    byId('ch-mos').setAttribute('fill', f ? '#a6e3a1' : '#f38ba8');
+    byId('ch-block').setAttribute('opacity', f ? '0' : '1');
+    byId('ch-status').setAttribute('fill', f ? '#a6e3a1' : '#f38ba8');
+    byId('ch-status').textContent = f
+      ? '順方向：内部FET ON → 低損失で通す'
+      : '逆接続：内部FETがOFF＋内蔵ダイオードも逆向き → 止まる';
+    byId('chBtn').textContent = f ? '逆接続にする' : '順方向にもどす';
+  }
+  byId('chBtn').addEventListener('click', () => setChDir(!chFwd));
+  addFlow('p-ch', 'g-ch', 8, '#a6e3a1', () => chFwd ? 95 : 0);
+  addFlow('p-chg', 'g-chg', 6, '#a6adc8', () => chFwd ? 95 : 0);
+
+  /* ---- XC8111 接続例（CE ON/OFF） ---- */
+  let ceOn = true, xcFwd = true;
+  function updXc() {
+    const flowing = ceOn && xcFwd;
+    byId('xc-box').setAttribute('stroke', flowing ? '#cba6f7' : '#f38ba8');
+    byId('xc-ce').setAttribute('stroke', ceOn ? '#f9e2af' : '#585b70');
+    byId('xc-block').setAttribute('opacity', xcFwd ? '0' : '1');
+    byId('xc-mos').textContent = flowing ? '出力 ON' : (!xcFwd ? '逆流ブロック' : '出力 OFF');
+    byId('xc-mos').setAttribute('fill', flowing ? '#a6e3a1' : '#f38ba8');
+    byId('xc-status').setAttribute('fill', flowing ? '#a6e3a1' : '#f38ba8');
+    byId('xc-status').textContent = !xcFwd
+      ? '逆接続：理想ダイオードが逆流をブロック（CEに関係なく止まる）'
+      : (!ceOn ? 'CE = Low → 出力OFF（負荷に電力が行かない）'
+        : 'CE = High・順方向 → VIN→VOUTを低損失で通す');
+    byId('xcBtn').textContent = ceOn ? 'CE = Low（OFF）にする' : 'CE = High（ON）にする';
+    byId('xcRevBtn').textContent = xcFwd ? '逆接続にする' : '順接続にもどす';
+  }
+  byId('xcBtn').addEventListener('click', () => { ceOn = !ceOn; updXc(); });
+  byId('xcRevBtn').addEventListener('click', () => { xcFwd = !xcFwd; updXc(); });
+  addFlow('p-xc', 'g-xc', 10, '#a6e3a1', () => (ceOn && xcFwd) ? 120 : 0);
+
+  /* ---- 起動 ---- */
+  setDir(true);
+  setModDir(true);
+  setChDir(true);
+  updXc();
+  updOr();
+  updBk();
+  updCompare();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

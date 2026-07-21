@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>人生の現在地 — Life Remaining</title>
+<style>
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; } /* 日付ピッカーのアイコン・カレンダー等をダーク配色で描画 */
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.75;
+    min-height: 100vh;
+    font-size: 17px;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+
+  .panel {
+    background: #181825; border: 1px solid #45475a; border-radius: 10px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .slider-row label { width: 140px; color: #a6adc8; font-size: 15px; font-weight: bold; }
+  .slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: #89b4fa; }
+  input[type=date], input[type=number], input[type=text] {
+    padding: 9px 12px; background: #11111b; color: #f9e2af; font-weight: bold;
+    border: 1px solid #585b70; border-radius: 6px;
+    font-family: Consolas, monospace; font-size: 17px;
+  }
+  input[type=text] { font-family: inherit; font-weight: normal; color: #cdd6f4; font-size: 16px; }
+  input[type=number] { width: 100px; text-align: right; }
+  .unit { color: #a6adc8; font-size: 15px; font-weight: bold; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  .stat {
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 10px 18px; font-size: 15px; color: #a6adc8;
+  }
+  .stat b { color: #f9e2af; font-family: Consolas, monospace; font-size: 24px; }
+
+  /* 時間の内訳・リアルタイム秒 */
+  .time-rows { display: grid; gap: 8px; margin: 14px 0 6px; }
+  .time-row {
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 9px 16px; font-size: 15px; color: #a6adc8;
+    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+  }
+  .time-row .tl { font-weight: bold; min-width: 78px; color: #cdd6f4; }
+  .time-row b { font-family: Consolas, monospace; color: #f9e2af; font-size: 18px; }
+  .time-row.rem .tl { color: #a6e3a1; }
+  .time-row.rem b { color: #a6e3a1; }
+  .big-sec {
+    background: #11111b; border: 2px solid #a6e3a1; border-radius: 12px;
+    padding: 14px 18px; text-align: center; margin: 10px 0;
+  }
+  .big-sec .lbl { color: #a6adc8; font-size: 16px; }
+  .big-sec b {
+    font-family: Consolas, monospace; color: #a6e3a1;
+    font-size: clamp(30px, 5.5vw, 54px); display: block; line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 人生プログレスバー */
+  .lifebar-outer {
+    background: #11111b; border: 1px solid #45475a; border-radius: 10px;
+    height: 40px; overflow: hidden; position: relative; margin: 12px 0 4px;
+  }
+  .lifebar-inner {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #89b4fa, #94e2d5, #a6e3a1);
+    transition: width .4s ease;
+  }
+  .lifebar-label {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: Consolas, monospace; font-weight: bold; font-size: 17px; color: #cdd6f4;
+    text-shadow: 0 1px 3px #11111b;
+  }
+
+  /* 年ドットグリッド */
+  .dotgrid { display: grid; grid-template-columns: 60px repeat(10, 1fr); gap: 6px; max-width: 620px; margin-top: 12px; align-items: center; }
+  .dotgrid .rowlbl { color: #6c7086; font-size: 11px; font-family: Consolas, monospace; text-align: right; padding-right: 4px; }
+  .dot { aspect-ratio: 1; border-radius: 50%; background: #313244; border: 1px solid #45475a; }
+  .dot.lived { background: #a6e3a1; border-color: #a6e3a1; }
+  .dot.now { background: #f9e2af; border-color: #f9e2af; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .7; } }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0 8px;
+    font-size: 16px; min-width: 560px;
+  }
+  th, td { border: 1px solid #45475a; padding: 10px 14px; text-align: left; vertical-align: middle; }
+  th { background: #181825; color: #89b4fa; font-size: 15px; }
+  tr:nth-child(even) td { background: #232334; }
+  td.num { font-family: Consolas, monospace; color: #f9e2af; text-align: right; white-space: nowrap; font-size: 17px; }
+  td.num.remain { color: #a6e3a1; font-size: 20px; font-weight: bold; }
+
+  tr.dim td { color: #6c7086; }
+  tr.dim td.num { color: #6c7086; }
+  tr.dim .ev { color: #6c7086; }
+  tr.gamerow .ev { color: #cba6f7; }
+  tr.mangarow .ev { color: #fab387; }
+  tr.arcaderow .ev { color: #f5c2e7; }
+  tr.softrow .ev { color: #94e2d5; }
+  tr.itrow .ev { color: #89b4fa; }
+  tr.animerow .ev { color: #89dceb; }
+  tr.movierow .ev { color: #b4befe; }
+  tr.tvrow .ev { color: #eba0ac; }
+  tr.myrow .ev { color: #f9e2af; }
+  .myev-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #232334; border: 1px solid #585b70; border-radius: 16px;
+    padding: 4px 12px; font-size: 14px;
+  }
+  .myev-chip button { background: none; border: none; color: #f38ba8; cursor: pointer; font-weight: bold; font-size: 15px; padding: 0; }
+
+  .ckrow { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 10px 0; align-items: center; }
+  .ckrow label { font-size: 15px; color: #cdd6f4; display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  .ckrow input[type=checkbox] { width: 18px; height: 18px; accent-color: #89b4fa; cursor: pointer; }
+  .ckrow .cklbl { color: #a6adc8; font-size: 15px; font-weight: bold; }
+  tr.nowrow td { background: #2a3040; border-top: 2px solid #f9e2af; border-bottom: 2px solid #f9e2af; }
+  tr.birthrow td { background: #253320; border-top: 2px solid #a6e3a1; border-bottom: 2px solid #a6e3a1; }
+  tr.birthrow .ev { color: #a6e3a1; font-size: 20px; }
+  tr.birthrow td.num { color: #a6e3a1; font-weight: bold; }
+  tr.futurerow td .ev { color: #a6e3a1; }
+  .ev { font-weight: bold; font-size: 17px; }
+  .evd { color: #a6adc8; font-size: 14px; }
+
+  .note { color: #a6adc8; font-size: 14px; margin-top: 6px; }
+  .err { color: #f38ba8; font-weight: bold; margin: 8px 0; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>🧭 人生の現在地 <span style="color:#a6adc8;font-size:0.55em;font-weight:normal;">— Life Remaining</span></h1>
+
+  <div class="lead">
+    生年月日を入れるだけで、<b>自分がいま人生のどのあたりにいるのか</b>がひと目で分かるページ。
+    現在の年齢と残り時間、<b>ごはん・睡眠・散髪があと何回できるか</b>。
+    そして学校や元号、ゲーム機・漫画などの出来事に自分の歩みを重ねた年表で<b>「いまここ」</b>を確かめられます。
+    残りを数えるのは怖いことではなく、<b>今日1日の解像度を上げるため</b>。
+    <span class="note">※ すべて概算・ブラウザ内での計算です（どこにも送信されません）。</span>
+  </div>
+
+  <div class="panel">
+    <div class="slider-row" style="margin-top:0;">
+      <label for="birth">生年月日</label>
+      <input type="date" id="birth" value="1990-01-01" min="1900-01-01">
+    </div>
+    <div class="slider-row">
+      <label for="lifeS">想定寿命</label>
+      <input type="range" id="lifeS" min="50" max="120" step="1" value="90">
+      <input type="number" id="lifeN" value="90" min="1" max="130" step="1"><span class="unit">歳まで</span>
+    </div>
+    <div class="err" id="errMsg" style="display:none;"></div>
+  </div>
+
+  <h2>📍 現在地</h2>
+  <div class="panel">
+    <div class="stats">
+      <span class="stat">現在 <b id="stAge">-</b></span>
+      <span class="stat">生まれてから <b id="stDays">-</b> 日目</span>
+      <span class="stat">残り <b id="stRemYears">-</b> 年（約 <b id="stRemDays">-</b> 日）</span>
+      <span class="stat">生まれ年 <b id="stWareki" style="font-size:15px;">-</b></span>
+      <span class="stat">星座 <b id="stZodiac" style="font-size:15px;">-</b></span>
+      <span class="stat">干支 <b id="stEto" style="font-size:15px;">-</b></span>
+    </div>
+    <div class="time-rows">
+      <div class="time-row"><span class="tl">これまで</span>
+        <span><b id="tPastD">-</b> 日</span><span>＝ <b id="tPastH">-</b> 時間</span><span>＝ <b id="tPastM">-</b> 分</span><span>＝ <b id="tPastS">-</b> 秒</span>
+      </div>
+      <div class="time-row rem"><span class="tl">これから</span>
+        <span><b id="tRemD">-</b> 日</span><span>＝ <b id="tRemH">-</b> 時間</span><span>＝ <b id="tRemM">-</b> 分</span>
+      </div>
+    </div>
+    <div class="big-sec">
+      <span class="lbl">残り時間（リアルタイム）</span>
+      <b><span id="tRemS">-</span> 秒</b>
+    </div>
+    <div class="lifebar-outer">
+      <div class="lifebar-inner" id="lifeBar"></div>
+      <div class="lifebar-label" id="lifeBarTxt"></div>
+    </div>
+    <div class="note">1マス＝1年。<span style="color:#a6e3a1;">●</span> 生きた年　<span style="color:#f9e2af;">●</span> いま　<span style="color:#585b70;">●</span> これから</div>
+    <div class="dotgrid" id="dotGrid"></div>
+  </div>
+
+  <h2>🔁 あと何回できる？</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>こと</th><th>頻度の仮定</th><th>これまで（約）</th><th style="color:#a6e3a1;">これから（約）</th></tr>
+      </thead>
+      <tbody id="cntBody"></tbody>
+    </table>
+  </div>
+  <p class="note">※ 生まれた日から一律の頻度で数えた超概算です（乳児期の散髪など細かいことは気にしない）。</p>
+
+  <h2>🫂 大切な人と、あと何回会える？</h2>
+  <div class="panel">
+    <div class="slider-row" style="margin-top:0;">
+      <label for="pBirth">相手の生年月日</label>
+      <input type="date" id="pBirth">
+      <label style="width:auto;">想定寿命</label>
+      <input type="number" id="pLife" value="90" min="1" max="130" step="1">
+      <span class="unit">歳</span>
+    </div>
+    <div class="slider-row">
+      <label for="pFreq">会う頻度</label>
+      <input type="number" id="pFreq" value="2" min="0.1" max="366" step="any">
+      <span class="unit">回/年</span>
+      <button class="btn" data-pf="1">年1回</button>
+      <button class="btn" data-pf="2">帰省ペース 年2回</button>
+      <button class="btn" data-pf="12">月1回</button>
+      <button class="btn" data-pf="52">週1回</button>
+    </div>
+    <div class="stats" id="pStats" style="display:none;">
+      <span class="stat">相手は現在 <b id="pAge">-</b></span>
+      <span class="stat">相手の残り 約<b id="pRemY">-</b> 年</span>
+    </div>
+    <div class="big-sec" id="pBig" style="display:none;border-color:#f9e2af;">
+      <span class="lbl">あと会えるのは、およそ</span>
+      <b style="color:#f9e2af;"><span id="pMeet">-</span> 回</b>
+    </div>
+    <p class="note">回数は「<b style="color:#cdd6f4;">自分と相手、残り時間の短い方 × 会う頻度</b>」のざっくり計算。入力はこのブラウザにだけ保存されます。
+    ……回数が少なく見えても大丈夫、<b style="color:#cdd6f4;">会う頻度を上げれば今日からでも増やせます</b>。</p>
+  </div>
+
+  <h2>📅 人生年表（学校・節目・時代の切り替わり）</h2>
+  <div class="ckrow">
+    <span class="cklbl">表示：</span>
+    <label><input type="checkbox" id="ckHS" checked> 高校</label>
+    <label><input type="checkbox" id="ckUniv" checked> 大学（4年制）</label>
+    <label><input type="checkbox" id="ckGrad"> 大学院（修士2年）</label>
+    <label><input type="checkbox" id="ckVoc"> 専門学校（2年制）</label>
+    <label><input type="checkbox" id="ckVoc4"> 専門学校（4年制）</label>
+    <label><input type="checkbox" id="ckGame"> 🎮 ゲーム機の発売日</label>
+    <label><input type="checkbox" id="ckArcade"> 🕹 アーケードゲーム</label>
+    <label><input type="checkbox" id="ckSoft"> 👾 家庭用ゲームソフト</label>
+    <label><input type="checkbox" id="ckManga"> 📖 漫画の連載開始</label>
+    <label><input type="checkbox" id="ckAnime"> 📺 アニメの放送開始</label>
+    <label><input type="checkbox" id="ckMovie"> 🎬 映画の公開</label>
+    <label><input type="checkbox" id="ckTV"> 📡 テレビ番組</label>
+    <label><input type="checkbox" id="ckIT"> 💻 IT・ガジェット史</label>
+    <button class="btn" id="ckAllOn" style="padding:4px 12px;">すべてON</button>
+    <button class="btn" id="ckAllOff" style="padding:4px 12px;">すべてOFF</button>
+  </div>
+  <div class="ckrow" style="margin-top:0;">
+    <span class="cklbl">移動：</span>
+    <button class="btn" id="jumpBirth" style="padding:4px 12px;border-color:#a6e3a1;color:#a6e3a1;">🎉 誕生へ</button>
+    <button class="btn" id="jumpNow" style="padding:4px 12px;border-color:#f9e2af;color:#f9e2af;">★ いまここへ</button>
+  </div>
+  <div class="panel" style="padding:12px 16px;margin:10px 0;">
+    <div class="slider-row" style="margin:0;">
+      <label style="width:auto;">★ マイイベント追加</label>
+      <input type="date" id="myEvDate">
+      <input type="text" id="myEvName" placeholder="就職・結婚・引っ越し など" style="flex:1;min-width:180px;">
+      <button class="btn" id="myEvAdd">追加</button>
+    </div>
+    <div id="myEvList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+    <p class="note" style="margin:6px 0 0;">追加したイベントはこのブラウザに保存され、年表に★で表示されます。</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>西暦</th><th>あなたの年齢</th><th>イベント</th></tr>
+      </thead>
+      <tbody id="tlBody"></tbody>
+    </table>
+  </div>
+  <p class="note">※ 学校は4月入学・留年浪人なしのストレート想定。誕生日が4月2日〜翌4月1日の「学年」基準で計算しています。</p>
+
+  <footer>
+    すべて概算です。平均寿命は男性約81歳・女性約87歳（日本・簡易生命表の目安）、90歳まで生きる人も珍しくありません。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — lifeRemaining.html
+  </footer>
+
+<script>
+  const byId = id => document.getElementById(id);
+  const DAY = 86400000;
+  const fmtN = n => Math.round(n).toLocaleString();
+
+  /* ---- 和暦 ---- */
+  function wareki(y, m, d) {
+    const t = y * 10000 + m * 100 + d;
+    const g = (name, start) => {
+      const n = y - start + 1;
+      return name + (n === 1 ? '元' : n) + '年';
+    };
+    if (t >= 20190501) return g('令和', 2019);
+    if (t >= 19890108) return g('平成', 1989);
+    if (t >= 19261225) return g('昭和', 1926);
+    if (t >= 19120730) return g('大正', 1912);
+    return y + '年';
+  }
+
+  /* ---- 満年齢 ---- */
+  function ageAt(birth, date) {
+    let a = date.getFullYear() - birth.getFullYear();
+    const m = date.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && date.getDate() < birth.getDate())) a--;
+    return a;
+  }
+  function ageYM(birth, date) {
+    let m = (date.getFullYear() - birth.getFullYear()) * 12 + (date.getMonth() - birth.getMonth());
+    if (date.getDate() < birth.getDate()) m--;
+    return { y: Math.floor(m / 12), m: m % 12 };
+  }
+
+  /* ---- 星座・干支 ---- */
+  function zodiac(m, d) {
+    const t = m * 100 + d;
+    if (t >= 321 && t <= 419) return 'おひつじ座 ♈';
+    if (t >= 420 && t <= 520) return 'おうし座 ♉';
+    if (t >= 521 && t <= 621) return 'ふたご座 ♊';
+    if (t >= 622 && t <= 722) return 'かに座 ♋';
+    if (t >= 723 && t <= 822) return 'しし座 ♌';
+    if (t >= 823 && t <= 922) return 'おとめ座 ♍';
+    if (t >= 923 && t <= 1023) return 'てんびん座 ♎';
+    if (t >= 1024 && t <= 1122) return 'さそり座 ♏';
+    if (t >= 1123 && t <= 1221) return 'いて座 ♐';
+    if (t >= 1222 || t <= 119) return 'やぎ座 ♑';
+    if (t >= 120 && t <= 218) return 'みずがめ座 ♒';
+    return 'うお座 ♓';
+  }
+  function eto(y) {
+    const E = ['子（ね）🐭', '丑（うし）🐮', '寅（とら）🐯', '卯（う）🐰', '辰（たつ）🐲', '巳（み）🐍',
+               '午（うま）🐴', '未（ひつじ）🐑', '申（さる）🐵', '酉（とり）🐔', '戌（いぬ）🐶', '亥（い）🐗'];
+    return E[((y - 4) % 12 + 12) % 12] + '年';
+  }
+
+  /* ---- カウント項目 ---- */
+  const ITEMS = [
+    ['🍚 食事', '1日3回', d => d * 3],
+    ['😴 睡眠', '1日1回', d => d],
+    ['💈 散髪', '月に1回', d => d / 30.44],
+    ['🛁 お風呂', '1日1回', d => d],
+    ['🌕 満月', '29.5日ごと', d => d / 29.53],
+    ['🌸 桜の季節', '年に1回', d => d / 365.25],
+    ['🎂 誕生日', '年に1回', d => d / 365.25],
+    ['🎍 お正月', '年に1回', d => d / 365.25]
+  ];
+
+  /* ---- ゲーム機の発売日 ---- */
+  const GAMES = [
+    [1980, 4, 28, 'ゲーム＆ウオッチ', '任天堂', '携帯型電子ゲーム'],
+    [1983, 7, 15, 'ファミリーコンピュータ', '任天堂', '据置型'],
+    [1983, 7, 15, 'SG-1000', 'セガ', '据置型'],
+    [1985, 10, 20, 'セガ・マークIII', 'セガ', '据置型'],
+    [1987, 10, 18, 'マスターシステム', 'セガ', '据置型'],
+    [1987, 10, 30, 'PCエンジン', 'NECホームエレクトロニクス', '据置型'],
+    [1988, 10, 29, 'メガドライブ', 'セガ', '据置型'],
+    [1989, 4, 21, 'ゲームボーイ', '任天堂', '携帯型'],
+    [1990, 10, 6, 'ゲームギア', 'セガ', '携帯型'],
+    [1990, 11, 21, 'スーパーファミコン', '任天堂', '据置型'],
+    [1991, 7, 1, 'NEOGEO', 'SNK', '据置型'],
+    [1993, 2, 20, 'FM TOWNS マーティー', '富士通', '据置型'],
+    [1993, 8, 20, 'レーザーアクティブ（CLD-A100）', 'パイオニア', '据置型'],
+    [1994, 3, 20, '3DO REAL', '松下電器産業', '据置型'],
+    [1994, 9, 9, 'ネオジオCD', 'SNK', '据置型'],
+    [1994, 9, 23, 'プレイディア', 'バンダイ', '据置型'],
+    [1994, 11, 22, 'セガサターン', 'セガ', '据置型'],
+    [1994, 12, 3, 'PlayStation', 'ソニー・コンピュータエンタテインメント', '据置型'],
+    [1994, 12, 23, 'PC-FX', 'NECホームエレクトロニクス', '据置型'],
+    [1995, 7, 21, 'バーチャルボーイ', '任天堂', '卓上型'],
+    [1995, 11, 1, 'サテラビュー', '任天堂', '周辺機器（スーパーファミコン用衛星放送受信）'],
+    [1996, 3, 28, 'ピピンアットマーク', 'バンダイ・Apple', '据置型'],
+    [1996, 6, 23, 'NINTENDO 64', '任天堂', '据置型'],
+    [1998, 10, 21, 'ゲームボーイカラー', '任天堂', '携帯型'],
+    [1998, 11, 27, 'ドリームキャスト', 'セガ', '据置型'],
+    [1999, 3, 4, 'ワンダースワン', 'バンダイ', '携帯型'],
+    [2000, 3, 4, 'PlayStation 2', 'SCE', '据置型'],
+    [2000, 12, 9, 'ワンダースワンカラー', 'バンダイ', '携帯型'],
+    [2001, 3, 21, 'ゲームボーイアドバンス', '任天堂', '携帯型'],
+    [2001, 9, 14, 'ニンテンドーゲームキューブ', '任天堂', '据置型'],
+    [2001, 11, 30, 'P/ECE', 'アクアプラス', '携帯型'],
+    [2002, 2, 22, 'Xbox', 'マイクロソフト', '据置型'],
+    [2003, 9, 12, 'Steam サービス開始', 'Valve', 'PCゲーム配信プラットフォーム'],
+    [2004, 12, 2, 'ニンテンドーDS', '任天堂', '携帯型'],
+    [2004, 12, 12, 'PSP', 'SCE', '携帯型'],
+    [2005, 12, 10, 'Xbox 360', 'マイクロソフト', '据置型'],
+    [2006, 11, 11, 'PlayStation 3', 'SCE', '据置型'],
+    [2006, 12, 2, 'Wii', '任天堂', '据置型'],
+    [2011, 2, 26, 'ニンテンドー3DS', '任天堂', '携帯型'],
+    [2011, 12, 17, 'PlayStation Vita', 'SCE', '携帯型'],
+    [2012, 12, 8, 'Wii U', '任天堂', '据置型'],
+    [2014, 2, 22, 'PlayStation 4', 'SCE', '据置型'],
+    [2014, 9, 4, 'Xbox One', 'マイクロソフト', '据置型'],
+    [2016, 3, 28, 'Oculus Rift（CV1）', 'Oculus', 'VR・PC接続型'],
+    [2016, 4, 5, 'HTC Vive', 'HTC・Valve', 'VR・PC接続型（ルームスケール）'],
+    [2016, 10, 13, 'PlayStation VR', 'SIE', 'VR・PS4用'],
+    [2017, 3, 3, 'Nintendo Switch', '任天堂', '据置・携帯兼用'],
+    [2018, 4, 5, 'HTC Vive Pro', 'HTC', 'VR・PC接続型（高解像度化）'],
+    [2019, 5, 21, 'Oculus Quest', 'Oculus', 'VR・スタンドアロン型（PC不要）'],
+    [2020, 10, 13, 'Oculus Quest 2', 'Meta（旧Oculus）', 'VR・スタンドアロン型'],
+    [2020, 11, 10, 'Xbox Series X／Series S', 'マイクロソフト', '据置型'],
+    [2020, 11, 12, 'PlayStation 5', 'ソニー・インタラクティブエンタテインメント', '据置型'],
+    [2022, 10, 25, 'Meta Quest Pro', 'Meta', 'VR/MR・スタンドアロン型（ハイエンド）'],
+    [2022, 12, 17, 'Steam Deck 日本発売', 'Valve', '携帯型PCゲーム機'],
+    [2023, 2, 22, 'PlayStation VR2', 'SIE', 'VR・PS5用'],
+    [2023, 10, 10, 'Meta Quest 3', 'Meta', 'VR/MR・スタンドアロン型'],
+    [2024, 6, 28, 'Apple Vision Pro 日本発売', 'Apple', 'MR・空間コンピュータ'],
+    [2025, 6, 5, 'Nintendo Switch 2', '任天堂', '据置・携帯兼用']
+  ];
+
+  /* ---- 漫画の連載開始（号数のみの作品は月を近似） ---- */
+  const MANGA = [
+    // 週刊少年ジャンプ
+    [1976, 9, 21, 'こちら葛飾区亀有公園前派出所', 'ジャンプ', '1976年9月21日〜2016年9月17日（約40年）'],
+    [1981, 3, 31, 'キャプテン翼', 'ジャンプ', '1981年3月31日〜1988年5月9日'],
+    [1983, 9, 13, '北斗の拳', 'ジャンプ', '1983年9月13日〜1988年8月8日（全245話）'],
+    [1984, 11, 20, 'ドラゴンボール', 'ジャンプ', '1984年11月20日〜1995年6月5日（約10年7ヶ月）'],
+    [1990, 10, 1, 'SLAM DUNK', 'ジャンプ', '1990年10月1日〜1996年6月17日'],
+    [1990, 11, 20, '幽☆遊☆白書', 'ジャンプ', '1990年11月20日〜1994年7月12日（全175話）'],
+    [1992, 10, 5, '究極!!変態仮面', 'ジャンプ', '1992年10月5日〜1993年11月1日（全6巻）'],
+    [1997, 4, 21, 'I"s〈アイズ〉', 'ジャンプ', '1997年4月21日〜2000年5月29日（全15巻）'],
+    [1997, 7, 22, 'ONE PIECE', 'ジャンプ', '1997年7月22日〜連載中'],
+    [1998, 3, 3, 'HUNTER×HUNTER', 'ジャンプ', '1998年3月3日〜連載中'],
+    [1999, 9, 21, 'NARUTO -ナルト-', 'ジャンプ', '1999年9月21日〜2014年11月10日（全700話）'],
+    [2001, 8, 7, 'BLEACH', 'ジャンプ', '2001年8月7日〜2016年8月22日（全686話）'],
+    [2002, 3, 4, 'いちご100％', 'ジャンプ', '2002年3月4日〜2005年8月15日（全19巻）'],
+    [2003, 12, 8, '銀魂', 'ジャンプ', '2003年12月8日〜2019年6月20日'],
+    [2006, 5, 8, 'To LOVEる -とらぶる-', 'ジャンプ', '2006年5月8日〜2009年9月14日'],
+    [2014, 7, 7, '僕のヒーローアカデミア', 'ジャンプ', '2014年7月7日〜2024年8月5日（全430話）'],
+    [2016, 2, 15, '鬼滅の刃', 'ジャンプ', '2016年2月15日〜2020年5月18日（全205話）'],
+    [2018, 3, 5, '呪術廻戦', 'ジャンプ', '2018年3月5日〜2024年9月30日（全271話）'],
+    // 週刊少年サンデー
+    [1978, 9, 1, 'うる星やつら', 'サンデー', '1978年（39号）〜1987年（8号）'],
+    [1981, 8, 5, 'タッチ', 'サンデー', '1981年8月5日〜1986年11月12日'],
+    [1987, 8, 1, 'らんま1/2', 'サンデー', '1987年（36号）〜1996年（12号）・全38巻'],
+    [1990, 1, 1, 'うしおととら', 'サンデー', '1990年（6号）〜1996年（45号）・全33巻'],
+    [1994, 1, 5, '名探偵コナン', 'サンデー', '1994年1月5日〜連載中'],
+    [1994, 8, 1, 'MAJOR', 'サンデー', '1994年（33号）〜2010年（32号）'],
+    [1996, 11, 13, '犬夜叉', 'サンデー', '1996年11月13日〜2008年6月18日'],
+    [2001, 1, 1, '金色のガッシュ!!', 'サンデー', '2001年（6号）〜2008年（4・5合併号）'],
+    // 週刊少年マガジン
+    [1966, 5, 1, '巨人の星', 'マガジン', '1966年（19号）〜1971年（3号）'],
+    [1967, 12, 15, 'あしたのジョー', 'マガジン', '1968年1月1日号（1967年12月15日発売）〜1973年5月13日号'],
+    [1989, 10, 1, 'はじめの一歩', 'マガジン', '1989年（43号）〜連載中'],
+    [1992, 10, 1, '金田一少年の事件簿', 'マガジン', '1992年（45号）〜2001年（2号）※続編・短期連載が多数'],
+    [1996, 12, 11, 'GTO', 'マガジン', '1996年12月11日〜2002年1月30日'],
+    [2006, 8, 2, 'FAIRY TAIL', 'マガジン', '2006年8月2日〜2017年7月26日（全63巻）'],
+    [2012, 10, 10, '七つの大罪', 'マガジン', '2012年10月10日〜2020年3月25日'],
+    [2017, 3, 1, '東京卍リベンジャーズ', 'マガジン', '2017年3月1日〜2022年11月16日（約5年8ヶ月）'],
+    [2017, 8, 9, '五等分の花嫁', 'マガジン', '2017年8月9日〜2020年2月19日'],
+    // 週刊少年チャンピオン
+    [1972, 5, 1, 'ドカベン', 'チャンピオン', '1972年（18号）〜1981年（16号）※シリーズは2018年まで'],
+    [1973, 11, 1, 'ブラック・ジャック', 'チャンピオン', '1973年〜1983年（全242話）'],
+    [1974, 10, 1, 'がきデカ', 'チャンピオン', '1974年（44号）〜1980年（52号）'],
+    [1991, 10, 1, 'グラップラー刃牙', 'チャンピオン', '1991年（43号）〜1999年（42号）※シリーズ続行中'],
+    [1993, 2, 1, '浦安鉄筋家族', 'チャンピオン', '1993年（10号）〜改題しつつシリーズ継続中'],
+    [2008, 2, 21, '弱虫ペダル', 'チャンピオン', '2008年2月21日〜連載中'],
+    [2016, 9, 8, 'BEASTARS', 'チャンピオン', '2016年9月8日〜2020年10月8日（全22巻）'],
+    [2017, 3, 2, '魔入りました！入間くん', 'チャンピオン', '2017年3月2日〜連載中']
+  ];
+
+  /* ---- アーケードゲーム（年のみの作品は年央7/1、月のみは1日で近似） ---- */
+  const ARCADE = [
+    [1978, 7, 1, 'スペースインベーダー', 'タイトー・社会現象になったインベーダーブームの起点'],
+    [1979, 10, 1, 'ギャラクシアン', '10月稼働・ナムコ・カラー表現と編隊飛行が印象的なシューティング'],
+    [1980, 5, 22, 'パックマン', '5月22日・ナムコ・この日は最初のロケテスト日で公式上の誕生日'],
+    [1981, 7, 1, 'ドンキーコング', '任天堂・マリオの原型「ジャンプマン」が登場'],
+    [1981, 7, 1, 'ギャラガ', 'ナムコ・合体してデュアルファイターになる縦シューティング'],
+    [1982, 3, 1, 'ディグダグ', '3月稼働・ナムコ・地中を掘って敵を倒すアクション'],
+    [1983, 7, 1, 'ゼビウス', 'ナムコ・地上・空中を撃ち分ける縦スクロールシューティング'],
+    [1983, 7, 1, 'マッピー', 'ナムコ・トランポリンを使う横画面アクション'],
+    [1984, 7, 1, 'ドルアーガの塔', 'ナムコ・隠し条件を探す攻略型アクションRPG'],
+    [1985, 7, 1, 'グラディウス', 'コナミ・選択式パワーアップを定着させた横シューティング'],
+    [1985, 12, 1, 'スペースハリアー', '12月稼働・セガ・可動筐体と高速疑似3Dの代表作'],
+    [1986, 9, 1, 'アウトラン', '9月稼働・セガ・コース分岐とBGM選択を備えた体感ドライブゲーム'],
+    [1987, 2, 1, 'ダライアス', '2月稼働・タイトー・3画面連結の超横長筐体が象徴的'],
+    [1987, 10, 1, 'アフターバーナーII', '10月稼働・セガ・前後左右に動く大型筐体の戦闘機シューティング'],
+    [1989, 12, 1, 'ファイナルファイト', '12月稼働・カプコン・ベルトスクロールアクションの代表'],
+    [1990, 11, 1, 'R360', '11月稼働・セガ・筐体そのものが360度回転する超大型体感機'],
+    [1991, 3, 7, 'ストリートファイターII', '3月7日稼働・カプコン・対戦格闘ゲームブームの決定的起点'],
+    [1992, 8, 1, 'バーチャレーシング', '8月稼働・セガ・MODEL1を使ったフルポリゴンレース'],
+    [1993, 10, 1, 'リッジレーサー', '10月稼働・ナムコ・テクスチャ付き3DCGと豪快なドリフト'],
+    [1993, 12, 1, 'バーチャファイター', '12月稼働・セガ・フルポリゴン3D対戦格闘'],
+    [1994, 3, 1, 'デイトナUSA', '3月稼働・セガ・MODEL2、最大8人通信の大型レースゲーム'],
+    [1994, 8, 25, 'THE KING OF FIGHTERS ’94', '8月25日稼働・SNK・3対3チームバトルのKOF第1作'],
+    [1994, 9, 1, 'バーチャコップ', '9月稼働・セガ・3DCGガンシューティングの代表作'],
+    [1994, 11, 1, 'バーチャファイター2', '11月稼働・セガ・60fpsの滑らかな動きで社会現象化'],
+    [1994, 12, 1, '鉄拳', '12月稼働・ナムコ・バーチャと並ぶ3D格闘シリーズの始祖'],
+    [1995, 8, 1, '鉄拳2', '8月稼働・ナムコ（SYSTEM 11）・キャラと技が大幅増。調整版Ver.Bが1995年10月稼働'],
+    [1996, 5, 1, 'メタルスラッグ', '5月稼働・SNK・緻密なドット絵の横スクロールアクションシューティング'],
+    [1996, 9, 1, 'バーチャファイター3', '9月稼働・セガ・MODEL3と「エスケープボタン」を採用'],
+    [1997, 3, 1, 'ザ・ハウス・オブ・ザ・デッド', '3月稼働・セガ・ゾンビ系ガンシューティングの定番'],
+    [1997, 3, 20, '鉄拳3', '3月20日稼働・ナムコ（SYSTEM 12）・風間仁、シャオユウ、ファラン、エディ初登場の大ヒット作'],
+    [1997, 7, 1, '電車でGO！', 'タイトー・電車運転シミュレーターを一般層まで広げた作品'],
+    [1997, 7, 1, 'beatmania', 'コナミ・BEMANIおよび音楽ゲームブームの起点'],
+    [1997, 10, 1, 'バーチャファイター3tb', '10月稼働・セガ・3対3のチームバトルを導入'],
+    [1998, 5, 1, 'デイトナUSA 2', '5月稼働・セガ・最大16人通信対応のMODEL3レース'],
+    [1998, 7, 23, 'THE KING OF FIGHTERS ’98', '7月23日稼働・SNK・歴代キャラが集まるドリームマッチ型KOF'],
+    [1998, 9, 1, 'DanceDanceRevolution', '9月稼働・コナミ・足でパネルを踏むダンス音楽ゲーム'],
+    [1998, 11, 1, 'ザ・ハウス・オブ・ザ・デッド2', '11月稼働・セガ・NAOMI基板初期を代表するガンシューティング'],
+    [1999, 2, 1, 'クレイジータクシー', '2月稼働・セガ・街中を自由に爆走するドライビングアクション'],
+    [1999, 7, 1, 'ストリートファイターIII 3rd STRIKE', 'カプコン・ブロッキングを中心とした競技性の高い格闘ゲーム'],
+    [1999, 7, 1, '鉄拳タッグトーナメント', '7月稼働・ナムコ（SYSTEM 12）・2キャラを交代させて戦う初のタッグ作品'],
+    [2000, 7, 1, 'MARVEL VS. CAPCOM 2', 'カプコン・3対3の高速タッグ格闘'],
+    [2000, 7, 1, 'CAPCOM VS. SNK', 'カプコン・カプコンとSNKのクロスオーバー格闘'],
+    [2001, 7, 1, '太鼓の達人', 'ナムコ・和太鼓を叩く国民的音楽ゲーム'],
+    [2001, 7, 1, '鉄拳4', 'ナムコ'],
+    [2001, 8, 1, 'バーチャファイター4', '8月稼働・セガ・磁気カードとVF.NETを導入'],
+    [2002, 3, 1, '頭文字D Arcade Stage', '3月稼働・セガ・カードに車種・チューニング・戦績を保存'],
+    [2002, 7, 1, '麻雀格闘倶楽部', 'コナミ・オンライン対戦型アーケード麻雀'],
+    [2002, 10, 10, 'KOF 2002', '10月10日稼働・SNK・3対3に回帰した人気ドリームマッチ作品'],
+    [2003, 12, 12, 'KOF 2003', '12月12日稼働・SNK・試合中に交代できるマルチシフトを導入'],
+    [2004, 11, 1, '鉄拳5', '11月稼働・ナムコ'],
+    [2005, 10, 26, 'KOF XI', '10月26日稼働・SNK・アトミスウェイブ基板を使用'],
+    [2006, 7, 1, 'バーチャファイター5', '7月稼働・セガ・ワイド液晶筐体とLINDBERGH基板を採用'],
+    [2007, 11, 26, '鉄拳6', '11月26日稼働・バンダイナムコ・HD対応アーケード基板とレイジシステム'],
+    [2009, 4, 10, 'KOF XII', '4月10日稼働・SNK・高密度な手描き2Dドットへ全面刷新'],
+    [2010, 7, 14, 'KOF XIII', '7月14日稼働・SNK・KOFの2Dドット格闘を集大成した作品'],
+    [2011, 9, 14, '鉄拳タッグトーナメント2', '9月14日稼働・バンダイナムコ（SYSTEM 369）・12年ぶりのTAG、最大4キャラが入り乱れる'],
+    [2012, 7, 1, 'SOUND VOLTEX', 'コナミ・ボタンとアナログデバイスを使う音楽ゲーム'],
+    [2017, 3, 1, '頭文字D Arcade Stage Zero', '3月稼働・セガ・新筐体・新操作系へ刷新'],
+    [2021, 6, 2, 'Virtua Fighter esports', '6月2日稼働・セガ・店舗間ネットワーク対戦対応の現代版VF']
+  ];
+
+  /* ---- 家庭用ゲームソフト ---- */
+  const SOFT = [
+    [1985, 9, 13, 'スーパーマリオブラザーズ', 'ファミコン'],
+    [1986, 2, 21, 'ゼルダの伝説', 'ディスクシステム'],
+    [1986, 5, 27, 'ドラゴンクエスト', 'ファミコン'],
+    [1987, 12, 18, 'ファイナルファンタジー', 'ファミコン'],
+    [1988, 2, 10, 'ドラゴンクエストIII そして伝説へ…', 'ファミコン'],
+    [1989, 6, 14, 'テトリス', 'ゲームボーイ'],
+    [1990, 4, 27, 'ファイナルファンタジーIII', 'ファミコン'],
+    [1991, 7, 19, 'ファイナルファンタジーIV', 'スーパーファミコン'],
+    [1991, 7, 26, 'ソニック・ザ・ヘッジホッグ', 'メガドライブ'],
+    [1992, 12, 6, 'ファイナルファンタジーV', 'スーパーファミコン'],
+    [1994, 4, 2, 'ファイナルファンタジーVI', 'スーパーファミコン'],
+    [1995, 3, 11, 'クロノ・トリガー', 'スーパーファミコン'],
+    [1996, 2, 27, 'ポケットモンスター 赤・緑', 'ゲームボーイ'],
+    [1996, 3, 22, 'バイオハザード', 'PlayStation'],
+    [1996, 6, 23, 'スーパーマリオ64', 'NINTENDO64'],
+    [1997, 1, 31, 'ファイナルファンタジーVII', 'PlayStation'],
+    [1998, 9, 3, 'METAL GEAR SOLID', 'PlayStation'],
+    [1998, 11, 21, 'ゼルダの伝説 時のオカリナ', 'NINTENDO64'],
+    [2001, 4, 14, 'どうぶつの森', 'NINTENDO64'],
+    [2001, 10, 26, 'ピクミン', 'ゲームキューブ'],
+    [2001, 11, 21, '大乱闘スマッシュブラザーズDX', 'ゲームキューブ'],
+    [2004, 3, 11, 'モンスターハンター', 'PlayStation 2'],
+    [2006, 12, 2, 'Wii Sports', 'Wii'],
+    [2008, 3, 27, 'モンスターハンターポータブル 2nd G', 'PSP'],
+    [2009, 7, 11, 'ドラゴンクエストIX 星空の守り人', 'ニンテンドーDS'],
+    [2011, 9, 22, 'DARK SOULS', 'PlayStation 3'],
+    [2012, 2, 20, 'パズル＆ドラゴンズ', 'iOS'],
+    [2015, 5, 28, 'Splatoon', 'Wii U'],
+    [2016, 7, 22, 'Pokémon GO', 'iOS／Android'],
+    [2017, 3, 3, 'ゼルダの伝説 ブレス オブ ザ ワイルド', 'Switch／Wii U'],
+    [2017, 10, 27, 'スーパーマリオ オデッセイ', 'Switch'],
+    [2018, 12, 7, '大乱闘スマッシュブラザーズ SPECIAL', 'Switch'],
+    [2020, 3, 20, 'あつまれ どうぶつの森', 'Switch'],
+    [2022, 2, 25, 'ELDEN RING', 'PS5／PS4／Xbox／PC'],
+    [2022, 11, 18, 'ポケットモンスター スカーレット・バイオレット', 'Switch'],
+    [2023, 5, 12, 'ゼルダの伝説 ティアーズ オブ ザ キングダム', 'Switch']
+  ];
+
+  /* ---- 主要アニメ（TV放送開始日） ---- */
+  const ANIME = [
+    [1963, 1, 1, '鉄腕アトム', '1月1日放送開始・国産初の本格TVアニメ'],
+    [1969, 10, 5, 'サザエさん', '10月5日放送開始・世界最長寿の現役アニメ'],
+    [1974, 10, 6, '宇宙戦艦ヤマト', '10月6日放送開始・アニメブームの起点'],
+    [1979, 4, 2, 'ドラえもん（テレ朝版）', '4月2日放送開始'],
+    [1979, 4, 7, '機動戦士ガンダム', '4月7日放送開始・リアルロボットの原点'],
+    [1986, 2, 26, 'ドラゴンボール（TV）', '2月26日放送開始'],
+    [1988, 10, 3, 'それいけ！アンパンマン', '10月3日放送開始'],
+    [1990, 1, 7, 'ちびまる子ちゃん', '1月7日放送開始'],
+    [1992, 3, 7, '美少女戦士セーラームーン', '3月7日放送開始'],
+    [1993, 10, 16, 'SLAM DUNK（TV）', '10月16日放送開始'],
+    [1995, 10, 4, '新世紀エヴァンゲリオン', '10月4日放送開始・社会現象に'],
+    [1996, 1, 8, '名探偵コナン（TV）', '1月8日放送開始・現在も継続中'],
+    [1997, 4, 1, 'ポケットモンスター（TV）', '4月1日放送開始'],
+    [1999, 10, 20, 'ONE PIECE（TV)', '10月20日放送開始・現在も継続中'],
+    [2002, 10, 3, 'NARUTO -ナルト-（TV）', '10月3日放送開始'],
+    [2004, 10, 5, 'BLEACH（TV）', '10月5日放送開始'],
+    [2006, 4, 2, '涼宮ハルヒの憂鬱', '4月2日放送開始・深夜アニメブームの象徴'],
+    [2006, 10, 5, 'コードギアス 反逆のルルーシュ', '10月5日放送開始'],
+    [2009, 4, 2, 'けいおん！', '4月2日放送開始'],
+    [2011, 1, 7, '魔法少女まどか☆マギカ', '1月7日放送開始'],
+    [2013, 4, 6, '進撃の巨人（TV）', '4月6日深夜放送開始'],
+    [2019, 4, 6, '鬼滅の刃（TV）', '4月6日放送開始・ここから社会現象へ'],
+    [2020, 10, 3, '呪術廻戦（TV）', '10月放送開始'],
+    [2022, 10, 11, 'チェンソーマン（TV）', '10月11日深夜放送開始'],
+    [2023, 4, 12, '【推しの子】', '4月12日放送開始・初回90分']
+  ];
+
+  /* ---- 主要映画（日本公開日） ---- */
+  const MOVIE = [
+    [1954, 4, 26, '七人の侍', '公開 4月26日・黒澤明'],
+    [1954, 11, 3, 'ゴジラ（初代）', '公開 11月3日・特撮映画の原点'],
+    [1982, 12, 4, 'E.T.', '日本公開 12月4日'],
+    [1984, 3, 11, '風の谷のナウシカ', '公開 3月11日・宮崎駿'],
+    [1985, 12, 7, 'バック・トゥ・ザ・フューチャー', '日本公開 12月7日'],
+    [1986, 8, 2, '天空の城ラピュタ', '公開 8月2日・スタジオジブリ第1作'],
+    [1988, 4, 16, 'となりのトトロ／火垂るの墓', '公開 4月16日・同時上映'],
+    [1988, 7, 16, 'AKIRA', '公開 7月16日・世界に衝撃を与えたジャパニメーション'],
+    [1989, 7, 29, '魔女の宅急便', '公開 7月29日'],
+    [1993, 7, 17, 'ジュラシック・パーク', '日本公開 7月17日・CG恐竜の衝撃'],
+    [1995, 11, 18, 'GHOST IN THE SHELL / 攻殻機動隊', '公開 11月18日'],
+    [1997, 7, 12, 'もののけ姫', '公開 7月12日・当時の日本記録を更新'],
+    [1997, 12, 20, 'タイタニック', '日本公開 12月20日'],
+    [1998, 10, 31, '踊る大捜査線 THE MOVIE', '公開 10月31日'],
+    [1999, 9, 11, 'マトリックス', '日本公開 9月11日'],
+    [2001, 7, 20, '千と千尋の神隠し', '公開 7月20日・ベルリン金熊賞＆アカデミー賞'],
+    [2001, 12, 1, 'ハリー・ポッターと賢者の石', '日本公開 12月1日'],
+    [2002, 3, 2, 'ロード・オブ・ザ・リング', '日本公開 3月2日'],
+    [2004, 11, 20, 'ハウルの動く城', '公開 11月20日'],
+    [2006, 7, 15, '時をかける少女', '公開 7月15日・細田守'],
+    [2008, 7, 19, '崖の上のポニョ', '公開 7月19日'],
+    [2009, 8, 1, 'サマーウォーズ', '公開 8月1日'],
+    [2009, 12, 23, 'アバター', '日本公開 12月23日・3D映画ブーム'],
+    [2013, 7, 20, '風立ちぬ', '公開 7月20日'],
+    [2014, 3, 14, 'アナと雪の女王', '日本公開 3月14日・「レリゴー」現象'],
+    [2016, 7, 29, 'シン・ゴジラ', '公開 7月29日'],
+    [2016, 8, 26, '君の名は。', '公開 8月26日・新海誠・社会現象に'],
+    [2019, 7, 19, '天気の子', '公開 7月19日'],
+    [2020, 10, 16, '劇場版「鬼滅の刃」無限列車編', '公開 10月16日・日本歴代興行収入1位'],
+    [2021, 3, 8, 'シン・エヴァンゲリオン劇場版', '公開 3月8日・26年の完結'],
+    [2022, 5, 27, 'トップガン マーヴェリック', '日本公開 5月27日'],
+    [2022, 12, 3, 'THE FIRST SLAM DUNK', '公開 12月3日'],
+    [2023, 7, 14, '君たちはどう生きるか', '公開 7月14日・宮崎駿']
+  ];
+
+  /* ---- 主要テレビ番組（放送開始日） ---- */
+  const TVSHOW = [
+    [1953, 2, 1, 'NHKテレビ本放送開始', '2月1日・日本のテレビ時代が始まった日'],
+    [1959, 10, 5, 'おかあさんといっしょ', '10月5日放送開始・NHKの長寿子ども番組'],
+    [1966, 7, 17, 'ウルトラマン', '7月17日放送開始・特撮ヒーローの原点'],
+    [1969, 8, 4, '水戸黄門', '8月4日放送開始・国民的時代劇'],
+    [1969, 10, 4, '8時だョ！全員集合', '10月4日放送開始・ドリフターズのお化け番組'],
+    [1971, 4, 3, '仮面ライダー', '4月3日放送開始'],
+    [1973, 4, 2, 'ひらけ！ポンキッキ', '4月2日放送開始'],
+    [1975, 4, 5, '秘密戦隊ゴレンジャー', '4月5日放送開始・スーパー戦隊シリーズ第1作'],
+    [1976, 2, 2, '徹子の部屋', '2月2日放送開始・同一司会者の最長寿トーク番組'],
+    [1978, 1, 19, 'ザ・ベストテン', '1月19日放送開始・歌謡曲黄金期の象徴'],
+    [1982, 10, 4, '笑っていいとも！', '10月4日放送開始・お昼の顔（〜2014年）'],
+    [1983, 4, 4, 'おしん', '4月4日放送開始・朝ドラ史上最高視聴率62.9%'],
+    [1985, 10, 7, 'ニュースステーション', '10月7日放送開始・ニュース番組の形を変えた'],
+    [1989, 10, 3, 'ダウンタウンのガキの使いやあらへんで！', '10月3日放送開始'],
+    [1991, 1, 7, '東京ラブストーリー', '1月7日放送開始・トレンディドラマの金字塔'],
+    [1992, 7, 5, '進め！電波少年', '7月5日放送開始・アポなし企画と懸賞生活'],
+    [1996, 4, 15, 'SMAP×SMAP', '4月15日放送開始'],
+    [1996, 10, 19, 'めちゃ²イケてるッ！', '10月19日放送開始'],
+    [2000, 3, 28, 'プロジェクトX', '3月28日放送開始・中島みゆき「地上の星」'],
+    [2001, 12, 25, 'M-1グランプリ 第1回', '12月25日・漫才日本一決定戦の始まり'],
+    [2007, 2, 4, '世界の果てまでイッテQ！', '2月4日放送開始'],
+    [2013, 7, 7, '半沢直樹', '7月7日放送開始・「倍返しだ！」'],
+    [2016, 10, 11, '逃げるは恥だが役に立つ', '10月11日放送開始・恋ダンス現象']
+  ];
+
+  /* ---- IT・ガジェット史 ---- */
+  const ITH = [
+    [1979, 7, 1, 'ウォークマン（初代）', '7月1日発売・ソニー・音楽を持ち歩く文化の始まり'],
+    [1982, 10, 1, 'CD・CDプレーヤー発売', '10月1日・ソニーCDP-101・デジタル音楽時代へ'],
+    [1982, 10, 1, 'PC-9801 発売', '10月・NEC・「国民機」と呼ばれた日本標準PC（PC98シリーズ）'],
+    [1985, 9, 1, 'ショルダーホン', 'NTT・日本初の「持ち運べる電話」（約3kg）'],
+    [1987, 7, 1, '草の根BBS 全盛へ', '80年代後半〜90年代前半・電話回線とモデムで繋がる小さなネットコミュニティ'],
+    [1992, 11, 1, 'MDプレイヤー発売', '11月1日・ソニーMZ-1・録音できるデジタルディスクとして普及'],
+    [1993, 5, 18, 'Windows 3.1 日本語版', '5月18日発売・PCがオフィスに広がるきっかけ'],
+    [1995, 7, 14, 'MP3（.mp3）誕生', '7月14日・拡張子が決まった日・音楽ファイル圧縮の標準に'],
+    [1995, 11, 23, 'Windows 95 日本語版', '11月23日発売・深夜販売が社会現象に'],
+    [1996, 4, 1, 'Yahoo! JAPAN 開始', '4月1日・日本のインターネットの入り口に'],
+    [1996, 11, 15, 'ICQ 公開', '11月15日・「アーオゥ！」のインスタントメッセンジャー'],
+    [1997, 4, 21, 'Winamp 公開', '4月21日・MP3再生ソフトの定番・スキン文化を生む'],
+    [1998, 7, 25, 'Windows 98 日本語版', '7月25日発売・家庭にインターネットが広がった頃の定番OS'],
+    [1998, 9, 4, 'Google 創業', '9月4日・「ググる」の始まり'],
+    [1999, 2, 22, 'iモード開始', '2月22日・NTTドコモ・携帯でネットが日常に'],
+    [1999, 5, 30, '2ちゃんねる開設', '5月30日・巨大匿名掲示板・ネット文化の震源地に'],
+    [2001, 11, 16, 'Windows XP 日本語版', '11月16日発売・13年サポートされた長寿の定番OS'],
+    [2001, 11, 17, 'iPod（初代）日本発売', '11月17日・Apple・1000曲をポケットに'],
+    [2004, 2, 4, 'Facebook 誕生', '2月4日・実名SNSの世界標準に（日本語版は2008年）'],
+    [2004, 3, 3, 'mixi 開始', '3月3日・日本のSNSブームの起点'],
+    [2005, 2, 14, 'YouTube 誕生', '2月14日・動画共有が当たり前に'],
+    [2006, 7, 15, 'Twitter（現X）公開', '7月15日'],
+    [2006, 12, 12, 'ニコニコ動画 開始', '12月12日・コメントが画面を流れる動画文化'],
+    [2007, 1, 9, '初代iPhone 発表', '1月9日・スマホ時代の幕開け（日本発売は2008年の3G）'],
+    [2008, 7, 11, 'iPhone 3G 日本発売', '7月11日・ソフトバンク・日本のスマホ元年'],
+    [2009, 10, 22, 'Windows 7 発売', '10月22日・Vistaの雪辱を果たした人気OS'],
+    [2010, 5, 28, 'iPad 日本発売', '5月28日・タブレット時代へ'],
+    [2011, 6, 23, 'LINE 開始', '6月23日・連絡手段の標準に'],
+    [2012, 2, 29, 'Raspberry Pi 発売', '2月29日・約3,500円のLinuxボード・電子工作の革命'],
+    [2015, 5, 13, 'Discord 公開', '5月13日・ゲーマー向けから定番ボイスチャットへ'],
+    [2015, 7, 29, 'Windows 10 公開', '7月29日・無償アップグレードで一気に普及'],
+    [2016, 3, 9, 'AlphaGoがイ・セドル九段に勝利', '3月9日〜・AIブームの号砲'],
+    [2021, 10, 5, 'Windows 11 公開', '10月5日'],
+    [2022, 11, 30, 'ChatGPT 公開', '11月30日・OpenAI・生成AIが一般へ']
+  ];
+
+  /* ---- リアルタイム時計（これまで/これからの日・時間・分・秒） ---- */
+  let birthMs = null, endMs = null;
+  function tick() {
+    if (birthMs === null) return;
+    const nowMs = Date.now();
+    const eS = Math.max(0, Math.floor((nowMs - birthMs) / 1000));
+    const rS = Math.max(0, Math.floor((endMs - nowMs) / 1000));
+    byId('tPastD').textContent = fmtN(eS / 86400);
+    byId('tPastH').textContent = fmtN(eS / 3600);
+    byId('tPastM').textContent = fmtN(eS / 60);
+    byId('tPastS').textContent = eS.toLocaleString();
+    byId('tRemD').textContent = fmtN(rS / 86400);
+    byId('tRemH').textContent = fmtN(rS / 3600);
+    byId('tRemM').textContent = fmtN(rS / 60);
+    byId('tRemS').textContent = rS.toLocaleString();
+  }
+  setInterval(tick, 1000);
+
+  function updAll() {
+    const bv = byId('birth').value;
+    const life = parseInt(byId('lifeN').value);
+    const err = byId('errMsg');
+    err.style.display = 'none';
+    if (!bv || isNaN(life) || life <= 0) return;
+    const birth = new Date(bv + 'T00:00:00');
+    const now = new Date();
+    if (birth > now) {
+      err.style.display = '';
+      err.textContent = '生年月日が未来になっています。';
+      return;
+    }
+
+    const by = birth.getFullYear(), bm = birth.getMonth() + 1, bd = birth.getDate();
+    const age = ageAt(birth, now);
+    const daysLived = Math.floor((now - birth) / DAY);
+    const daysTotal = Math.round(life * 365.25);
+    const daysRemain = Math.max(0, daysTotal - daysLived);
+    const yearsRemain = Math.max(0, life - age);
+
+    /* --- 現在地 --- */
+    birthMs = birth.getTime();
+    endMs = birthMs + daysTotal * DAY;
+    tick();
+    const ym = ageYM(birth, now);
+    byId('stAge').textContent = ym.y + '歳' + ym.m + 'ヶ月';
+    byId('stDays').textContent = fmtN(daysLived);
+    byId('stRemYears').textContent = yearsRemain;
+    byId('stRemDays').textContent = fmtN(daysRemain);
+    byId('stWareki').textContent = by + '年（' + wareki(by, bm, bd) + '）';
+    byId('stZodiac').textContent = zodiac(bm, bd);
+    byId('stEto').textContent = eto(by);
+    const pct = Math.min(100, daysLived / daysTotal * 100);
+    byId('lifeBar').style.width = pct.toFixed(1) + '%';
+    byId('lifeBarTxt').textContent = '経過 ' + pct.toFixed(1) + '％ ／ 残り ' + (100 - pct).toFixed(1) + '％';
+    if (daysRemain === 0) {
+      err.style.display = '';
+      err.textContent = '想定寿命を超えて生きています！おめでとうございます。バーを右に伸ばしてください。';
+    }
+
+    /* --- ドットグリッド --- */
+    const grid = byId('dotGrid');
+    grid.innerHTML = '';
+    for (let y = 0; y < life; y++) {
+      if (y % 10 === 0) {
+        const lbl = document.createElement('div');
+        lbl.className = 'rowlbl';
+        lbl.textContent = y + '代';
+        grid.appendChild(lbl);
+      }
+      const dot = document.createElement('div');
+      dot.className = 'dot' + (y < age ? ' lived' : y === age ? ' now' : '');
+      dot.title = y + '歳（' + (by + y) + '年）';
+      grid.appendChild(dot);
+    }
+
+    /* --- あと何回 --- */
+    const cb = byId('cntBody');
+    cb.innerHTML = '';
+    for (const [name, freq, f] of ITEMS) {
+      const past = f(daysLived), future = f(daysRemain);
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + name + '</td><td style="color:#a6adc8;font-size:14px;">' + freq + '</td>' +
+        '<td class="num">' + fmtN(past) + ' 回</td>' +
+        '<td class="num remain">あと ' + fmtN(future) + ' 回</td>';
+      cb.appendChild(tr);
+    }
+
+    /* --- 人生年表 --- */
+    const ev = [];
+    const push = (year, ageTxt, title, detail, cls) => ev.push({ year, ageTxt, title, detail: detail || '', cls: cls || '', idx: ev.length });
+    // 学年（4/1生まれまでが早生まれ）
+    const early = (bm < 4) || (bm === 4 && bd === 1);
+    const elemY = by + (early ? 6 : 7);   // 小学校入学の年（4月）
+    const gradeOf = dt => {
+      const nendo = (dt.getMonth() + 1) >= 4 ? dt.getFullYear() : dt.getFullYear() - 1; // 年度
+      const gi = nendo - elemY;
+      if (gi >= -3 && gi <= -1) return ['年少', '年中', '年長'][gi + 3];
+      if (gi >= 0 && gi <= 5) return '小' + (gi + 1);
+      if (gi >= 6 && gi <= 8) return '中' + (gi - 5);
+      if (gi >= 9 && gi <= 11) return '高' + (gi - 8);
+      return null;
+    };
+    const ageTag = dt => {
+      if (dt < birth) return '生まれる前';
+      const g = gradeOf(dt);
+      return ageAt(birth, dt) + '歳' + (g ? '（' + g + '）' : '');
+    };
+    const eraAge = (y, m, d) => {
+      const dt = new Date(y, m - 1, d);
+      return { t: ageTag(dt), c: dt < birth ? 'dim' : '' };
+    };
+    // 誕生（和暦・星座・干支）
+    push(by, '0歳', '🎉 誕生', wareki(by, bm, bd) + '生まれ・' + zodiac(bm, bd) + '・' + eto(by), 'birthrow');
+    push(elemY - 3, '3歳', '幼稚園 入園 🎒', elemY - 3 + '年4月〜' + elemY + '年3月（3年保育の場合）');
+    push(elemY, '6歳', '小学校 入学 🏫', elemY + '年4月〜' + (elemY + 6) + '年3月');
+    push(elemY + 6, '12歳', '中学校 入学', (elemY + 6) + '年4月〜' + (elemY + 9) + '年3月');
+    if (byId('ckHS').checked) {
+      push(elemY + 9, '15歳', '高校 入学', (elemY + 9) + '年4月〜' + (elemY + 12) + '年3月');
+    }
+    if (byId('ckUniv').checked) {
+      push(elemY + 12, '18歳', '大学 入学', (elemY + 12) + '年4月〜' + (elemY + 16) + '年3月（4年制の場合）');
+      push(elemY + 16, '22歳', '大学 卒業 🎓', '');
+    }
+    if (byId('ckGrad').checked) {
+      push(elemY + 16, '22歳', '大学院 入学（修士）', (elemY + 16) + '年4月〜' + (elemY + 18) + '年3月');
+      push(elemY + 18, '24歳', '大学院 修了 🎓', '');
+    }
+    if (byId('ckVoc').checked) {
+      push(elemY + 12, '18歳', '専門学校（2年制）入学', (elemY + 12) + '年4月〜' + (elemY + 14) + '年3月');
+      push(elemY + 14, '20歳', '専門学校（2年制）卒業', '');
+    }
+    if (byId('ckVoc4').checked) {
+      push(elemY + 12, '18歳', '専門学校（4年制）入学', (elemY + 12) + '年4月〜' + (elemY + 16) + '年3月');
+      push(elemY + 16, '22歳', '専門学校（4年制）卒業', '高度専門士');
+    }
+    // ゲーム機の発売日
+    if (byId('ckGame').checked) {
+      for (const [gy, gm, gd, name, maker, type] of GAMES) {
+        const dt = new Date(gy, gm - 1, gd);
+        const before = dt < birth;
+        push(gy, ageTag(dt),
+          '🎮 ' + name,
+          gm + '月' + gd + '日発売・' + maker + '・' + type,
+          before ? 'gamerow dim' : 'gamerow');
+      }
+    }
+    // アーケードゲームの稼働開始
+    if (byId('ckArcade').checked) {
+      const sorted = [...ARCADE].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]));
+      for (const [ay, am, ad, name, detail] of sorted) {
+        const dt = new Date(ay, am - 1, ad);
+        const before = dt < birth;
+        push(ay, ageTag(dt),
+          '🕹 ' + name, detail,
+          before ? 'arcaderow dim' : 'arcaderow');
+      }
+    }
+    // 家庭用ゲームソフトの発売
+    if (byId('ckSoft').checked) {
+      const sorted = [...SOFT].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]));
+      for (const [sy, sm, sd, name, plat] of sorted) {
+        const dt = new Date(sy, sm - 1, sd);
+        const before = dt < birth;
+        push(sy, ageTag(dt),
+          '👾 ' + name, sm + '月' + sd + '日発売・' + plat,
+          before ? 'softrow dim' : 'softrow');
+      }
+    }
+    // 漫画の連載開始
+    if (byId('ckManga').checked) {
+      const sorted = [...MANGA].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]));
+      for (const [my, mm, md, name, mag, period] of sorted) {
+        const dt = new Date(my, mm - 1, md);
+        const before = dt < birth;
+        push(my, ageTag(dt),
+          '📖 ' + name,
+          mag + '・連載 ' + period,
+          before ? 'mangarow dim' : 'mangarow');
+      }
+    }
+    // アニメの放送開始
+    if (byId('ckAnime').checked) {
+      const sorted = [...ANIME].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]));
+      for (const [ay, am, ad, name, detail] of sorted) {
+        const dt = new Date(ay, am - 1, ad);
+        const before = dt < birth;
+        push(ay, ageTag(dt), '📺 ' + name, detail, before ? 'animerow dim' : 'animerow');
+      }
+    }
+    // 映画の公開
+    if (byId('ckMovie').checked) {
+      const sorted = [...MOVIE].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]));
+      for (const [vy, vm, vd, name, detail] of sorted) {
+        const dt = new Date(vy, vm - 1, vd);
+        const before = dt < birth;
+        push(vy, ageTag(dt), '🎬 ' + name, detail, before ? 'movierow dim' : 'movierow');
+      }
+    }
+    // テレビ番組
+    if (byId('ckTV').checked) {
+      const sorted = [...TVSHOW].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]));
+      for (const [ty, tm, td, name, detail] of sorted) {
+        const dt = new Date(ty, tm - 1, td);
+        const before = dt < birth;
+        push(ty, ageTag(dt), '📡 ' + name, detail, before ? 'tvrow dim' : 'tvrow');
+      }
+    }
+    // IT・ガジェット史
+    if (byId('ckIT').checked) {
+      for (const [iy, im, idd, name, detail] of ITH) {
+        const dt = new Date(iy, im - 1, idd);
+        const before = dt < birth;
+        push(iy, ageTag(dt), '💻 ' + name, detail, before ? 'itrow dim' : 'itrow');
+      }
+    }
+    // マイイベント（★）
+    for (const e of myEv) {
+      const dt = new Date(e.d + 'T00:00:00');
+      if (isNaN(dt)) continue;
+      const before = dt < birth;
+      push(dt.getFullYear(), ageTag(dt), '★ ' + e.t,
+        (dt.getMonth() + 1) + '月' + dt.getDate() + '日',
+        before ? 'myrow dim' : 'myrow');
+    }
+    // 時代の切り替わり・大きな出来事
+    const e1 = eraAge(1989, 1, 8);
+    push(1989, e1.t, '昭和 → 平成', '1月8日に改元', e1.c);
+    const e2 = eraAge(2000, 1, 1);
+    push(2000, e2.t, 'ミレニアム（2000年代へ）', '20世紀の締めくくり', e2.c);
+    const e3 = eraAge(2019, 5, 1);
+    push(2019, e3.t, '平成 → 令和', '5月1日に改元', e3.c);
+    // 成人
+    const b18 = new Date(by + 18, bm - 1, bd);
+    if (b18 >= new Date(2022, 3, 1)) {
+      push(by + 18, '18歳', '成人 ✨', '2022年4月からの新基準。成人式（二十歳のつどい）は20歳のままの地域が多い');
+    } else if (new Date(by + 20, bm - 1, bd) < new Date(2022, 3, 1)) {
+      push(by + 20, '20歳', '成人 ✨', '当時の基準（20歳）');
+    } else {
+      push(2022, ageAt(birth, new Date(2022, 3, 1)) + '歳', '成人 ✨', '2022年4月1日の民法改正で18・19歳は一斉に成人に');
+    }
+    // 長寿の節目
+    push(by + 60, '60歳', '還暦 🎊', '干支が一周。赤いちゃんちゃんこ', by + 60 > by + life ? 'dim' : '');
+    push(by + 70, '70歳', '古希', '', by + 70 > by + life ? 'dim' : '');
+    push(by + 77, '77歳', '喜寿', '', by + 77 > by + life ? 'dim' : '');
+    push(by + 88, '88歳', '米寿', '', by + 88 > by + life ? 'dim' : '');
+    // 想定寿命
+    push(by + life, life + '歳', '想定寿命（このページの設定） ⏳', 'バーで変更できます');
+    // いまここ
+    push(now.getFullYear(), ageTag(now), '★ いまここ', '残り約' + yearsRemain + '年', 'nowrow');
+
+    ev.sort((a, b) => a.year - b.year || a.idx - b.idx);
+    const tb = byId('tlBody');
+    tb.innerHTML = '';
+    for (const e of ev) {
+      const tr = document.createElement('tr');
+      if (e.cls) tr.className = e.cls;
+      if (!e.cls && e.year > now.getFullYear()) tr.className = 'futurerow';
+      tr.innerHTML =
+        '<td class="num" style="color:#cdd6f4;">' + e.year + '年</td>' +
+        '<td style="color:#a6adc8;white-space:nowrap;">' + e.ageTxt + '</td>' +
+        '<td><span class="ev">' + e.title + '</span>' + (e.detail ? '<br><span class="evd">' + e.detail + '</span>' : '') + '</td>';
+      tb.appendChild(tr);
+    }
+
+    syncUrl();
+    updPerson(false);
+  }
+
+  /* ---- URL保存 ---- */
+  function syncUrl() {
+    try {
+      const p = new URLSearchParams();
+      p.set('b', byId('birth').value);
+      p.set('e', byId('lifeN').value);
+      history.replaceState(null, '', location.pathname + '?' + p.toString());
+    } catch (e) {}
+  }
+  (function loadUrl() {
+    const q = new URLSearchParams(location.search);
+    if (q.has('b')) byId('birth').value = q.get('b');
+    if (q.has('e')) { byId('lifeN').value = q.get('e'); byId('lifeS').value = q.get('e'); }
+  })();
+
+  byId('birth').addEventListener('input', updAll);
+  const CKS = ['ckHS', 'ckUniv', 'ckGrad', 'ckVoc', 'ckVoc4', 'ckGame', 'ckArcade', 'ckSoft', 'ckManga', 'ckAnime', 'ckMovie', 'ckTV', 'ckIT'];
+  CKS.forEach(id => byId(id).addEventListener('change', updAll));
+  byId('ckAllOn').addEventListener('click', () => { CKS.forEach(id => { byId(id).checked = true; }); updAll(); });
+  byId('ckAllOff').addEventListener('click', () => { CKS.forEach(id => { byId(id).checked = false; }); updAll(); });
+  byId('jumpBirth').addEventListener('click', () => {
+    const tr = document.querySelector('#tlBody tr.birthrow');
+    if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  byId('jumpNow').addEventListener('click', () => {
+    const tr = document.querySelector('#tlBody tr.nowrow');
+    if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  byId('lifeS').addEventListener('input', () => { byId('lifeN').value = byId('lifeS').value; updAll(); });
+  byId('lifeN').addEventListener('input', () => {
+    const v = parseInt(byId('lifeN').value);
+    if (!isNaN(v)) { byId('lifeS').value = Math.min(120, Math.max(50, v)); updAll(); }
+  });
+
+  /* ---- マイイベント（このブラウザのlocalStorageに保存） ---- */
+  let myEv = [];
+  try { myEv = JSON.parse(localStorage.getItem('lifeRem.myEv')) || []; } catch (e) {}
+  function saveMyEv() { try { localStorage.setItem('lifeRem.myEv', JSON.stringify(myEv)); } catch (e) {} }
+  function renderMyEv() {
+    const w = byId('myEvList');
+    w.innerHTML = '';
+    myEv.forEach((e, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'myev-chip';
+      const txt = document.createElement('span');
+      txt.textContent = e.d + '　★ ' + e.t;
+      const del = document.createElement('button');
+      del.textContent = '✕';
+      del.title = '削除';
+      del.addEventListener('click', () => { myEv.splice(i, 1); saveMyEv(); renderMyEv(); updAll(); });
+      chip.appendChild(txt);
+      chip.appendChild(del);
+      w.appendChild(chip);
+    });
+  }
+  byId('myEvAdd').addEventListener('click', () => {
+    const d = byId('myEvDate').value, t = byId('myEvName').value.trim();
+    if (!d || !t) return;
+    myEv.push({ d, t });
+    saveMyEv();
+    byId('myEvName').value = '';
+    renderMyEv();
+    updAll();
+  });
+  renderMyEv();
+
+  /* ---- 大切な人と、あと何回会える？ ---- */
+  const YEAR_MS = 365.25 * DAY;
+  function updPerson(save) {
+    const bv = byId('pBirth').value;
+    const life = parseFloat(byId('pLife').value);
+    const f = parseFloat(byId('pFreq').value);
+    const show = s => { byId('pStats').style.display = s; byId('pBig').style.display = s; };
+    if (!bv || isNaN(life) || isNaN(f) || life <= 0 || f <= 0) { show('none'); return; }
+    const pb = new Date(bv + 'T00:00:00');
+    const now = new Date();
+    if (isNaN(pb) || pb > now) { show('none'); return; }
+    const ym = ageYM(pb, now);
+    byId('pAge').textContent = ym.y + '歳' + ym.m + 'ヶ月';
+    const remThem = Math.max(0, (pb.getTime() + life * YEAR_MS - now.getTime()) / YEAR_MS);
+    const remOwn = endMs !== null ? Math.max(0, (endMs - now.getTime()) / YEAR_MS) : Infinity;
+    byId('pRemY').textContent = remThem.toFixed(1);
+    byId('pMeet').textContent = Math.floor(Math.min(remThem, remOwn) * f).toLocaleString();
+    show('');
+    if (save) try { localStorage.setItem('lifeRem.person', JSON.stringify({ b: bv, e: life, f: f })); } catch (e) {}
+  }
+  ['pBirth', 'pLife', 'pFreq'].forEach(id => byId(id).addEventListener('input', () => updPerson(true)));
+  document.querySelectorAll('[data-pf]').forEach(b => b.addEventListener('click', () => {
+    byId('pFreq').value = b.dataset.pf;
+    updPerson(true);
+  }));
+  try {
+    const p = JSON.parse(localStorage.getItem('lifeRem.person'));
+    if (p) {
+      if (p.b) byId('pBirth').value = p.b;
+      if (p.e) byId('pLife').value = p.e;
+      if (p.f) byId('pFreq').value = p.f;
+    }
+  } catch (e) {}
+
+  updAll();
+</script>
+</body>
+</html>

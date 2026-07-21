@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>トランジスタ(BJT)の使い方 / リファレンス</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 {
+    color: #89b4fa;
+    border-bottom: 2px solid #45475a;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  h3 { color: #89b4fa; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono {
+    font-family: "Consolas", monospace;
+    background: #11111b;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #a6e3a1;
+  }
+
+  .btn { background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 8px; padding: 8px 16px; font-size: 14px; cursor: pointer; font-family: inherit; font-weight: bold; }
+  .btn:hover { border-color: #89b4fa; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .slider-row label { width: 130px; color: #a6adc8; font-size: 13px; font-weight: bold; }
+  .slider-row input[type=range] { flex: 1; min-width: 160px; accent-color: #89b4fa; }
+  .slider-row .val { font-family: Consolas, monospace; color: #f9e2af; min-width: 70px; text-align: right; }
+
+  /* 端子の図 */
+  .pin-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .tag-b { color: #89b4fa; font-weight: bold; }
+  .tag-c { color: #a6e3a1; font-weight: bold; }
+  .tag-e { color: #f38ba8; font-weight: bold; }
+
+  /* 比較表 */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 8px;
+    font-size: 14px;
+    min-width: 640px;
+  }
+  th, td {
+    border: 1px solid #45475a;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+  td .pn, .pn { color: #a6e3a1; font-family: Consolas, monospace; }
+
+  /* 計算機 */
+  .calc {
+    background: #181825;
+    border: 2px solid #a6e3a1;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .calc h2 { margin: 0 0 4px; border: none; padding: 0; color: #a6e3a1; font-size: 20px; }
+  .calc .sub { color: #a6adc8; font-size: 13px; margin-bottom: 12px; }
+  .calc .inputs { display: flex; flex-wrap: wrap; gap: 14px; }
+  .calc .field { display: flex; flex-direction: column; gap: 4px; }
+  .calc .field label { font-size: 12px; color: #a6adc8; font-weight: bold; }
+  .calc .field input, .calc .field select {
+    width: 130px;
+    padding: 8px 10px;
+    background: #11111b;
+    color: #cdd6f4;
+    border: 1px solid #585b70;
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+    font-size: 15px;
+  }
+  .calc .field .unit { color: #a6adc8; font-size: 11px; }
+  .calc .result {
+    margin-top: 14px;
+    background: #11111b;
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-left: 4px solid #f9e2af;
+  }
+  .calc .result .big {
+    font-family: Consolas, monospace;
+    font-size: 30px;
+    font-weight: bold;
+    color: #a6e3a1;
+    margin: 2px 0 6px;
+  }
+  .calc .result .detail { font-family: Consolas, monospace; font-size: 13px; color: #cdd6f4; }
+  .calc .result .detail span { color: #f9e2af; }
+  .calc .result.warn { border-left-color: #f38ba8; }
+  .calc .calc-flex { display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch; margin-top: 10px; }
+  .calc .calc-flex .anim-col { flex: 1.5; min-width: 280px; }
+  .calc .calc-flex .anim-col .schem { margin-bottom: 0; }
+  .calc .calc-flex .result { flex: 1; min-width: 240px; margin-top: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+
+  /* カード */
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .card {
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 12px;
+    padding: 16px 18px;
+    border-top: 4px solid var(--accent, #89b4fa);
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    color: var(--accent, #89b4fa);
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  }
+  .card h3 .en { font-size: 12px; color: #a6adc8; font-weight: normal; }
+  .card .vf {
+    display: inline-block;
+    background: #11111b; color: #f9e2af;
+    font-family: Consolas, monospace; font-size: 12px;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+  }
+  .card dl { margin: 8px 0 0; }
+  .card dt { color: #a6adc8; font-size: 12px; font-weight: bold; margin-top: 8px; }
+  .card dd { margin: 2px 0 0; font-size: 14px; }
+
+  /* 手順・ガイド */
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .guide-item {
+    background: #232334; border-radius: 8px;
+    padding: 12px 14px; border-left: 3px solid #a6e3a1;
+  }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .circuit {
+    background: #181825; border: 1px solid #45475a; border-radius: 10px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+  .schem {
+    display: block; max-width: 560px; width: 100%; height: auto;
+    background: #11111b; border: 1px solid #45475a; border-radius: 8px;
+    padding: 8px; margin-bottom: 12px;
+  }
+  .schem text { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; }
+
+  /* 動作領域パネルの読み出し */
+  .readout { min-width: 230px; flex: 1; font-size: 14px; }
+  .state-chip {
+    display: inline-block; padding: 4px 14px; border-radius: 6px;
+    font-weight: bold; font-size: 16px; background: #11111b;
+    border: 2px solid #a6adc8; color: #a6adc8; margin-bottom: 8px;
+  }
+  .readout .row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed #45475a; padding: 3px 0; }
+  .readout .row .k { color: #a6adc8; font-size: 13px; }
+  .readout .row .v { font-family: Consolas, monospace; color: #f9e2af; }
+  .heatbar-outer { background: #11111b; border: 1px solid #45475a; border-radius: 5px; height: 12px; margin: 6px 0 2px; overflow: hidden; }
+  .heatbar-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #f9e2af, #fab387, #f38ba8); transition: width .15s; }
+  .readout .note-dyn { color: #cdd6f4; font-size: 13px; margin-top: 10px; background: #232334; border-radius: 6px; padding: 8px 10px; min-height: 80px; }
+
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  .warnbox {
+    background: #45302e; color: #fab387; border: 2px solid #fab387;
+    border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+  }
+  .warnbox b { color: #f9e2af; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>⚡ トランジスタ(BJT)の使い方 / リファレンス</h1>
+
+  <div class="lead">
+    <b>トランジスタ（BJT：バイポーラトランジスタ）</b>は、<b>小さな電流で大きな電流を制御する</b>部品。
+    ベースにちょろっと流した電流の <b>hFE倍（100〜300倍など）</b> の電流をコレクタに流せます。
+    マイコンの弱い出力でLED・リレー・ブザーなどを駆動するスイッチや、信号の増幅に使う、電子工作の超基本部品です。
+    <span class="note">※ 本ページの値は一般的な目安です。実機では必ずデータシートを確認してください。</span>
+  </div>
+
+  <h2>🦵 端子（B / C / E）</h2>
+  <div class="pin-box">
+    <svg class="schem" style="max-width:260px;" viewBox="0 0 260 210" role="img" aria-label="NPNトランジスタの端子図">
+      <rect x="85" y="70" width="90" height="70" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="130" y="110" text-anchor="middle" fill="#cdd6f4" font-size="16" font-weight="bold">NPN</text>
+      <line x1="130" y1="70" x2="130" y2="35" stroke="#a6e3a1" stroke-width="2"/>
+      <text x="130" y="25" text-anchor="middle" fill="#a6e3a1" font-size="13" font-weight="bold">C コレクタ</text>
+      <line x1="130" y1="140" x2="130" y2="175" stroke="#f38ba8" stroke-width="2"/>
+      <text x="130" y="195" text-anchor="middle" fill="#f38ba8" font-size="13" font-weight="bold">E エミッタ</text>
+      <line x1="85" y1="105" x2="35" y2="105" stroke="#89b4fa" stroke-width="2"/>
+      <text x="32" y="101" text-anchor="end" fill="#89b4fa" font-size="13" font-weight="bold">B</text>
+      <text x="32" y="116" text-anchor="end" fill="#89b4fa" font-size="11">ベース</text>
+    </svg>
+    <div style="font-size:14px;">
+      <b class="tag-b">B ベース</b>：制御入力。ここに<b>小さな電流</b>を流すとON（MOSFETと違い電流が要る）。<br>
+      <b class="tag-c">C コレクタ</b>：大きな電流の入口側（負荷をつなぐ）。<br>
+      <b class="tag-e">E エミッタ</b>：電流の出口側（基準。NPNはGND側）。<br>
+      <span class="note">ピン配置は型番ごとに違う（2SC1815はECB、2N3904はEBC等）。必ずデータシートを確認。</span>
+    </div>
+  </div>
+
+  <h2>📐 回路図記号の読み方</h2>
+  <p class="note">矢印が付いている足が<b style="color:#cdd6f4;">エミッタ(E)</b>。矢印は電流の向き（P→N）を表していて、<b style="color:#cdd6f4;">外向き＝NPN、内向き＝PNP</b>。</p>
+  <svg class="schem" viewBox="0 0 460 250" xmlns="http://www.w3.org/2000/svg">
+    <!-- NPN -->
+    <text x="110" y="28" text-anchor="middle" fill="#89b4fa" font-size="14" font-weight="bold">NPN</text>
+    <circle cx="110" cy="130" r="62" fill="none" stroke="#45475a" stroke-width="1.5"/>
+    <line x1="90" y1="98" x2="90" y2="162" stroke="#cdd6f4" stroke-width="3"/>
+    <line x1="40" y1="130" x2="90" y2="130" stroke="#89b4fa" stroke-width="2"/>
+    <text x="34" y="134" text-anchor="end" fill="#89b4fa" font-size="12" font-weight="bold">B</text>
+    <line x1="90" y1="114" x2="138" y2="76" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="138" y1="76" x2="138" y2="50" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="148" y="56" fill="#a6e3a1" font-size="12" font-weight="bold">C</text>
+    <line x1="90" y1="146" x2="138" y2="184" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="138" y1="184" x2="138" y2="210" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="148" y="206" fill="#f38ba8" font-size="12" font-weight="bold">E</text>
+    <polygon points="132,179 119,174 125,167" fill="#94e2d5"/>
+    <text x="110" y="238" text-anchor="middle" fill="#94e2d5" font-size="11">矢印が外向き（出ていく）</text>
+
+    <!-- PNP -->
+    <text x="330" y="28" text-anchor="middle" fill="#cba6f7" font-size="14" font-weight="bold">PNP</text>
+    <circle cx="330" cy="130" r="62" fill="none" stroke="#45475a" stroke-width="1.5"/>
+    <line x1="310" y1="98" x2="310" y2="162" stroke="#cdd6f4" stroke-width="3"/>
+    <line x1="260" y1="130" x2="310" y2="130" stroke="#cba6f7" stroke-width="2"/>
+    <text x="254" y="134" text-anchor="end" fill="#cba6f7" font-size="12" font-weight="bold">B</text>
+    <line x1="310" y1="114" x2="358" y2="76" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="358" y1="76" x2="358" y2="50" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="368" y="56" fill="#f38ba8" font-size="12" font-weight="bold">E</text>
+    <line x1="310" y1="146" x2="358" y2="184" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="358" y1="184" x2="358" y2="210" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="368" y="206" fill="#a6e3a1" font-size="12" font-weight="bold">C</text>
+    <polygon points="316,109 323,97 329,105" fill="#94e2d5"/>
+    <text x="330" y="238" text-anchor="middle" fill="#94e2d5" font-size="11">矢印が内向き（入ってくる）</text>
+  </svg>
+  <div class="guide">
+    <div class="guide-item"><div class="q">矢印＝エミッタ＝電流の向き</div><div class="a">NPNは電流が <b style="color:#cdd6f4;">C→E に流れて矢印の向きに出ていく</b>。PNPは <b style="color:#cdd6f4;">E→C</b> で矢印の向きに入ってくる。矢印を見れば型と電流の向きが両方わかる。</div></div>
+    <div class="guide-item"><div class="q">PNPはエミッタが上</div><div class="a">回路図では <b style="color:#cdd6f4;">NPN＝エミッタが下(GND側)、PNP＝エミッタが上(電源側)</b> に描かれるのが普通。図のPNPもEが上にある。</div></div>
+    <div class="guide-item"><div class="q">MOSFETの記号との見分け</div><div class="a">BJTは<b style="color:#cdd6f4;">足に直接斜め線＋矢印</b>。MOSFETは<b style="color:#cdd6f4;">ゲートと本体が離れて</b>描かれる（絶縁されているから）。</div></div>
+  </div>
+
+  <h2>🎬 しくみをアニメで見る：小さなIbが大きなIcの蛇口</h2>
+  <p class="note">スライダーで<b style="color:#89b4fa;">ベース電流 Ib</b> を変えてみてください。<b style="color:#f9e2af;">コレクタ電流 Ic（黄色の粒）が hFE倍 で増え</b>、流しすぎると負荷で決まる上限で頭打ち（飽和）になります。例：hFE=200、電源5V、負荷250Ω。</p>
+  <div class="circuit">
+    <div class="pin-box" style="margin-bottom:0;border:none;padding:0;">
+      <svg class="schem" style="max-width:480px;flex:1.4;" viewBox="0 0 560 300" role="img" aria-label="NPNの電流増幅アニメーション">
+        <text x="420" y="18" text-anchor="middle" fill="#f9e2af" font-size="13" font-weight="bold">電源 5V</text>
+        <line x1="420" y1="24" x2="420" y2="48" stroke="#cdd6f4" stroke-width="2"/>
+        <rect x="375" y="48" width="90" height="46" rx="4" fill="#1e1e2e" stroke="#a6e3a1" stroke-width="2"/>
+        <text x="420" y="68" text-anchor="middle" fill="#a6e3a1" font-size="12" font-weight="bold">負荷 250Ω</text>
+        <text x="420" y="84" text-anchor="middle" fill="#a6adc8" font-size="10">(LED＋抵抗)</text>
+        <line x1="465" y1="71" x2="473" y2="71" stroke="#585b70" stroke-width="2" stroke-dasharray="3 3"/>
+        <circle id="opLed" cx="487" cy="71" r="11" fill="#f9e2af" opacity="0.15" stroke="#585b70" stroke-width="1.5"/>
+        <text x="487" y="98" text-anchor="middle" fill="#a6adc8" font-size="10">明るさ</text>
+        <line x1="420" y1="94" x2="420" y2="140" stroke="#cdd6f4" stroke-width="2"/>
+        <rect x="375" y="140" width="90" height="70" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+        <text x="420" y="156" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">C</text>
+        <text x="420" y="180" text-anchor="middle" fill="#cdd6f4" font-size="14" font-weight="bold">NPN</text>
+        <text x="420" y="202" text-anchor="middle" fill="#f38ba8" font-size="11" font-weight="bold">E</text>
+        <text x="383" y="171" fill="#89b4fa" font-size="11" font-weight="bold">B</text>
+        <line x1="420" y1="210" x2="420" y2="275" stroke="#cdd6f4" stroke-width="2"/>
+        <line x1="408" y1="275" x2="432" y2="275" stroke="#a6adc8" stroke-width="2"/>
+        <line x1="412" y1="280" x2="428" y2="280" stroke="#a6adc8" stroke-width="2"/>
+        <line x1="416" y1="285" x2="424" y2="285" stroke="#a6adc8" stroke-width="2"/>
+        <text x="448" y="280" fill="#a6adc8" font-size="11">GND</text>
+        <text x="14" y="160" fill="#89b4fa" font-size="12" font-weight="bold">ベース電流 Ib</text>
+        <text x="14" y="176" fill="#a6adc8" font-size="10">（小さな粒・ゆっくり）</text>
+        <line x1="120" y1="185" x2="375" y2="185" stroke="#89b4fa" stroke-width="1.5"/>
+        <text x="248" y="120" text-anchor="middle" fill="#f9e2af" font-size="12" font-weight="bold" id="opIcLabel">Ic = hFE × Ib</text>
+        <text x="248" y="137" text-anchor="middle" fill="#94e2d5" font-size="11">↑ 黄色の粒（コレクタ電流）</text>
+        <!-- アニメ用パス -->
+        <path id="p-opB" d="M 120 185 L 375 185" fill="none" stroke="none"/>
+        <path id="p-opC" d="M 420 24 L 420 275" fill="none" stroke="none"/>
+        <g id="g-opB"></g>
+        <g id="g-opC"></g>
+        <g id="opBlock" opacity="0">
+          <line x1="402" y1="157" x2="438" y2="193" stroke="#f38ba8" stroke-width="4"/>
+          <line x1="438" y1="157" x2="402" y2="193" stroke="#f38ba8" stroke-width="4"/>
+        </g>
+      </svg>
+      <div class="readout">
+        <span class="state-chip" id="opState">活性</span>
+        <div class="row"><span class="k">ベース電流 Ib</span><span class="v" id="opIbOut">30 µA</span></div>
+        <div class="row"><span class="k">コレクタ電流 Ic</span><span class="v" id="opIcOut">6.0 mA</span></div>
+        <div class="row"><span class="k">C-E間電圧 Vce</span><span class="v" id="opVceOut">3.5 V</span></div>
+        <div class="row"><span class="k">トランジスタの発熱</span><span class="v" id="opPOut">21 mW</span></div>
+        <div class="heatbar-outer"><div class="heatbar-inner" id="opHeatBar"></div></div>
+        <div class="note-dyn" id="opNote"></div>
+      </div>
+    </div>
+    <div class="slider-row" style="margin-top:14px;">
+      <label for="opIb">ベース電流 Ib</label>
+      <input type="range" id="opIb" min="0" max="120" step="1" value="30">
+      <span class="val" id="opIbVal">30 µA</span>
+    </div>
+    <p class="note">この例では Ib ≈ 96µA 以上で飽和（フルON）。<b style="color:#cdd6f4;">スイッチとして使うときは余裕を持って飽和域で使う</b>のが基本（活性域は発熱する）。</p>
+  </div>
+
+  <h2>🚦 3つの動作領域</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>遮断（カットオフ）</th><th>活性（リニア）</th><th>飽和（サチュレーション）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>条件</td><td>Ib = 0（Vbe &lt; 0.6V）</td><td>Ib は流れているが足りない</td><td>Ib を十分流した（Ic/hFE より多め）</td></tr>
+        <tr><td>Ic</td><td>ほぼ 0</td><td><b>Ic = hFE × Ib</b>（比例）</td><td>負荷で決まる上限で頭打ち</td></tr>
+        <tr><td>Vce</td><td>電源電圧がそのまま残る</td><td>中間の電圧</td><td><b>≈ 0.1〜0.3V</b>（Vce(sat)）</td></tr>
+        <tr><td>発熱</td><td>なし（電流ゼロ）</td><td><b>大きい</b>（Vce×Icが残る）</td><td>小さい</td></tr>
+        <tr><td>主な用途</td><td>スイッチOFF</td><td><b>増幅（アンプ）</b></td><td><b>スイッチON</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="warnbox" style="border-color:#89b4fa;background:#1e2433;color:#89b4fa;">
+    🎯 <b style="color:#cdd6f4;">スイッチ用途の鉄則</b>：活性域（半端ON）に長居させない。
+    <b style="color:#cdd6f4;">遮断（OFF）⇔ 飽和（フルON）の2点だけを使う</b>。そのために、必要最低限よりも<b style="color:#cdd6f4;">2〜5倍多めのベース電流</b>を流す（下の計算機の「余裕」がこれ）。
+  </div>
+
+  <h2>⚖ NPN と PNP の違い</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>NPN</th><th>PNP</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ONにする条件</td><td>ベースをエミッタより<b>約0.7V高く</b>（電流を流し込む）</td><td>ベースをエミッタより<b>約0.7V低く</b>（電流を引き抜く）</td></tr>
+        <tr><td>電流の向き</td><td>C→E（矢印通り外へ）</td><td>E→C（矢印通り中へ）</td></tr>
+        <tr><td>得意な位置</td><td><b>ローサイド</b>（負荷とGNDの間）</td><td><b>ハイサイド</b>(電源と負荷の間)</td></tr>
+        <tr><td>マイコン制御</td><td>そのまま繋ぎやすい（定番）</td><td>電源電圧＝GPIO電圧のときだけ直結可</td></tr>
+        <tr><td>定番型番</td>
+          <td><span class="pn">2SC1815</span> <span class="pn">2N3904</span> <span class="pn">BC547</span></td>
+          <td><span class="pn">2SA1015</span> <span class="pn">2N3906</span> <span class="pn">BC557</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">迷ったら、まずは <b style="color:#cdd6f4;">NPN のローサイドスイッチ</b>。MOSFETと同じく「N系を下に置く」のが一番カンタンで確実。</p>
+
+  <h2>💧 水道にたとえると</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">コレクタ＝太い本管</div><div class="a">大きな水流（負荷の電流）が流れる太い管。ただしバルブが閉まっていると流れない。</div></div>
+    <div class="guide-item"><div class="q">ベース＝バルブを開ける細い管</div><div class="a">細い管に<b style="color:#cdd6f4;">少し水を流すと、その量に比例して本管のバルブが開く</b>。細い管の流量の hFE倍 だけ本管が流れる。</div></div>
+    <div class="guide-item"><div class="q">飽和＝全開</div><div class="a">細い管にたくさん流してもバルブは全開以上にならない。本管の流量は<b style="color:#cdd6f4;">配管の太さ（負荷）で決まる上限</b>で頭打ち。</div></div>
+    <div class="guide-item"><div class="q">MOSFETとの違い</div><div class="a">BJTのバルブは<b style="color:#cdd6f4;">水を流し続けないと開かない</b>（電流制御）。MOSFETは<b style="color:#cdd6f4;">押さえているだけで開く</b>（電圧制御・維持に電流不要）。</div></div>
+  </div>
+
+  <div class="calc">
+    <h2>🧮 ベース抵抗 Rb 計算機（アニメ連動）</h2>
+    <div class="sub">スイッチ用途の定番計算。<b style="color:#f9e2af;">Ib = Ic ÷ hFE × 余裕</b>、<b style="color:#f9e2af;">Rb = (GPIO電圧 − Vbe) ÷ Ib</b>。
+    hFEは個体差が大きいので<b style="color:#f9e2af;">データシートの最小値</b>を入れ、確実に飽和させるため2〜5倍の余裕をかけます。値を変えると回路アニメの粒の速さがすぐ変わります。</div>
+    <div class="inputs">
+      <div class="field">
+        <label for="cbPreset">型番プリセット</label>
+        <select id="cbPreset" style="width:200px;">
+          <option value="custom" selected>カスタム（手入力）</option>
+          <option value="c1815y">2SC1815 (Yランク)</option>
+          <option value="c1815gr">2SC1815 (GRランク)</option>
+          <option value="n3904">2N3904</option>
+          <option value="bc547b">BC547B</option>
+          <option value="n2222a">2N2222A</option>
+          <option value="s8050">S8050</option>
+          <option value="tip120">TIP120 (ダーリントン)</option>
+        </select>
+        <span class="unit">hFE最小値・Vbeを自動設定</span>
+      </div>
+      <div class="field">
+        <label for="cbVg">GPIO電圧</label>
+        <select id="cbVg">
+          <option value="3.3" selected>3.3 V (ESP32等)</option>
+          <option value="5">5 V (Arduino UNO等)</option>
+        </select>
+        <span class="unit">マイコンのHIGH電圧</span>
+      </div>
+      <div class="field">
+        <label for="cbIc">流したい電流 Ic</label>
+        <input id="cbIc" type="number" step="1" min="0" value="20">
+        <span class="unit">mA（負荷の電流）</span>
+      </div>
+      <div class="field">
+        <label for="cbHfe">hFE（最小値）</label>
+        <input id="cbHfe" type="number" step="10" min="1" value="100">
+        <span class="unit">倍（データシートのmin）</span>
+      </div>
+      <div class="field">
+        <label for="cbOd">飽和の余裕</label>
+        <select id="cbOd">
+          <option value="2">×2</option>
+          <option value="3" selected>×3（推奨）</option>
+          <option value="5">×5（確実）</option>
+        </select>
+        <span class="unit">オーバードライブ係数</span>
+      </div>
+    </div>
+    <div class="note" id="cbPresetNote">カスタム：手入力（Vbe=0.7Vで計算）</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;">
+      <button class="btn" id="cbBtn">GPIOをLOWにする（OFF）</button>
+      <p class="note" style="margin:0;">青の粒＝ベース電流（細く・少なく）、緑の粒＝コレクタ電流（太く・多く）。<b style="color:#cdd6f4;">入力を変えると粒の速さが変わります</b>。</p>
+    </div>
+    <div class="calc-flex">
+      <div class="anim-col">
+        <svg class="schem" viewBox="0 0 560 330" role="img" aria-label="ベース抵抗計算結果のアニメーション回路">
+      <text x="420" y="18" text-anchor="middle" fill="#f9e2af" font-size="13" font-weight="bold">電源(+)</text>
+      <line x1="420" y1="24" x2="420" y2="48" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="375" y="48" width="90" height="46" rx="4" fill="#1e1e2e" stroke="#a6e3a1" stroke-width="2"/>
+      <text x="420" y="68" text-anchor="middle" fill="#a6e3a1" font-size="12" font-weight="bold">負荷</text>
+      <text x="420" y="84" text-anchor="middle" fill="#a6adc8" font-size="10">(LED等)</text>
+      <line x1="465" y1="71" x2="473" y2="71" stroke="#585b70" stroke-width="2" stroke-dasharray="3 3"/>
+      <circle id="cbLed" cx="487" cy="71" r="11" fill="#f9e2af" opacity="0.9" stroke="#585b70" stroke-width="1.5"/>
+      <text x="487" y="98" text-anchor="middle" fill="#a6adc8" font-size="10">LED</text>
+      <line x1="420" y1="94" x2="420" y2="145" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="432" y="125" fill="#a6e3a1" font-size="12" font-weight="bold" id="cbSvgIc">Ic = 20 mA</text>
+      <rect x="375" y="145" width="90" height="80" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="420" y="161" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">C</text>
+      <text x="420" y="183" text-anchor="middle" fill="#cdd6f4" font-size="14" font-weight="bold">NPN</text>
+      <text x="420" y="201" text-anchor="middle" fill="#94e2d5" font-size="11" font-weight="bold">× hFE</text>
+      <text x="420" y="218" text-anchor="middle" fill="#f38ba8" font-size="11" font-weight="bold">E</text>
+      <text x="382" y="181" fill="#89b4fa" font-size="11" font-weight="bold">B</text>
+      <line x1="420" y1="225" x2="420" y2="290" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="408" y1="290" x2="432" y2="290" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="412" y1="295" x2="428" y2="295" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="416" y1="300" x2="424" y2="300" stroke="#a6adc8" stroke-width="2"/>
+      <text x="448" y="295" fill="#a6adc8" font-size="11">GND</text>
+      <text x="10" y="178" fill="#cdd6f4" font-size="12">GPIO</text>
+      <text x="10" y="196" fill="#f9e2af" font-size="12" font-weight="bold" id="cbSvgVg">HIGH 3.3V</text>
+      <line x1="95" y1="185" x2="150" y2="185" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="150" y="170" width="80" height="30" rx="4" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="190" y="189" text-anchor="middle" fill="#f9e2af" font-size="11" id="cbSvgRb">Rb 8.2kΩ</text>
+      <line x1="230" y1="185" x2="375" y2="185" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="302" y="172" text-anchor="middle" fill="#89b4fa" font-size="12" font-weight="bold" id="cbSvgIb">Ib ≈ 0.32 mA</text>
+      <!-- アニメ用パス -->
+      <path id="p-cbB" d="M 95 185 L 375 185" fill="none" stroke="none"/>
+      <path id="p-cbC" d="M 420 24 L 420 290" fill="none" stroke="none"/>
+      <g id="g-cbB"></g>
+      <g id="g-cbC"></g>
+        </svg>
+      </div>
+      <div class="result" id="cbResult">
+        <div>ベース抵抗 Rb（E24系列に切り下げ）:</div>
+        <div class="big" id="cbBig">-</div>
+        <div class="detail" id="cbDetail"></div>
+      </div>
+    </div>
+    <div class="warnbox" style="margin:14px 0 0;">
+      ⚠ <b>プリセット値は代表的なデータシートの最小値の「目安」です。</b>
+      hFEは同じ型番でもランク・個体差・コレクタ電流・温度で大きく変わり、メーカーによって仕様が異なることもあります（S8050等）。
+      実際の設計では必ず<b>使用する製品のデータシート</b>を確認してください。
+    </div>
+    <h3 style="color:#a6e3a1;margin:18px 0 8px;">💡「飽和の余裕（オーバードライブ係数）」とは？</h3>
+    <div class="guide">
+      <div class="guide-item"><div class="q">なぜ計算値より多く流す？</div><div class="a"><span class="mono">Ib = Ic ÷ hFE</span> は理論値ギリギリの最小値。hFEは個体差・温度・コレクタ電流で大きく変わるうえ、<b style="color:#cdd6f4;">飽和域では実効的な増幅率がカタログ値より下がる</b>ため、計算ピッタリだと半端ON（活性域）に留まって発熱・電圧降下が増えてしまう。そこで<b style="color:#cdd6f4;">2〜5倍多めに流して確実にフルON</b>させる。これがオーバードライブ（過飽和）。</div></div>
+      <div class="guide-item"><div class="q">大きくするメリット</div><div class="a">確実に飽和して <b style="color:#cdd6f4;">Vce(sat) が小さく安定</b>する。発熱が減り、負荷に電源電圧がほぼまるごとかかる。hFEの低い「ハズレ個体」や低温でも動作が揺るがない。</div></div>
+      <div class="guide-item"><div class="q">大きくしすぎるデメリット</div><div class="a"><b style="color:#cdd6f4;">GPIOの電流負担が増える</b>（流したぶんは純粋にムダ）。またベースに電荷が溜まり<b style="color:#cdd6f4;">OFFがわずかに遅くなる</b>（蓄積時間）。ただし効いてくるのは高速スイッチングの話で、LEDやリレーのON/OFF程度なら×5でも実害なし。</div></div>
+      <div class="guide-item"><div class="q">選び方の目安</div><div class="a">迷ったら <b style="color:#cdd6f4;">×3</b>。リレー・モーターなど確実にONさせたい／hFEのばらつきが大きい型番 → <b style="color:#cdd6f4;">×5</b>。GPIOの電流に余裕がない・Ibがすでに大きい → <b style="color:#cdd6f4;">×2</b>。</div></div>
+    </div>
+  </div>
+
+  <h2>🛠 基本の使い方</h2>
+
+  <div class="circuit">
+    <h3>① NPN ローサイドスイッチ（一番カンタン・定番）</h3>
+    <svg class="schem" viewBox="0 0 560 300" role="img" aria-label="NPNローサイドスイッチの回路図">
+      <text x="420" y="20" text-anchor="middle" fill="#f9e2af" font-size="13" font-weight="bold">電源(+)</text>
+      <line x1="420" y1="28" x2="420" y2="50" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="420" cy="50" r="3.5" fill="#cdd6f4"/>
+      <rect x="375" y="60" width="90" height="55" rx="6" fill="#1e1e2e" stroke="#a6e3a1" stroke-width="2"/>
+      <text x="420" y="83" text-anchor="middle" fill="#a6e3a1" font-size="12" font-weight="bold">負荷</text>
+      <text x="420" y="100" text-anchor="middle" fill="#a6adc8" font-size="10">LED+R / リレー等</text>
+      <line x1="420" y1="50" x2="420" y2="60" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="420" y1="115" x2="420" y2="150" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="420" cy="130" r="3.5" fill="#cdd6f4"/>
+      <!-- フライホイールダイオード（コイル負荷時） -->
+      <line x1="420" y1="50" x2="330" y2="50" stroke="#cdd6f4" stroke-width="2" stroke-dasharray="5 4"/>
+      <line x1="330" y1="50" x2="330" y2="78" stroke="#cdd6f4" stroke-width="2" stroke-dasharray="5 4"/>
+      <line x1="322" y1="80" x2="338" y2="80" stroke="#94e2d5" stroke-width="2.5"/>
+      <polygon points="322,100 338,100 330,82" fill="#94e2d5"/>
+      <line x1="330" y1="100" x2="330" y2="130" stroke="#cdd6f4" stroke-width="2" stroke-dasharray="5 4"/>
+      <line x1="330" y1="130" x2="420" y2="130" stroke="#cdd6f4" stroke-width="2" stroke-dasharray="5 4"/>
+      <text x="318" y="70" text-anchor="end" fill="#94e2d5" font-size="11" font-weight="bold">コイル負荷なら</text>
+      <text x="318" y="85" text-anchor="end" fill="#94e2d5" font-size="11" font-weight="bold">ダイオード必須</text>
+      <text x="318" y="100" text-anchor="end" fill="#a6adc8" font-size="10">帯(K)を電源側へ</text>
+      <!-- NPN -->
+      <rect x="375" y="150" width="90" height="65" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="420" y="166" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">C</text>
+      <text x="420" y="188" text-anchor="middle" fill="#cdd6f4" font-size="13" font-weight="bold">NPN</text>
+      <text x="420" y="208" text-anchor="middle" fill="#f38ba8" font-size="11" font-weight="bold">E</text>
+      <text x="383" y="182" fill="#89b4fa" font-size="11" font-weight="bold">B</text>
+      <line x1="420" y1="215" x2="420" y2="260" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="295" y1="260" x2="440" y2="260" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="408" y1="267" x2="432" y2="267" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="412" y1="272" x2="428" y2="272" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="416" y1="277" x2="424" y2="277" stroke="#a6adc8" stroke-width="2"/>
+      <text x="448" y="265" fill="#a6adc8" font-size="11">GND</text>
+      <text x="10" y="182" fill="#cdd6f4" font-size="12">GPIO</text>
+      <line x1="60" y1="178" x2="150" y2="178" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="150" y="163" width="60" height="30" rx="4" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="180" y="182" text-anchor="middle" fill="#f9e2af" font-size="11">Rb</text>
+      <line x1="210" y1="178" x2="375" y2="178" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="300" cy="178" r="3.5" fill="#cdd6f4"/>
+      <line x1="300" y1="178" x2="300" y2="205" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="270" y="205" width="60" height="32" rx="4" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="300" y="225" text-anchor="middle" fill="#f9e2af" font-size="11">10k(任意)</text>
+      <line x1="300" y1="237" x2="300" y2="260" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="300" cy="260" r="3.5" fill="#cdd6f4"/>
+    </svg>
+    <div style="font-size:14px;">
+      <b style="color:#a6e3a1;">何に使う？</b> マイコンの弱い信号で、GPIO直結では電流が足りない負荷をON/OFFする定番回路。
+      <ul style="margin:6px 0 10px 18px;padding:0;">
+        <li>LED数個〜十数個（GPIO直結の数mAでは足りないとき）</li>
+        <li>小型リレー・ブザー・小型モーターのコイル（数十〜百mA程度）</li>
+        <li>フォトカプラやほかの回路段の駆動</li>
+      </ul>
+      ・負荷は「電源(+)〜コレクタ」、エミッタはGNDへ。<br>
+      ・GPIOを <b>HIGH</b> でON、<b>LOW</b> でOFF。<br>
+      ・<b class="pn">Rb（ベース抵抗）</b>：<b>必須</b>。無いとB-E間がほぼショートになり、GPIOとトランジスタが壊れる。値は上の計算機で。<br>
+      ・<b class="pn">B-E間の10kΩ</b>：MOSFETのプルダウンと違い<b>無くても勝手にONはしない</b>が、ノイズやリーク電流対策に入れると安心（任意）。<br>
+      <span class="note">※ リレー・モーターなどコイル負荷には<b>フライホイールダイオード必須</b>（図の点線部、詳しくは diodeGuide.html / mosfetGuide.html 参照）。</span>
+    </div>
+  </div>
+
+  <div class="circuit">
+    <h3>② PNP ハイサイドスイッチ（電源の上側で切る）</h3>
+    <svg class="schem" viewBox="0 0 560 300" role="img" aria-label="PNPハイサイドスイッチの回路図">
+      <text x="60" y="30" fill="#f9e2af" font-size="13" font-weight="bold">電源(+)</text>
+      <line x1="120" y1="26" x2="440" y2="26" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="420" y1="26" x2="420" y2="48" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="420" cy="26" r="3.5" fill="#cdd6f4"/>
+      <circle cx="330" cy="26" r="3.5" fill="#cdd6f4"/>
+      <rect x="375" y="48" width="90" height="70" rx="6" fill="#181825" stroke="#cba6f7" stroke-width="2"/>
+      <text x="420" y="64" text-anchor="middle" fill="#f38ba8" font-size="11" font-weight="bold">E</text>
+      <text x="420" y="87" text-anchor="middle" fill="#cdd6f4" font-size="13" font-weight="bold">PNP</text>
+      <text x="420" y="110" text-anchor="middle" fill="#a6e3a1" font-size="11" font-weight="bold">C</text>
+      <text x="383" y="86" fill="#cba6f7" font-size="11" font-weight="bold">B</text>
+      <line x1="420" y1="118" x2="420" y2="155" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="380" y="155" width="80" height="40" rx="4" fill="#1e1e2e" stroke="#a6e3a1" stroke-width="2"/>
+      <text x="420" y="180" text-anchor="middle" fill="#a6e3a1" font-size="13" font-weight="bold">負荷</text>
+      <line x1="420" y1="195" x2="420" y2="250" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="408" y1="252" x2="432" y2="252" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="412" y1="257" x2="428" y2="257" stroke="#a6adc8" stroke-width="2"/>
+      <line x1="416" y1="262" x2="424" y2="262" stroke="#a6adc8" stroke-width="2"/>
+      <text x="440" y="256" fill="#a6adc8" font-size="11">GND</text>
+      <line x1="330" y1="26" x2="330" y2="48" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="304" y="48" width="52" height="28" rx="4" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="330" y="66" text-anchor="middle" fill="#f9e2af" font-size="10">10k</text>
+      <line x1="330" y1="76" x2="330" y2="82" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="330" cy="82" r="3.5" fill="#cdd6f4"/>
+      <line x1="330" y1="82" x2="375" y2="82" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="10" y="86" fill="#cdd6f4" font-size="12">GPIO</text>
+      <line x1="60" y1="82" x2="150" y2="82" stroke="#cdd6f4" stroke-width="2"/>
+      <rect x="150" y="67" width="60" height="30" rx="4" fill="#1e1e2e" stroke="#f9e2af" stroke-width="2"/>
+      <text x="180" y="86" text-anchor="middle" fill="#f9e2af" font-size="11">Rb</text>
+      <line x1="210" y1="82" x2="330" y2="82" stroke="#cdd6f4" stroke-width="2"/>
+    </svg>
+    <div style="font-size:14px;">
+      <b style="color:#a6e3a1;">何に使う？</b> 負荷の<b>電源(+)側</b>で切りたいとき（負荷のGNDを共通に保ちたいとき）。<br>
+      ・GPIOを <b>LOW</b> でON、<b>HIGH</b> でOFF（NPNと論理が逆）。ベースから電流を「引き抜く」とONする。<br>
+      ・<b class="pn">10kΩプルアップ</b>：OFF時にベースをエミッタ(電源+)と同電位にして確実に切る。<br>
+    </div>
+    <div class="warnbox" style="margin:12px 0 0;">
+      ⚠ <b>電源電圧 ＞ GPIO電圧 のときは直結NG。</b><br>
+      例：電源5V・GPIO 3.3Vだと、HIGH(3.3V)にしてもベースがエミッタ(5V)より1.7V低く、<b>OFFにできない</b>。
+      この場合は <b>NPNを1段はさんでPNPのベースを駆動する2段構成</b>にする（またはPch MOSFET＋同様の工夫）。電源とGPIOが同じ電圧（3.3V電源を3.3V GPIOで制御等）なら直結OK。
+    </div>
+  </div>
+
+  <div class="circuit">
+    <h3>③ ダーリントン接続（hFEを掛け算で稼ぐ）</h3>
+    <svg class="schem" viewBox="0 0 560 280" role="img" aria-label="ダーリントン接続の回路図">
+      <rect x="160" y="40" width="280" height="212" rx="8" fill="none" stroke="#585b70" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="300" y="32" text-anchor="middle" fill="#a6adc8" font-size="11">TIP120などは1パッケージに内蔵</text>
+      <!-- Q1 -->
+      <rect x="190" y="105" width="70" height="60" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="225" y="120" text-anchor="middle" fill="#a6e3a1" font-size="10" font-weight="bold">C</text>
+      <text x="225" y="140" text-anchor="middle" fill="#cdd6f4" font-size="12" font-weight="bold">Q1</text>
+      <text x="225" y="158" text-anchor="middle" fill="#f38ba8" font-size="10" font-weight="bold">E</text>
+      <text x="196" y="139" fill="#89b4fa" font-size="10" font-weight="bold">B</text>
+      <!-- Q2 -->
+      <rect x="305" y="130" width="70" height="60" rx="6" fill="#181825" stroke="#89b4fa" stroke-width="2"/>
+      <text x="340" y="145" text-anchor="middle" fill="#a6e3a1" font-size="10" font-weight="bold">C</text>
+      <text x="340" y="165" text-anchor="middle" fill="#cdd6f4" font-size="12" font-weight="bold">Q2</text>
+      <text x="340" y="183" text-anchor="middle" fill="#f38ba8" font-size="10" font-weight="bold">E</text>
+      <text x="311" y="164" fill="#89b4fa" font-size="10" font-weight="bold">B</text>
+      <!-- 配線 -->
+      <text x="30" y="139" fill="#89b4fa" font-size="12" font-weight="bold">B</text>
+      <line x1="45" y1="135" x2="190" y2="135" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="225" y1="105" x2="225" y2="60" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="225" y1="60" x2="340" y2="60" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="340" y1="60" x2="340" y2="130" stroke="#cdd6f4" stroke-width="2"/>
+      <circle cx="340" cy="60" r="3.5" fill="#cdd6f4"/>
+      <line x1="340" y1="60" x2="500" y2="60" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="510" y="64" fill="#a6e3a1" font-size="12" font-weight="bold">C</text>
+      <line x1="225" y1="165" x2="225" y2="205" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="225" y1="205" x2="285" y2="205" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="285" y1="205" x2="285" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="285" y1="160" x2="305" y2="160" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="340" y1="190" x2="340" y2="255" stroke="#cdd6f4" stroke-width="2"/>
+      <line x1="340" y1="255" x2="500" y2="255" stroke="#cdd6f4" stroke-width="2"/>
+      <text x="510" y="259" fill="#f38ba8" font-size="12" font-weight="bold">E</text>
+      <text x="262" y="228" text-anchor="middle" fill="#94e2d5" font-size="11">Q1のエミッタ電流が</text>
+      <text x="262" y="244" text-anchor="middle" fill="#94e2d5" font-size="11">Q2のベースに入る</text>
+    </svg>
+    <div style="font-size:14px;">
+      <b style="color:#a6e3a1;">何に使う？</b> hFEが <b>Q1×Q2（1000倍以上）</b>になり、ごく小さなベース電流で<b>数Aクラス</b>を駆動できる。
+      モーター・大型リレー・ヒーターなど、1石では Ib が足りない負荷に。<span class="pn">TIP120</span>（NPN・5A）が定番。<br><br>
+      <b style="color:#fab387;">注意（MOSFETと比べた弱点）：</b><br>
+      ・B-E電圧が2段分で <b>約1.2〜1.4V</b> 必要（Rb計算のとき 0.7V でなく 1.4V を引く）。<br>
+      ・<b>Vce(sat)が約0.7〜1V以上</b>と高く、大電流では発熱が大きい（P = Vce(sat) × Ic）。放熱板を検討。<br>
+      ・同じ用途は<b>ロジックレベルMOSFET</b>（IRLZ44N等）の方が低発熱なことが多い。手持ちや入手性で選ぶ。
+    </div>
+  </div>
+
+  <h2>🎚 スイッチ以外の用途（増幅・バッファ）</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">エミッタフォロワ（バッファ）</div><div class="a">負荷をエミッタ側につなぐ回路。電圧は増幅しない（Vout ≈ Vin − 0.7V）が<b style="color:#cdd6f4;">電流を増幅</b>する。「電圧はそのまま、駆動力だけ欲しい」とき（オーディオ出力段・基準電圧のバッファ等）。</div></div>
+    <div class="guide-item"><div class="q">エミッタ接地増幅回路</div><div class="a">活性域を使って小さな信号を<b style="color:#cdd6f4;">電圧増幅</b>する基本回路。バイアス設計（動作点を活性域の中央に置く）が必要で、スイッチ用途より一歩進んだ話。マイク・センサの微小信号などに。</div></div>
+    <div class="guide-item"><div class="q">カレントミラー・差動対</div><div class="a">2石以上を組み合わせるアナログICの基本ブロック。電子工作では既製のオペアンプを使うことがほとんどなので「中身はBJTでできている」と知っていればOK。</div></div>
+    <div class="guide-item"><div class="q">オープンコレクタ出力</div><div class="a">ICの出力によくある形式で、中身はNPNのコレクタがそのまま出ている。<b style="color:#cdd6f4;">プルアップ抵抗を付けて使う</b>。違う電圧系をつなげるのが利点（5V系→3.3V系等）。</div></div>
+  </div>
+
+  <h2>🆚 BJT と MOSFET の使い分け</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>トランジスタ(BJT)</th><th>MOSFET</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>制御のしかた</td><td><b>電流</b>（ベース電流を流し続ける）</td><td><b>電圧</b>（ゲート電流ほぼ0）</td></tr>
+        <tr><td>ON時の損失</td><td>Vce(sat)≈0.1〜0.3V × Ic</td><td>Rds(on) × Ic²（大電流ほど有利）</td></tr>
+        <tr><td>得意な電流</td><td>〜数百mA（ダーリントンで数A）</td><td>数A〜数十A</td></tr>
+        <tr><td>価格・入手</td><td>非常に安い（数円〜）</td><td>少し高い</td></tr>
+        <tr><td>静電気</td><td><b>強い</b>（扱いやすい）</td><td>弱い（ゲートがESDで壊れる）</td></tr>
+        <tr><td>微小電圧の制御</td><td>Vbe 0.6Vからきっちり動く</td><td>Vgs(th)のばらつきが大きい</td></tr>
+        <tr><td>向く場面</td><td>小信号・LED数個・リレー・増幅</td><td>大電流・PWM・省電力（電池駆動）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="warnbox" style="border-color:#89b4fa;background:#1e2433;color:#89b4fa;">
+    🎯 <b style="color:#cdd6f4;">ざっくり結論</b><br>
+    ・<b style="color:#cdd6f4;">〜100mA程度の小物</b>（LED・小リレー・ブザー） → BJTで十分。安くて丈夫<br>
+    ・<b style="color:#cdd6f4;">1Aを超える負荷・PWM・電池駆動</b> → MOSFET（mosfetGuide.html 参照）<br>
+    ・<b style="color:#cdd6f4;">信号の増幅</b> → BJT（またはオペアンプ）
+  </div>
+
+  <h2>📐 主要パラメータ（データシートで見るところ）</h2>
+  <div class="cards">
+    <div class="card" style="--accent:#89b4fa;">
+      <h3>hFE <span class="en">直流電流増幅率（β）</span></h3>
+      <span class="vf">Ic = hFE × Ib</span>
+      <dl>
+        <dt>意味</dt><dd>ベース電流の何倍をコレクタに流せるか。100〜300程度が多い。</dd>
+        <dt>注意</dt><dd><b>個体差・温度・電流で大きく変わる</b>。設計は最小値で行い、hFEの値をあてにしすぎない。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#a6e3a1;">
+      <h3>Vbe <span class="en">ベース-エミッタ間電圧</span></h3>
+      <span class="vf">ON時 ≈ 0.6〜0.7V</span>
+      <dl>
+        <dt>意味</dt><dd>ONしているときのB-E間電圧。ダイオードの順方向電圧と同じ性質。</dd>
+        <dt>注意</dt><dd>Rb計算では (GPIO電圧 − 0.7V) で電流を見積もる。ダーリントンは2倍の約1.4V。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#f9e2af;">
+      <h3>Vce(sat) <span class="en">飽和電圧</span></h3>
+      <span class="vf">フルON時に残る電圧</span>
+      <dl>
+        <dt>意味</dt><dd>飽和時のC-E間電圧。0.1〜0.3V程度。発熱 P = Vce(sat) × Ic。</dd>
+        <dt>注意</dt><dd>MOSFETのRds(on)と違い<b>電流を増やしてもゼロに近づかない</b>。大電流で不利な理由。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#fab387;">
+      <h3>Vceo <span class="en">C-E間耐圧</span></h3>
+      <span class="vf">OFF時にかけられる電圧の上限</span>
+      <dl>
+        <dt>意味</dt><dd>OFF時にC-E間にかかる電圧の最大定格。小信号用は30〜60Vが多い。</dd>
+        <dt>注意</dt><dd>コイル負荷の逆起電力スパイクに注意。フライホイールダイオードで保護。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#cba6f7;">
+      <h3>Ic(max) <span class="en">最大コレクタ電流</span></h3>
+      <span class="vf">流せる電流の上限</span>
+      <dl>
+        <dt>意味</dt><dd>連続して流せるコレクタ電流の定格。小信号用は100〜800mA程度。</dd>
+        <dt>注意</dt><dd>定格ギリギリはhFEが落ちて飽和しにくくなる。半分以下で使うと楽。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#f38ba8;">
+      <h3>Pc <span class="en">許容コレクタ損失</span></h3>
+      <span class="vf">発熱の上限</span>
+      <dl>
+        <dt>意味</dt><dd>連続で許される発熱量。TO-92の小信号用は0.3〜0.6W程度。</dd>
+        <dt>注意</dt><dd>飽和で使えば通常は余裕。活性域（半端ON）で使うと簡単に超えるので注意。</dd>
+      </dl>
+    </div>
+  </div>
+
+  <h2>🛒 入手しやすい定番トランジスタ</h2>
+  <div class="cards">
+    <div class="card" style="--accent:#a6e3a1;">
+      <h3>2SC1815 <span class="en">NPN / TO-92</span></h3>
+      <span class="vf">50V / 150mA / hFE 70〜700</span>
+      <dl>
+        <dt>用途</dt><dd>小信号スイッチ・増幅なんでも。日本の電子工作の大定番。</dd>
+        <dt>ひとこと</dt><dd>hFEランク（Y:120〜240 / GR:200〜400）が刻印されている。互換品が今も流通。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#89b4fa;">
+      <h3>2N3904 <span class="en">NPN / TO-92</span></h3>
+      <span class="vf">40V / 200mA</span>
+      <dl>
+        <dt>用途</dt><dd>海外設計の定番小信号NPN。2SC1815とほぼ同じ感覚で使える。</dd>
+        <dt>ひとこと</dt><dd>ピン配置がEBC（2SC1815はECB）なので差し替え時は注意。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#f9e2af;">
+      <h3>BC547 <span class="en">NPN / TO-92</span></h3>
+      <span class="vf">45V / 100mA</span>
+      <dl>
+        <dt>用途</dt><dd>欧州系の定番小信号NPN。キットや海外記事でよく登場。</dd>
+        <dt>ひとこと</dt><dd>BC548/BC549は耐圧・ノイズ違いの兄弟。PNP版はBC557。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#94e2d5;">
+      <h3>2N2222A <span class="en">NPN / TO-92等</span></h3>
+      <span class="vf">40V / 800mA</span>
+      <dl>
+        <dt>用途</dt><dd>小信号用よりちょっと電流が欲しいとき（〜数百mA）。リレー・小モーター。</dd>
+        <dt>ひとこと</dt><dd>「小信号と大電流の中間」を1本で済ませたいときに便利。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#fab387;">
+      <h3>2SA1015 / 2N3906 <span class="en">PNP / TO-92</span></h3>
+      <span class="vf">-50V/-150mA ・ -40V/-200mA</span>
+      <dl>
+        <dt>用途</dt><dd>ハイサイドスイッチ、NPNとペアのプッシュプル等。</dd>
+        <dt>ひとこと</dt><dd>2SC1815⇔2SA1015、2N3904⇔2N3906 がコンプリメンタリ（対）の関係。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#cba6f7;">
+      <h3>TIP120 <span class="en">NPN ダーリントン / TO-220</span></h3>
+      <span class="vf">60V / 5A / hFE 1000以上</span>
+      <dl>
+        <dt>用途</dt><dd>モーター・大型リレーなど数Aの負荷。B-E抵抗とフライホイールダイオード内蔵。</dd>
+        <dt>ひとこと</dt><dd>Vce(sat)が高め（1V前後）で発熱するので放熱板を。今ならMOSFETも検討。</dd>
+      </dl>
+    </div>
+    <div class="card" style="--accent:#f38ba8;">
+      <h3>S8050 / S8550 <span class="en">NPN / PNP / TO-92</span></h3>
+      <span class="vf">25V / 500mA（中華モジュール定番）</span>
+      <dl>
+        <dt>用途</dt><dd>安価なモジュール・キットに多用されているペア。〜数百mAのスイッチに。</dd>
+        <dt>ひとこと</dt><dd>耐圧が低め(25V)な点だけ注意（5V系では問題なし）。メーカーにより定格・hFE区分の差が大きい。</dd>
+      </dl>
+    </div>
+  </div>
+
+  <h2>🔧 トラブルシューティング</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>症状</th><th>よくある原因</th><th>対処</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>ONしない</b>／負荷が動かない</td>
+          <td>Rbが大きすぎてIb不足／ピン配置の勘違い（C-E逆）／GND未共通</td>
+          <td>Rbを計算し直す（余裕×3〜5）。データシートでピン確認。マイコンと負荷電源のGNDを接続</td>
+        </tr>
+        <tr>
+          <td>トランジスタが<b>熱い</b></td>
+          <td>飽和していない（Ib不足で活性域・Vceが残っている）／Ic過大</td>
+          <td>Rbを小さくしてIbを増やす。それでも熱いならダーリントンかMOSFETへ</td>
+        </tr>
+        <tr>
+          <td>負荷が<b>薄くON</b>したまま消えない</td>
+          <td>ベースへのリーク・ノイズ／GPIOが入力(Hi-Z)のまま</td>
+          <td>B-E間に10kΩを追加。GPIOを出力LOWに設定</td>
+        </tr>
+        <tr>
+          <td>PNPハイサイドが<b>OFFにならない</b></td>
+          <td>電源電圧 &gt; GPIO電圧 でVebが残る</td>
+          <td>NPNを1段はさんだ2段構成にする（上の②の注意参照）</td>
+        </tr>
+        <tr>
+          <td><b>すぐ壊れる</b></td>
+          <td>Rb無しでベース直結／コイル負荷の逆起電力／Vceo超え</td>
+          <td>Rb必須。コイルにはフライホイールダイオード。耐圧に余裕を</td>
+        </tr>
+        <tr>
+          <td>GPIOが<b>熱い・電圧が下がる</b></td>
+          <td>Ibの流しすぎ（Rbが小さすぎる）</td>
+          <td>Ibは10mA以下を目安に。それで足りないならダーリントンかMOSFET</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>🔍 テスターでの良否チェック</h2>
+  <p class="note">BJTは「<b style="color:#cdd6f4;">B-E間とB-C間に2個のダイオード</b>が入っている」とみなして、テスターの<b style="color:#cdd6f4;">ダイオードモード</b>で確認できる。回路から外した状態で。</p>
+  <div class="guide">
+    <div class="guide-item"><div class="q">① B→E / B→C を測る（NPN）</div><div class="a">赤(＋)をB、黒(−)をEに当てて <b style="color:#cdd6f4;">0.6〜0.7V</b>。黒をCに替えても <b style="color:#cdd6f4;">0.6〜0.7V</b>。これが2つのダイオード。</div></div>
+    <div class="guide-item"><div class="q">② 逆向きはOL</div><div class="a">赤黒を逆（黒をB）にすると両方 <b style="color:#cdd6f4;">OL（導通なし）</b>。0V（短絡）や両方向OLなら<b style="color:#f38ba8;">不良の疑い</b>。</div></div>
+    <div class="guide-item"><div class="q">③ C-E間は両方向OL</div><div class="a">CとEの間はどちら向きでも <b style="color:#cdd6f4;">OL</b> が正常。導通があれば壊れている。</div></div>
+    <div class="guide-item"><div class="q">PNPは赤黒が逆</div><div class="a">黒(−)をBに当てて E・C それぞれで0.6〜0.7V。考え方は同じ。テスターのhFE測定ソケットがあれば挿すだけで判定できる。</div></div>
+  </div>
+
+  <h2>📖 用語解説</h2>
+  <div class="guide">
+    <div class="guide-item"><div class="q">ベース / コレクタ / エミッタ</div><div class="a">B=制御入力（小電流）、C=大電流の入口、E=出口（基準）。Bの電流でC-E間の電流を制御する。</div></div>
+    <div class="guide-item"><div class="q">hFE（β・直流電流増幅率）</div><div class="a">Ic ÷ Ib。「ベース電流の何倍流せるか」。100〜300が典型だが個体差が大きい。</div></div>
+    <div class="guide-item"><div class="q">遮断 / 活性 / 飽和</div><div class="a">OFF／比例制御中（増幅に使う・発熱大）／フルON（スイッチに使う・発熱小）の3状態。</div></div>
+    <div class="guide-item"><div class="q">ベース抵抗 Rb</div><div class="a">GPIOとベースの間に入れる<b style="color:#cdd6f4;">必須</b>の抵抗。ベース電流を決める。無いとほぼショートで破損。</div></div>
+    <div class="guide-item"><div class="q">オーバードライブ（過飽和）</div><div class="a">確実に飽和させるため、計算上必要なIbの2〜5倍を流すこと。hFEのばらつき対策。</div></div>
+    <div class="guide-item"><div class="q">Vce(sat)（飽和電圧）</div><div class="a">フルON時にC-E間に残る電圧（0.1〜0.3V）。これ×Icが発熱になる。</div></div>
+    <div class="guide-item"><div class="q">ダーリントン接続</div><div class="a">2石を縦続してhFEを掛け算（1000倍超）にする接続。Vbeが2倍・Vce(sat)が高くなる代償あり。</div></div>
+    <div class="guide-item"><div class="q">コンプリメンタリ</div><div class="a">特性をそろえたNPNとPNPのペア（2SC1815と2SA1015等）。プッシュプル回路などで対で使う。</div></div>
+    <div class="guide-item"><div class="q">エミッタフォロワ</div><div class="a">電圧そのまま・電流だけ増幅するバッファ回路。出力＝入力−0.7V。</div></div>
+    <div class="guide-item"><div class="q">オープンコレクタ</div><div class="a">コレクタがそのまま出ている出力形式。プルアップ抵抗を付けて使い、異なる電圧系もつなげる。</div></div>
+  </div>
+
+  <footer>
+    値は一般的な目安です。実際の設計ではメーカーのデータシート（hFEの範囲・Vceo・Ic・Vce(sat)・Pc・ピン配置）を必ず確認してください。<br>
+    @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — bjtGuide.html
+  </footer>
+
+<script>
+  const byId = id => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+
+  /* ---- 粒の流れアニメ ---- */
+  const flows = [];
+  function addFlow(pathId, groupId, count, color, speedFn, r) {
+    const path = byId(pathId), group = byId(groupId), len = path.getTotalLength();
+    const dots = [];
+    for (let i = 0; i < count; i++) {
+      const c = document.createElementNS(SVGNS, 'circle');
+      c.setAttribute('r', r || 4.5); c.setAttribute('fill', color);
+      group.appendChild(c);
+      dots.push({ el: c, off: (i / count) * len });
+    }
+    flows.push({ path, len, dots, speedFn });
+  }
+  let last = null;
+  function frame(t) {
+    if (last === null) last = t;
+    let dt = (t - last) / 1000; last = t; if (dt > 0.1) dt = 0.1;
+    for (const f of flows) {
+      const sp = f.speedFn();
+      for (const d of f.dots) {
+        d.off = (d.off + sp * dt) % f.len; if (d.off < 0) d.off += f.len;
+        const p = f.path.getPointAtLength(d.off);
+        d.el.setAttribute('cx', p.x.toFixed(1)); d.el.setAttribute('cy', p.y.toFixed(1));
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---- ① 電流増幅・動作領域アニメ ---- */
+  const OP = { hfe: 200, vcc: 5, rl: 250, vceSat: 0.2 };
+  let opIcA = 0, opIbU = 0; // アニメ速度用
+
+  function updOp() {
+    const ibu = parseFloat(byId('opIb').value);          // µA
+    const icIdeal = OP.hfe * ibu / 1e6;                  // A
+    const icSat = (OP.vcc - OP.vceSat) / OP.rl;          // A (≈19.2mA)
+    const ic = Math.min(icIdeal, icSat);
+    const isOff = ibu === 0;
+    const isSat = !isOff && icIdeal >= icSat;
+    const vce = isOff ? OP.vcc : (isSat ? OP.vceSat : OP.vcc - ic * OP.rl);
+    const p = isOff ? 0 : vce * ic;                      // W
+    const pMax = OP.vcc * OP.vcc / (4 * OP.rl);          // 活性域での最大発熱
+
+    byId('opIbVal').textContent = ibu + ' µA';
+    byId('opIbOut').textContent = ibu + ' µA';
+    byId('opIcOut').textContent = (ic * 1000).toFixed(1) + ' mA';
+    byId('opVceOut').textContent = vce.toFixed(2) + ' V';
+    byId('opPOut').textContent = (p * 1000).toFixed(1) + ' mW';
+    byId('opHeatBar').style.width = Math.min(p / pMax * 100, 100) + '%';
+    byId('opLed').setAttribute('opacity', (0.15 + 0.85 * ic / icSat).toFixed(2));
+    byId('opBlock').setAttribute('opacity', isOff ? '1' : '0');
+
+    const chip = byId('opState'), note = byId('opNote');
+    if (isOff) {
+      chip.textContent = '遮断（OFF）';
+      chip.style.borderColor = chip.style.color = '#a6adc8';
+      byId('opIcLabel').textContent = 'Ic = 0（流れない）';
+      note.innerHTML = 'ベース電流がゼロなので、コレクタ電流もゼロ。<b>スイッチOFF</b>の状態。電流が流れないので発熱もない。Vceには電源電圧がそのまま残る。';
+    } else if (!isSat) {
+      chip.textContent = '活性（半端ON）';
+      chip.style.borderColor = chip.style.color = '#f9e2af';
+      byId('opIcLabel').textContent = 'Ic = hFE × Ib = ' + (ic * 1000).toFixed(1) + ' mA';
+      note.innerHTML = '<b>Ic = hFE × Ib</b> で比例制御中。トランジスタが電流を絞っているぶん Vce が残り、<b style="color:#fab387;">Vce × Ic が発熱</b>になる。アンプはこの領域を使うが、<b>スイッチ用途では通過するだけ</b>にしたい。';
+    } else {
+      chip.textContent = '飽和（フルON）';
+      chip.style.borderColor = chip.style.color = '#a6e3a1';
+      byId('opIcLabel').textContent = 'Ic = 上限 ' + (icSat * 1000).toFixed(1) + ' mA で頭打ち';
+      note.innerHTML = 'ベース電流が十分なので<b>フルON</b>。Icは hFE×Ib まで増えず、<b>負荷で決まる上限</b>で頭打ち。Vce ≈ 0.2V しか残らず発熱は最小。<b style="color:#a6e3a1;">スイッチ用途はここで使う</b>。';
+    }
+    opIcA = isOff ? 0 : ic;
+    opIbU = ibu;
+  }
+  byId('opIb').addEventListener('input', updOp);
+  addFlow('p-opB', 'g-opB', 6, '#89b4fa', () => opIbU * 1.3, 3);
+  addFlow('p-opC', 'g-opC', 10, '#f9e2af', () => opIcA * 9000);
+  updOp();
+
+  /* ---- ② ベース抵抗計算機 ---- */
+  const E24 = [10,11,12,13,15,16,18,20,22,24,27,30,33,36,39,43,47,51,56,62,68,75,82,91];
+  function e24Down(r) {
+    if (!isFinite(r) || r <= 0) return null;
+    const exp = Math.floor(Math.log10(r));
+    const m = r / Math.pow(10, exp - 1);   // 10〜100の範囲
+    for (let i = E24.length - 1; i >= 0; i--) {
+      if (E24[i] <= m + 1e-9) return E24[i] * Math.pow(10, exp - 1);
+    }
+    return 91 * Math.pow(10, exp - 2);
+  }
+  const fmtR = r => r >= 1e6 ? (r / 1e6).toFixed(1).replace(/\.0$/, '') + ' MΩ'
+                  : r >= 1000 ? (r / 1000).toFixed(1).replace(/\.0$/, '') + ' kΩ'
+                  : r.toFixed(0) + ' Ω';
+
+  let cbOn = true;
+  const cbState = { ib: 0, ic: 0 };
+
+  /* 型番プリセット（値は代表的データシートの最小値の目安。実機では要データシート確認） */
+  const CB_PRESETS = {
+    custom:  { hfe: null, vbe: 0.7, icmax: null, note: 'カスタム：手入力（Vbe=0.7Vで計算）' },
+    c1815y:  { hfe: 120,  vbe: 0.7, icmax: 150,  note: '2SC1815 Yランク：hFE 120〜240 → min 120（VCE=6V, IC=2mA）／Ic最大150mA' },
+    c1815gr: { hfe: 200,  vbe: 0.7, icmax: 150,  note: '2SC1815 GRランク：hFE 200〜400 → min 200（VCE=6V, IC=2mA）／Ic最大150mA' },
+    n3904:   { hfe: 100,  vbe: 0.7, icmax: 200,  note: '2N3904：hFE min 100（VCE=1V, IC=10mA）。100mAではmin 30まで下がる／Ic最大200mA' },
+    bc547b:  { hfe: 200,  vbe: 0.7, icmax: 100,  note: 'BC547B：hFE 200〜450 → min 200（VCE=5V, IC=2mA）／Ic最大100mA' },
+    n2222a:  { hfe: 75,   vbe: 0.7, icmax: 800,  note: '2N2222A：hFE min 75（IC=10mA）・min 100（IC=150mA）／Ic最大800mA' },
+    s8050:   { hfe: 120,  vbe: 0.7, icmax: 500,  note: 'S8050：hFE min 120（Cランク等。メーカーで区分・仕様の差が大きい）／Ic最大500mA目安' },
+    tip120:  { hfe: 1000, vbe: 1.4, icmax: 5000, note: 'TIP120 ダーリントン：hFE min 1000（VCE=3V, IC=0.5〜3A）／Vbe≈1.4V（2段分・大電流では2V超）／Ic最大5A' }
+  };
+  let cbVbe = 0.7, cbIcMax = null;
+
+  function updCb() {
+    const vg = parseFloat(byId('cbVg').value);
+    const icmA = parseFloat(byId('cbIc').value);
+    const hfe = parseFloat(byId('cbHfe').value);
+    const od = parseFloat(byId('cbOd').value);
+    const result = byId('cbResult');
+    result.classList.remove('warn');
+
+    if (isNaN(icmA) || isNaN(hfe) || icmA <= 0 || hfe <= 0) {
+      byId('cbBig').textContent = '-';
+      byId('cbDetail').textContent = '数値を入力してください。';
+      cbState.ib = 0; cbState.ic = 0;
+      return;
+    }
+    const ibNeed = icmA / hfe * od;           // mA
+    const vAvail = vg - cbVbe;
+    if (vAvail <= 0) {
+      byId('cbBig').textContent = '-';
+      byId('cbDetail').innerHTML = '<b style="color:#f38ba8;">GPIO電圧がVbe(' + cbVbe + 'V)以下のため駆動できません。</b>';
+      result.classList.add('warn');
+      cbState.ib = 0; cbState.ic = 0;
+      return;
+    }
+    const rbIdeal = vAvail / (ibNeed / 1000); // Ω
+    const rbE24 = e24Down(rbIdeal);
+    const ibAct = vAvail / rbE24 * 1000;      // mA
+
+    byId('cbBig').textContent = fmtR(rbE24);
+    let warns = '';
+    if (ibAct > 10) {
+      warns += '<br><b style="color:#f38ba8;">⚠ Ib が ' + ibAct.toFixed(1) + ' mA とGPIOには重すぎ。ダーリントンかMOSFETを検討。</b>';
+      result.classList.add('warn');
+    }
+    if (cbIcMax !== null && icmA > cbIcMax) {
+      warns += '<br><b style="color:#f38ba8;">⚠ 選択した型番のIc最大定格（' + cbIcMax + ' mA）を超えています。型番を見直してください。</b>';
+      result.classList.add('warn');
+    } else if (cbIcMax === null && icmA > 150) {
+      warns += '<br><b style="color:#fab387;">⚠ Ic ' + icmA + ' mA は小信号トランジスタの定格を超えがち。2N2222A・TIP120・MOSFET等を検討。</b>';
+    }
+    byId('cbDetail').innerHTML =
+      '必要なベース電流: Ib = ' + icmA + 'mA ÷ ' + hfe + ' × ' + od + ' = <span>' + ibNeed.toFixed(2) + ' mA</span><br>' +
+      '計算: Rb = (' + vg + 'V − ' + cbVbe + 'V) ÷ ' + ibNeed.toFixed(2) + 'mA = ' + rbIdeal.toFixed(0) + ' Ω → E24切り下げ <span>' + fmtR(rbE24) + '</span><br>' +
+      '実際の Ib ≈ <span>' + ibAct.toFixed(2) + ' mA</span>（GPIOが流す電流。10mA以下が目安）' + warns;
+
+    byId('cbSvgRb').textContent = 'Rb ' + fmtR(rbE24).replace(' ', '');
+    byId('cbSvgIb').textContent = 'Ib ≈ ' + ibAct.toFixed(2) + ' mA';
+    byId('cbSvgIc').textContent = 'Ic = ' + icmA + ' mA';
+    cbState.ib = ibAct; cbState.ic = icmA;
+  }
+  byId('cbPreset').addEventListener('input', () => {
+    const p = CB_PRESETS[byId('cbPreset').value];
+    if (p.hfe !== null) byId('cbHfe').value = p.hfe;
+    cbVbe = p.vbe; cbIcMax = p.icmax;
+    byId('cbPresetNote').textContent = p.note;
+  });
+  // hFEを手で編集したらカスタム扱いに戻す（プリセットのVbe・定格も解除）
+  byId('cbHfe').addEventListener('input', () => {
+    if (byId('cbPreset').value !== 'custom') {
+      byId('cbPreset').value = 'custom';
+      cbVbe = 0.7; cbIcMax = null;
+      byId('cbPresetNote').textContent = CB_PRESETS.custom.note;
+    }
+  });
+  ['cbPreset', 'cbVg', 'cbIc', 'cbHfe', 'cbOd'].forEach(id => byId(id).addEventListener('input', updCb));
+
+  function setCbOn(on) {
+    cbOn = on;
+    const vg = parseFloat(byId('cbVg').value);
+    byId('cbSvgVg').textContent = on ? 'HIGH ' + vg + 'V' : 'LOW 0V';
+    byId('cbSvgVg').setAttribute('fill', on ? '#f9e2af' : '#a6adc8');
+    byId('cbLed').setAttribute('opacity', on ? '0.9' : '0.12');
+    byId('cbBtn').textContent = on ? 'GPIOをLOWにする（OFF）' : 'GPIOをHIGHにする（ON）';
+  }
+  byId('cbBtn').addEventListener('click', () => setCbOn(!cbOn));
+  byId('cbVg').addEventListener('input', () => setCbOn(cbOn));
+  addFlow('p-cbB', 'g-cbB', 6, '#89b4fa', () => cbOn ? Math.min(25 + cbState.ib * 120, 230) : 0, 3);
+  addFlow('p-cbC', 'g-cbC', 10, '#a6e3a1', () => cbOn ? Math.min(25 + cbState.ic * 5, 230) : 0);
+  updCb();
+  setCbOn(true);
+
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
