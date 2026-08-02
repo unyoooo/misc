@@ -24,6 +24,7 @@
 | **NE555タイマー早見表** (`ne555Guide.html`) | NE555の仕様・ピン配置・内部構造・3つの動作モード(非安定/単安定/双安定)・コンパレータ用途・周波数/時間の計算機(逆算・プリセット付き) | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/ne555Guide.html) |
 | **LEDチカチカ回路** (`ledBlinkGuide.html`) | マルチバイブレータの作り方(トランジスタ/MOSFET/555/74HC14)・ホタル点滅・LEDチェイサー・点滅頻度の計算機(プリセット・早見表付き) | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/ledBlinkGuide.html) |
 | **NFC 13.56MHz コイル共振計算機** (`nfcCoilCalc.html`) | NFCで電池レスLEDを光らせるLC共振タグの設計用。コイル直径・巻き数・線径・コンデンサから共振周波数をリアルタイム計算、13.56MHz一致判定・逆算C・定番レシピ・作り方ガイドつき | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/nfcCoilCalc.html) |
+| **リチウム電源降圧設計シミュレータ** (`lipoPowerSim.html`) | MCP73831(リニア充電)＋TLV62569(同期整流降圧)で1セルLi-Poの電源を設計する。Rprogから充電電流・充電カーブ・IC発熱、R1/R2から出力電圧(E24最適組み合わせ探索つき)・リップル・ドロップアウト・ランタイムを計算。充電4フェーズの解説図・部品リスト(BOM)出力・保護回路の注意つき。(自作基板UU06の説明用) | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/lipoPowerSim.html) |
 
 ---
 

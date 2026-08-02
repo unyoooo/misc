@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>リチウム電源降圧設計シミュレータ</title>
+<style>
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  h1 { color: #89b4fa; margin-top: 0; }
+  h2 { color: #89b4fa; border-bottom: 2px solid #45475a; padding-bottom: 6px; margin-top: 40px; }
+  a { color: #89b4fa; }
+  .lead {
+    background: #313244;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid #f9e2af;
+    margin-bottom: 20px;
+  }
+  .lead b { color: #f9e2af; }
+  code, .mono { font-family: "Consolas", monospace; background: #11111b; padding: 1px 6px; border-radius: 4px; color: #a6e3a1; }
+
+  .panel { background: #181825; border: 1px solid #45475a; border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+  .circuit { background: #181825; border: 1px solid #45475a; border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+
+  .btn { background: #11111b; color: #cdd6f4; border: 1px solid #585b70; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: inherit; font-weight: bold; }
+  .btn:hover { border-color: #89b4fa; }
+  .btn.active { border-color: #89b4fa; color: #89b4fa; }
+  .btn-sm { padding: 2px 10px; font-size: 12px; }
+  #comboTable tr.combo-cur td { background: #3b3b5a; }
+  .best-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #1c2a1e; border: 2px solid #a6e3a1; border-radius: 10px; padding: 10px 16px; margin: 10px 0; font-size: 14px; }
+  .best-box .btitle { color: #a6e3a1; font-weight: bold; }
+  .best-box .bval { font-family: Consolas, monospace; font-weight: bold; color: #a6e3a1; font-size: 19px; }
+  .best-box .bsub { color: #cdd6f4; font-size: 13px; }
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; align-items: center; }
+  .preset-row .plabel { color: #a6adc8; font-size: 12px; font-weight: bold; }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .slider-row label { width: 150px; color: #a6adc8; font-size: 13px; font-weight: bold; }
+  .slider-row input[type=range] { flex: 1; min-width: 140px; accent-color: #89b4fa; }
+  .slider-row input[type=number] { width: 90px; background: #11111b; color: #f9e2af; border: 1px solid #585b70; border-radius: 6px; padding: 4px 6px; font-family: Consolas, monospace; font-size: 15px; font-weight: bold; text-align: right; }
+  .slider-row .unit { color: #a6adc8; font-size: 13px; min-width: 34px; }
+  .slider-row select { background: #11111b; color: #f9e2af; border: 1px solid #585b70; border-radius: 6px; padding: 5px 8px; font-family: Consolas, monospace; font-size: 14px; font-weight: bold; }
+
+  .readout { font-size: 14px; }
+  .readout .row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed #45475a; padding: 4px 0; }
+  .readout .row .k { color: #a6adc8; font-size: 13px; }
+  .readout .row .v { font-family: Consolas, monospace; color: #f9e2af; text-align: right; font-weight: bold; }
+  .note-dyn { color: #cdd6f4; font-size: 14px; margin-top: 10px; background: #232334; border-radius: 6px; padding: 10px 12px; border-left: 3px solid #94e2d5; }
+  .note-dyn b { color: #94e2d5; }
+
+  .state-chip { display: inline-block; font-size: 12px; font-weight: bold; padding: 1px 10px; border-radius: 999px; border: 1px solid; vertical-align: middle; }
+  .chip-green  { color: #a6e3a1; border-color: #a6e3a1; background: #1c2a1e; }
+  .chip-teal   { color: #94e2d5; border-color: #94e2d5; background: #1c2a28; }
+  .chip-yellow { color: #f9e2af; border-color: #f9e2af; background: #2a2a1c; }
+  .chip-red    { color: #f38ba8; border-color: #f38ba8; background: #2a1c22; }
+
+  .cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); align-items: start; }
+
+  .schem { display: block; max-width: 1000px; width: 100%; height: auto; background: #11111b; border: 1px solid #45475a; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+  .schem text { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; }
+
+  canvas.chart { display: block; width: 100%; height: 250px; background: #11111b; border: 1px solid #45475a; border-radius: 8px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 8px; font-size: 14px; min-width: 480px; }
+  th, td { border: 1px solid #45475a; padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #181825; color: #89b4fa; }
+  tr:nth-child(even) td { background: #232334; }
+
+  .guide { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); }
+  .guide-item { background: #232334; border-radius: 8px; padding: 12px 14px; border-left: 3px solid #a6e3a1; }
+  .guide-item .q { color: #f9e2af; font-weight: bold; }
+  .guide-item .a { font-size: 14px; }
+
+  .warnbox { background: #45302e; color: #fab387; border: 2px solid #fab387; border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+  .warnbox b { color: #f9e2af; }
+  .note { color: #a6adc8; font-size: 13px; margin-top: 6px; }
+  footer { margin-top: 48px; color: #a6adc8; font-size: 13px; border-top: 1px solid #45475a; padding-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1 style="margin-bottom:4px;">🔋 リチウム電源降圧設計シミュレータ</h1>
+<div style="color:#a6adc8; font-size:15px; margin-bottom:16px;">MCP73831 充電 + TLV62569 降圧</div>
+
+<div class="lead">
+  <b>MCP73831</b>（リニア充電IC）で1セルLi-Po/Li-Ionを充電し、<b>TLV62569</b>（同期整流降圧）で安定電圧を作る定番構成のシミュレータ。
+  定数（R<sub>PROG</sub>・電池容量・R1/R2・L・負荷）を変えると、充電カーブ・発熱・出力設定・リップル・ランタイムが連動して変わります。
+  <div style="margin-top:8px; font-size:13px;">
+    設定は<b>自動保存</b>されます（次回開いたときも同じ状態）。URLにも入るので、その<b>URLをコピーすれば同じ設定を共有・保存</b>できます。
+    <button class="btn btn-sm" id="btnResetAll" style="margin-left:8px;">初期値に戻す</button>
+  </div>
+</div>
+
+<h2>🗺️ 全体回路</h2>
+<div class="circuit">
+  <svg class="schem" id="schemSvg" viewBox="0 0 1060 340" xmlns="http://www.w3.org/2000/svg">
+    <!-- ========== 電源レール(上) y=70 / GNDレール y=290 ========== -->
+
+    <!-- USB -->
+    <rect x="20" y="45" width="84" height="50" rx="8" fill="#232334" stroke="#89b4fa"/>
+    <text x="62" y="66" fill="#89b4fa" font-size="13" text-anchor="middle" font-weight="bold">USB</text>
+    <text x="62" y="84" fill="#cdd6f4" font-size="12" text-anchor="middle">5V</text>
+    <line x1="62" y1="95" x2="62" y2="290" stroke="#585b70" stroke-width="2"/>
+    <line x1="104" y1="70" x2="168" y2="70" stroke="#585b70" stroke-width="2"/>
+
+    <!-- 充電IC MCP73831 -->
+    <rect x="168" y="38" width="126" height="76" rx="8" fill="#232334" stroke="#fab387"/>
+    <text x="231" y="64" fill="#fab387" font-size="13" text-anchor="middle" font-weight="bold">MCP73831</text>
+    <text x="231" y="82" fill="#a6adc8" font-size="11" text-anchor="middle">リニア充電 4.2V</text>
+    <text x="174" y="106" fill="#a6adc8" font-size="10">VDD</text>
+    <text x="266" y="106" fill="#a6adc8" font-size="10">VBAT</text>
+    <text x="222" y="106" fill="#a6adc8" font-size="10">PROG</text>
+
+    <!-- PROG抵抗 -->
+    <line x1="231" y1="114" x2="231" y2="176" stroke="#585b70" stroke-width="2"/>
+    <rect x="222" y="176" width="18" height="48" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <line x1="231" y1="224" x2="231" y2="290" stroke="#585b70" stroke-width="2"/>
+    <rect x="248" y="170" width="112" height="50" rx="7" fill="#2a2a1c" stroke="#f9e2af" stroke-width="1.5"/>
+    <text x="304" y="188" fill="#f9e2af" font-size="11" text-anchor="middle" font-weight="bold">R<tspan font-size="9">PROG</tspan>（充電電流）</text>
+    <text id="schRprog" x="304" y="212" fill="#f9e2af" font-size="16" text-anchor="middle" font-weight="bold">2kΩ</text>
+
+    <!-- STAT LED（充電中に点灯）: VDD → LED → 抵抗 → STATピン(Low) -->
+    <text x="176" y="129" fill="#a6adc8" font-size="10">STAT</text>
+    <line x1="176" y1="114" x2="176" y2="134" stroke="#585b70" stroke-width="2"/>
+    <line x1="176" y1="134" x2="128" y2="134" stroke="#585b70" stroke-width="2"/>
+    <rect x="110" y="125" width="18" height="18" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="119" y="160" fill="#f9e2af" font-size="10" text-anchor="middle" font-weight="bold">1kΩ</text>
+    <line x1="110" y1="134" x2="88" y2="134" stroke="#585b70" stroke-width="2"/>
+    <!-- LED（三角＋バー、向き: 上(VDD)→下(STAT)に流れる） -->
+    <path d="M80 178 L96 178 L88 164 Z" fill="#f38ba8"/>
+    <line x1="80" y1="164" x2="96" y2="164" stroke="#f38ba8" stroke-width="2.5"/>
+    <line x1="88" y1="134" x2="88" y2="164" stroke="#585b70" stroke-width="2"/>
+    <line x1="88" y1="178" x2="88" y2="196" stroke="#585b70" stroke-width="2"/>
+    <line x1="88" y1="196" x2="62" y2="196" stroke="#585b70" stroke-width="2"/>
+    <circle cx="62" cy="196" r="3.5" fill="#585b70"/>
+    <text x="136" y="172" fill="#f38ba8" font-size="11" font-weight="bold">STAT LED</text>
+    <text x="136" y="187" fill="#a6adc8" font-size="10">充電中に点灯</text>
+
+    <!-- 充電IC → 電池ノード -->
+    <line x1="294" y1="70" x2="392" y2="70" stroke="#585b70" stroke-width="2"/>
+    <text id="schIchg" x="343" y="60" fill="#fab387" font-size="12" text-anchor="middle" font-weight="bold">500mA</text>
+
+    <!-- 電池 -->
+    <line x1="392" y1="70" x2="392" y2="168" stroke="#585b70" stroke-width="2"/>
+    <line x1="372" y1="168" x2="412" y2="168" stroke="#a6e3a1" stroke-width="3"/>
+    <line x1="380" y1="182" x2="404" y2="182" stroke="#a6e3a1" stroke-width="3"/>
+    <line x1="372" y1="196" x2="412" y2="196" stroke="#a6e3a1" stroke-width="3"/>
+    <line x1="380" y1="210" x2="404" y2="210" stroke="#a6e3a1" stroke-width="3"/>
+    <line x1="392" y1="210" x2="392" y2="290" stroke="#585b70" stroke-width="2"/>
+    <text x="420" y="178" fill="#a6e3a1" font-size="12" font-weight="bold">Li-Po 1S</text>
+    <text id="schVbat" x="420" y="197" fill="#cdd6f4" font-size="12">3.7V</text>
+    <circle cx="392" cy="70" r="3.5" fill="#585b70"/>
+
+    <!-- 電池 → 降圧IC -->
+    <line x1="392" y1="70" x2="500" y2="70" stroke="#585b70" stroke-width="2"/>
+
+    <!-- 降圧IC TLV62569 -->
+    <rect x="500" y="38" width="126" height="76" rx="8" fill="#232334" stroke="#cba6f7"/>
+    <text x="563" y="64" fill="#cba6f7" font-size="13" text-anchor="middle" font-weight="bold">TLV62569</text>
+    <text x="563" y="82" fill="#a6adc8" font-size="11" text-anchor="middle">降圧 1.5MHz</text>
+    <text x="506" y="106" fill="#a6adc8" font-size="10">VIN</text>
+    <text x="602" y="106" fill="#a6adc8" font-size="10">SW</text>
+    <text x="552" y="106" fill="#89dceb" font-size="10" font-weight="bold">FB</text>
+
+    <!-- SW → インダクタ → 出力ノード -->
+    <line x1="626" y1="70" x2="654" y2="70" stroke="#585b70" stroke-width="2"/>
+    <path d="M654 70 a8 8 0 0 1 16 0 a8 8 0 0 1 16 0 a8 8 0 0 1 16 0" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="678" y="30" fill="#f9e2af" font-size="11" text-anchor="middle" font-weight="bold">L（インダクタ）</text>
+    <text id="schL" x="678" y="46" fill="#f9e2af" font-size="12" text-anchor="middle" font-weight="bold">2.2µH</text>
+    <line x1="702" y1="70" x2="980" y2="70" stroke="#585b70" stroke-width="2"/>
+    <rect x="866" y="4" width="118" height="54" rx="8" fill="#1c2a1e" stroke="#a6e3a1" stroke-width="2"/>
+    <text x="925" y="24" fill="#a6e3a1" font-size="12" text-anchor="middle" font-weight="bold">出力電圧</text>
+    <text id="schVout" x="925" y="50" fill="#a6e3a1" font-size="21" text-anchor="middle" font-weight="bold">3.3V</text>
+
+    <!-- 出力コンデンサ（x=740・負荷と分離） -->
+    <circle cx="740" cy="70" r="3.5" fill="#585b70"/>
+    <line x1="740" y1="70" x2="740" y2="150" stroke="#585b70" stroke-width="2"/>
+    <line x1="722" y1="150" x2="758" y2="150" stroke="#cdd6f4" stroke-width="2.5"/>
+    <line x1="722" y1="161" x2="758" y2="161" stroke="#cdd6f4" stroke-width="2.5"/>
+    <line x1="740" y1="161" x2="740" y2="290" stroke="#585b70" stroke-width="2"/>
+    <text x="740" y="182" fill="#f9e2af" font-size="11" text-anchor="middle" font-weight="bold">出力コンデンサ</text>
+    <text id="schCout" x="740" y="200" fill="#f9e2af" font-size="12" text-anchor="middle" font-weight="bold">10µF</text>
+
+    <!-- FB分圧 R1/R2（x=830・出力ノードから分岐してFBへ） -->
+    <circle cx="830" cy="70" r="3.5" fill="#585b70"/>
+    <line x1="830" y1="70" x2="830" y2="112" stroke="#585b70" stroke-width="2"/>
+    <rect x="821" y="112" width="18" height="44" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <rect x="848" y="118" width="86" height="32" rx="7" fill="#2a2a1c" stroke="#f9e2af" stroke-width="1.5"/>
+    <text x="891" y="140" fill="#f9e2af" font-size="14" text-anchor="middle" font-weight="bold" id="schR1">R1 450k</text>
+    <line x1="830" y1="156" x2="830" y2="196" stroke="#585b70" stroke-width="2"/>
+    <rect x="821" y="196" width="18" height="44" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <rect x="848" y="202" width="86" height="32" rx="7" fill="#2a2a1c" stroke="#f9e2af" stroke-width="1.5"/>
+    <text x="891" y="224" fill="#f9e2af" font-size="14" text-anchor="middle" font-weight="bold" id="schR2">R2 100k</text>
+    <line x1="830" y1="240" x2="830" y2="290" stroke="#585b70" stroke-width="2"/>
+    <!-- FB配線: R1とR2の中点 → 下を回ってFBピンへ（他の配線と交差しない経路） -->
+    <circle cx="830" cy="176" r="3.5" fill="#89dceb"/>
+    <line x1="830" y1="176" x2="800" y2="176" stroke="#89dceb" stroke-width="2"/>
+    <!-- GNDレールをまたぐ箇所は半円ホップ＝接続していない印 -->
+    <path d="M800 176 L800 283 Q790 290 800 297 L800 316 L563 316 L563 297 Q553 290 563 283 L563 114"
+          fill="none" stroke="#11111b" stroke-width="7"/>
+    <path d="M800 176 L800 283 Q790 290 800 297 L800 316 L563 316 L563 297 Q553 290 563 283 L563 114"
+          fill="none" stroke="#89dceb" stroke-width="2"/>
+    <text x="700" y="331" fill="#89dceb" font-size="11" text-anchor="middle">FB（出力電圧をここで見て一定に保つ）</text>
+
+    <!-- 負荷（x=900・コンデンサと十分離す） -->
+    <line x1="980" y1="70" x2="980" y2="112" stroke="#585b70" stroke-width="2"/>
+    <rect x="971" y="112" width="18" height="56" fill="none" stroke="#a6e3a1" stroke-width="2"/>
+    <line x1="980" y1="168" x2="980" y2="290" stroke="#585b70" stroke-width="2"/>
+    <text x="980" y="188" fill="#a6e3a1" font-size="12" text-anchor="middle" font-weight="bold">負荷</text>
+    <text id="schIload" x="980" y="207" fill="#cdd6f4" font-size="12" text-anchor="middle">500mA</text>
+
+    <!-- GNDレール -->
+    <line x1="62" y1="290" x2="980" y2="290" stroke="#585b70" stroke-width="2"/>
+    <line x1="563" y1="114" x2="563" y2="130" stroke="none"/>
+    <line x1="500" y1="114" x2="500" y2="290" stroke="#585b70" stroke-width="2"/>
+    <text x="470" y="305" fill="#a6adc8" font-size="11">GND</text>
+    <line x1="474" y1="290" x2="486" y2="290" stroke="#585b70" stroke-width="2"/>
+
+    <!-- 粒アニメ用ガイド（不可視） -->
+    <path id="flowChg1" d="M104 70 L168 70" fill="none" stroke="none"/>
+    <path id="flowChg2" d="M294 70 L392 70 L392 166" fill="none" stroke="none"/>
+    <path id="flowDis1" d="M392 70 L500 70" fill="none" stroke="none"/>
+    <path id="flowDis2" d="M626 70 L980 70 L980 110" fill="none" stroke="none"/>
+    <g id="flowDots"></g>
+  </svg>
+  <div class="note">概念図です（入力コンデンサ4.7µF・STAT LED・保護回路などは省略）。橙の粒＝充電電流、緑の粒＝放電（負荷）電流。粒の速さは設定した電流に連動します。実際の運用では「充電しながら負荷を使う」構成は下の注意を参照。</div>
+
+  <div class="guide" style="margin-top:14px;">
+    <div class="guide-item">
+      <div class="q">① USB 5V →〔MCP73831〕→ 電池</div>
+      <div class="a">USBの5Vを受けて、リチウム電池を安全に充電するICです。<b>充電の速さは R<sub>PROG</sub> という抵抗1本で決めます</b>（例：2kΩ＝500mA、10kΩ＝100mA）。抵抗を大きくすると充電はゆっくりになります。電池が4.2Vになったら自動で止まる賢い動作をします。</div>
+    </div>
+    <div class="guide-item">
+      <div class="q">② 電池 →〔TLV62569〕→ 一定の電圧</div>
+      <div class="a">電池の電圧は満充電4.2V→使い切り3.0Vと<b>どんどん下がっていきます</b>。これをマイコンやセンサーが使いやすい一定電圧（例：3.3V）に整えるのが降圧コンバータ。スイッチを高速でON/OFFして電圧を落とすので、熱にせず<b>効率90%以上</b>で変換できます。</div>
+    </div>
+    <div class="guide-item">
+      <div class="q">③ L（インダクタ）と出力コンデンサの役目</div>
+      <div class="a">ICが作るのはブツ切りのパルス。<b>L（コイル）が電流をなめらかにし、出力コンデンサが電圧の凸凹をならして</b>、きれいな直流にします。2つで「ならし器」のセット。コンデンサが大きいほど電圧の揺れ（リップル）は小さくなります。</div>
+    </div>
+    <div class="guide-item">
+      <div class="q">④ R1・R2とFB配線（水色）のしくみ</div>
+      <div class="a">
+        ICは自分の出力電圧を直接は知りません。そこで出力をR1とR2で分圧し、<b>その中点の電圧をFBピンに戻して（水色の線）</b>教えてあげます。<br>
+        ICは<b>FBが常に0.6Vになるように</b>出力を調整するので、分圧比を変えれば出力電圧が決まります：<span class="mono">V<sub>OUT</sub> = 0.6V ×(1 + R1/R2)</span>。
+        例えばR1=450k・R2=100kなら 0.6×(1+4.5)=3.3V。<b>この2本の抵抗値だけで出力電圧が決まる</b>のがポイントです。
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>🔌 充電側（MCP73831）</h2>
+<div class="panel">
+  <div class="preset-row">
+    <span class="plabel">R<sub>PROG</sub>プリセット:</span>
+    <button class="btn" data-rprog="2">2k（500mA）</button>
+    <button class="btn" data-rprog="3.3">3.3k（303mA）</button>
+    <button class="btn" data-rprog="5.1">5.1k（196mA）</button>
+    <button class="btn" data-rprog="10">10k（100mA）</button>
+    <button class="btn" data-rprog="67">67k（15mA）</button>
+  </div>
+  <div class="slider-row">
+    <label>R<sub>PROG</sub></label>
+    <input type="range" id="rprog" min="2" max="67" step="0.1" value="3.3">
+    <input type="number" id="rprogN" min="2" max="67" step="0.1" value="3.3">
+    <span class="unit">kΩ</span>
+  </div>
+  <div class="slider-row">
+    <label>電池容量</label>
+    <input type="range" id="cap" min="100" max="3000" step="50" value="700">
+    <input type="number" id="capN" min="50" max="10000" step="50" value="700">
+    <span class="unit">mAh</span>
+  </div>
+  <div class="slider-row">
+    <label>充電開始時の電池電圧</label>
+    <input type="range" id="startv" min="2.5" max="4.1" step="0.05" value="3.3">
+    <input type="number" id="startvN" min="2.5" max="4.1" step="0.05" value="3.3">
+    <span class="unit">V</span>
+  </div>
+  <div class="slider-row">
+    <label>基板の放熱（θJA）</label>
+    <select id="theta">
+      <option value="230">SOT-23 最小銅箔（230°C/W）</option>
+      <option value="130" selected>SOT-23 銅箔広め（130°C/W）</option>
+      <option value="76">DFNパッケージ（76°C/W）</option>
+    </select>
+  </div>
+
+  <div class="cols" style="margin-top:14px;">
+    <div class="readout">
+      <div class="row"><span class="k">充電電流 I<sub>REG</sub> = 1000V / R<sub>PROG</sub></span><span class="v" id="oIchg">500 mA</span></div>
+      <div class="row"><span class="k">充電レート（対容量）</span><span class="v" id="oCrate">0.50 C <span class="state-chip chip-green" id="chipCrate">◎</span></span></div>
+      <div class="row"><span class="k">プリチャージ電流（10%・V<sub>BAT</sub>&lt;2.79V）</span><span class="v" id="oIpre">50 mA</span></div>
+      <div class="row"><span class="k">充電終止電流（7.5%）</span><span class="v" id="oIterm">37.5 mA</span></div>
+      <div class="row"><span class="k">再充電しきい値（96.5%）</span><span class="v">約4.05 V</span></div>
+      <div class="row"><span class="k">満充電までの時間（推定）</span><span class="v" id="oTfull">--</span></div>
+      <div class="row"><span class="k">80%までの時間（推定）</span><span class="v" id="oT80">--</span></div>
+    </div>
+    <div class="readout">
+      <div class="row"><span class="k">IC損失 最大（CC開始時 V<sub>BAT</sub>≈3.0V）</span><span class="v" id="oPdis">-- W</span></div>
+      <div class="row"><span class="k">ジャンクション温度上昇 ΔT=P×θJA</span><span class="v" id="oDt">-- °C</span></div>
+      <div class="row"><span class="k">Tj（周囲25°C時）</span><span class="v" id="oTj">-- °C <span class="state-chip chip-green" id="chipTj">◎</span></span></div>
+      <div class="note-dyn" id="noteChg"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <canvas id="chgChart" class="chart"></canvas>
+    <div class="note">黄=電池電圧（左軸）、青=充電電流（右軸）。背景帯：灰=プリチャージ／緑=CC（定電流）／紫=CV（定電圧）。簡易モデル（OCVカーブ＋内部抵抗0.13Ω）による目安です。</div>
+  </div>
+</div>
+
+<h2>⬇️ 降圧側（TLV62569）</h2>
+<div class="panel">
+  <div class="preset-row">
+    <span class="plabel">V<sub>OUT</sub>プリセット:</span>
+    <button class="btn" data-vout="1.0">1.0V</button>
+    <button class="btn" data-vout="1.2">1.2V</button>
+    <button class="btn" data-vout="1.5">1.5V</button>
+    <button class="btn" data-vout="1.8">1.8V</button>
+    <button class="btn" data-vout="2.5">2.5V</button>
+    <button class="btn" data-vout="2.8">2.8V</button>
+    <button class="btn" data-vout="3.0">3.0V</button>
+    <button class="btn" data-vout="3.3">3.3V</button>
+  </div>
+  <div class="slider-row">
+    <label>目標出力電圧 V<sub>OUT</sub></label>
+    <input type="range" id="vout" min="0.6" max="4.2" step="0.05" value="1.5">
+    <input type="number" id="voutN" min="0.6" max="4.2" step="0.01" value="1.5">
+    <span class="unit">V</span>
+  </div>
+  <div class="slider-row">
+    <label>R2（FB下側・E24）</label>
+    <select id="r2"></select>
+    <span class="note">R2は最大200kΩ推奨（データシート）。変えるとR1候補と誤差が変わります</span>
+  </div>
+  <div class="slider-row">
+    <label>インダクタ L</label>
+    <select id="ind">
+      <option value="1">1 µH</option>
+      <option value="2.2" selected>2.2 µH（標準推奨）</option>
+      <option value="4.7">4.7 µH</option>
+    </select>
+    <label style="width:auto;">出力コンデンサ</label>
+    <select id="cout">
+      <option value="10">10 µF</option>
+      <option value="22" selected>22 µF</option>
+      <option value="44">22 µF ×2（44µF）</option>
+      <option value="47">47 µF</option>
+    </select>
+  </div>
+  <div class="slider-row">
+    <label>負荷電流</label>
+    <input type="range" id="iload" min="1" max="2000" step="1" value="200">
+    <input type="number" id="iloadN" min="0" max="2000" step="1" value="200">
+    <span class="unit">mA</span>
+  </div>
+  <div class="slider-row">
+    <label>動作点の電池電圧</label>
+    <input type="range" id="vbat" min="3.0" max="4.2" step="0.01" value="4.12">
+    <input type="number" id="vbatN" min="2.5" max="4.2" step="0.01" value="4.12">
+    <span class="unit">V</span>
+  </div>
+
+  <div class="cols" style="margin-top:14px;">
+    <div class="readout">
+      <div class="row"><span class="k">R1（計算値: R1 = R2×(V<sub>OUT</sub>/0.6 − 1)）</span><span class="v" id="oR1">-- kΩ</span></div>
+      <div class="row"><span class="k">R1をE24系列にすると</span><span class="v" id="oR1e">--</span></div>
+      <div class="row"><span class="k">→ そのときの実際のV<sub>OUT</sub></span><span class="v" id="oVoutAct">--</span></div>
+      <div class="row"><span class="k">出力コンデンサのおすすめ（このV<sub>OUT</sub>とL）</span><span class="v" id="oCoutRec">-- <span class="state-chip chip-green" id="chipCout">◎</span></span></div>
+      <div class="row"><span class="k">デューティ比 D ≈ V<sub>OUT</sub>/V<sub>BAT</sub></span><span class="v" id="oDuty">--</span></div>
+      <div class="row"><span class="k">インダクタリップル ΔI<sub>L</sub></span><span class="v" id="oRip">--</span></div>
+      <div class="row"><span class="k">ピーク電流 I<sub>L,MAX</sub>（電流制限3A）</span><span class="v" id="oIlmax">-- <span class="state-chip chip-green" id="chipIl">◎</span></span></div>
+      <div class="row"><span class="k">出力リップル電圧（＝出力に残る揺れ・概算）</span><span class="v" id="oVrip">--</span></div>
+    </div>
+    <div class="readout">
+      <div class="row"><span class="k">効率（データシート曲線の目安）</span><span class="v" id="oEff">--</span></div>
+      <div class="row"><span class="k">電池から引く電流 I<sub>BAT</sub></span><span class="v" id="oIbat">--</span></div>
+      <div class="row"><span class="k">維持に必要な最小入力 V<sub>IN(MIN)</sub></span><span class="v" id="oVinmin">-- <span class="state-chip chip-green" id="chipDrop">◎</span></span></div>
+      <div class="row"><span class="k">UVLO（動作停止）</span><span class="v">約2.3 V</span></div>
+      <div class="note-dyn" id="noteBuck"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <b style="color:#89b4fa;">🎯 E24で組むR1/R2のおすすめ組み合わせ（目標 <span id="comboVout" class="mono">3.30V</span>）</b>
+    <div class="best-box" id="comboBest"></div>
+    <div class="table-wrap">
+      <table id="comboTable">
+        <thead><tr><th>R1（上側）</th><th>R2（下側）</th><th>実V<sub>OUT</sub></th><th>誤差</th><th>分圧電流</th><th></th></tr></thead>
+        <tbody id="comboBody"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      R2＝10k〜200kΩのE24全値についてR1の最良E24値を探索し、誤差の小さい順に表示。「使う」で上の設定に反映されます。<br>
+      <b style="color:#94e2d5;">「分圧電流」とは：</b>R1/R2にはV<sub>OUT</sub>から常に <span class="mono">I = V<sub>OUT</sub> ÷ (R1+R2)</span> が流れ続けます（負荷とは無関係のムダ電流）。
+      同じ比率＝同じV<sub>OUT</sub>なら、<b>R2が大きいほど合計抵抗が増えて分圧電流は減る＝省電力</b>です（例：3.3VでR2=33k→18µA、R2=200k→3µA）。
+      ただし大きくしすぎるとFBノードが高インピーダンスになって<b>ノイズに弱く・精度も落ちる</b>ため、データシートの推奨上限は200kΩ。
+      電池駆動の待機重視なら100k〜200k、モーターや無線などノイズ源が近い基板では小さめが目安です。
+    </div>
+  </div>
+
+  <div style="margin-top:18px;">
+    <b style="color:#89b4fa;">🔁 逆算計算機：手持ちのR1・R2を入れると何ができるか分かる</b>
+    <div class="slider-row" style="margin-top:8px;">
+      <label>R1（上側）</label>
+      <input type="number" id="rcR1" min="0" step="1" value="680">
+      <span class="unit">kΩ</span>
+      <label style="width:auto;">R2（下側）</label>
+      <input type="number" id="rcR2" min="0.1" step="1" value="150">
+      <span class="unit">kΩ</span>
+    </div>
+    <div class="readout" style="max-width:680px;">
+      <div class="row"><span class="k">出力電圧 V<sub>OUT</sub> = 0.6V ×（1 + R1/R2）</span><span class="v" id="rcVout">-- <span class="state-chip chip-green" id="rcChip">◎</span></span></div>
+      <div class="row"><span class="k">出力電力</span><span class="v" id="rcPout">--</span></div>
+      <div class="row"><span class="k">おすすめインダクタ</span><span class="v" id="rcL">--</span></div>
+      <div class="row"><span class="k">おすすめ出力コンデンサ</span><span class="v" id="rcCout">--</span></div>
+      <div class="row"><span class="k">分圧電流（常時流れるムダ電流）</span><span class="v" id="rcIdiv">--</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>⏱️ ランタイム（電池のもち）</h2>
+<div class="panel">
+  <div class="note-dyn" id="runInputs" style="margin-top:0; margin-bottom:12px;"></div>
+  <div class="slider-row">
+    <label>放電終止電圧（カットオフ）</label>
+    <input type="range" id="cutoff" min="2.5" max="3.5" step="0.05" value="3.0">
+    <input type="number" id="cutoffN" min="2.5" max="3.5" step="0.05" value="3.0">
+    <span class="unit">V</span>
+  </div>
+  <div class="readout" style="max-width:560px;">
+    <div class="row"><span class="k">満充電からのランタイム（推定）</span><span class="v" id="oRuntime">--</span></div>
+    <div class="row"><span class="k">V<sub>OUT</sub>を維持できる時間（ドロップアウトまで）</span><span class="v" id="oRegtime">--</span></div>
+  </div>
+  <div style="margin-top:12px;">
+    <canvas id="runChart" class="chart" style="height:210px;"></canvas>
+    <div class="note">緑=電池電圧。赤破線=カットオフ、橙破線=V<sub>OUT</sub>維持限界（V<sub>IN(MIN)</sub>）。上のパネルの負荷電流・V<sub>OUT</sub>・効率を使った定電力放電の簡易モデルです。</div>
+  </div>
+</div>
+
+<h2>🧾 部品リスト（BOM）</h2>
+<div class="panel">
+  <div class="btn-row" style="margin-top:0;">
+    <button class="btn btn-sm" id="btnCopyBom">📋 テキストでコピー</button>
+    <button class="btn btn-sm" id="btnCsvBom">⬇ CSVで保存</button>
+    <span class="note" id="bomMsg" style="margin:0;"></span>
+  </div>
+  <div class="table-wrap">
+    <table id="bomTable">
+      <thead><tr><th>記号</th><th>部品</th><th>値</th><th>備考</th></tr></thead>
+      <tbody id="bomBody"></tbody>
+    </table>
+  </div>
+  <div class="note">現在の設定から生成しています。定数を変えるとこの表も変わります。パッケージ・耐圧は一般的な選択例なので、実装スペースと実際の入手性に合わせて調整してください。</div>
+</div>
+
+<h2>⚡ 電源投入から電池切れまでの流れ</h2>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>場面</th><th>何が起きるか</th><th>目安の電圧・時間</th></tr></thead>
+      <tbody>
+        <tr><td><b>① USBを挿す</b></td><td>MCP73831が起動。電池が空（2.79V未満）ならまず<b>プリチャージ</b>（設定電流の10%）でそっと充電し、超えたら本気の定電流充電へ。STAT LEDが点灯します。</td><td class="mono">UVLO 3.45V<br>起動遅延 最大5ms</td></tr>
+        <tr><td><b>② 充電中</b></td><td>CC（定電流）→ 4.2VでCV（定電圧）に移り、電流が細っていきます。設定電流の7.5%まで落ちると<b>完了</b>してSTAT LED消灯。ICが熱くなると自動で電流を絞ります（熱レギュレーション）。</td><td class="mono">VREG 4.20V<br>終止 7.5%</td></tr>
+        <tr><td><b>③ 電源ON（降圧側）</b></td><td>ENがHighになるとTLV62569が起動。<b>ソフトスタート</b>で出力をゆっくり立ち上げ、突入電流で電池電圧が落ち込むのを防ぎます。すでに電圧が残っている出力にも安全に立ち上がれます。</td><td class="mono">EN High 1.2V以上<br>立上り 約0.8〜0.9ms</td></tr>
+        <tr><td><b>④ 通常運転</b></td><td>負荷が重いときは1.5MHzのPWM、軽いときは自動で省電力モード。出力は設定電圧を維持します。</td><td class="mono">効率 最大95%</td></tr>
+        <tr><td><b>⑤ 電池が減ってくる</b></td><td>電池電圧が V<sub>OUT</sub>＋わずか まで下がると<b>ドロップアウト</b>。スイッチがONのまま（100%デューティ）になり、以降は出力が入力に引きずられて下がります。<b>ここが実質の使用限界</b>で、V<sub>OUT</sub>が高い設定ほど早く訪れます。</td><td class="mono" id="seqVinmin">V<sub>IN(MIN)</sub> --</td></tr>
+        <tr><td><b>⑥ さらに下がると</b></td><td>2.3Vで<b>UVLO</b>が働き、降圧ICが完全に停止します。リチウム電池としてはこの手前（3.0V前後）で保護回路が切るのが普通なので、通常ここまでは到達しません。</td><td class="mono">UVLO 2.3V<br>復帰まで+100mV</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    トラブルの切り分けに：<b>電源が入らない</b>→ENの接続とUVLO（入力電圧）を確認。<b>出力が設定より低い</b>→⑤のドロップアウトを疑う。<b>充電が終わらない</b>→負荷をつないだまま充電していないか確認（下の注意参照）。
+  </div>
+</div>
+
+<h2>🛡️ 保護回路とUSB側の注意</h2>
+<div class="guide">
+  <div class="guide-item">
+    <div class="q">電池の保護回路（最重要）</div>
+    <div class="a">リチウム電池は<b>保護回路（PCM）付きのものを使ってください</b>。過充電・過放電・過電流・短絡から守る小基板が電池のタブ側に付いています。裸のセル（保護なし）を使う場合は自分で保護ICを載せる必要があります。MCP73831もTLV62569も、電池を守る機能は持っていません。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">USB側で気をつけること</div>
+    <div class="a">USBの規格上、ネゴシエーションなしで引ける電流は<b>500mA（USB2.0）まで</b>。R<sub>PROG</sub>=2kΩ（500mA充電）はほぼ上限いっぱいなので、ポートによっては電圧が落ちることも。余裕を見て300mA以下にするか、充電器（ACアダプタ）から取るのが無難です。D+/D−は開放でOK（このICはネゴシエーション機能なし）。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">逆流・逆挿しの防止</div>
+    <div class="a">MCP73831は<b>電池からUSB側への逆流を内部で防ぐ</b>設計（リバースディスチャージ保護）なので、通常は外付けの逆流防止ダイオードは不要です。一方、外部電源をネジ端子などで供給する構成にする場合は、逆接続対策としてPch MOSFETによる<b>理想ダイオード</b>を入れると損失なく守れます。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">ESD・コネクタまわり</div>
+    <div class="a">USBコネクタのVBUS-GND間には<b>TVSダイオード</b>を入れると静電気に強くなります。VBUS直近に入力コンデンサ4.7µFを配置し、GNDは太く短く。電池コネクタは<b>逆挿しできない極性付き（JST PHなど）</b>を選ぶこと。極性を逆に挿すと一発で壊れます。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">STAT LEDの読み方</div>
+    <div class="a">STATピンは<b>充電中はLow（LED点灯）、完了するとハイインピーダンス（消灯）</b>になります。図のようにVDD→LED→1kΩ→STATとつなぐのが定番。電池が未接続だと点いたり消えたりを繰り返す（バッテリー検出の動作）ので、それで接触不良に気づけます。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">ヒューズは要る？</div>
+    <div class="a">リチウム電池は短絡時に数A〜十数Aを流せます。基板側の事故に備えるなら電池のプラス側に<b>ポリスイッチ（PTC）</b>を1つ入れておくと安心。保護回路付き電池なら過電流で切れますが、二重の備えとしては有効です。</div>
+  </div>
+</div>
+
+<h2>📋 定数早見表</h2>
+<div class="cols">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>R<sub>PROG</sub></th><th>充電電流</th><th>向いている電池</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">2 kΩ</td><td class="mono">500 mA</td><td>1000mAh以上</td></tr>
+        <tr><td class="mono">3.3 kΩ</td><td class="mono">303 mA</td><td>600mAh以上</td></tr>
+        <tr><td class="mono">5.1 kΩ</td><td class="mono">196 mA</td><td>400mAh以上</td></tr>
+        <tr><td class="mono">10 kΩ</td><td class="mono">100 mA</td><td>200mAh以上</td></tr>
+        <tr><td class="mono">20 kΩ</td><td class="mono">50 mA</td><td>100mAh以上</td></tr>
+        <tr><td class="mono">67 kΩ</td><td class="mono">15 mA</td><td>小容量・微少充電</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>V<sub>OUT</sub></th><th>R1（R2=100kΩ）</th><th>E24で組むと</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">1.2 V</td><td class="mono">100 kΩ</td><td class="mono">100k → 1.20V</td></tr>
+        <tr><td class="mono">1.8 V</td><td class="mono">200 kΩ</td><td class="mono">200k(E24外)→180k+20k直列 か 1.80V</td></tr>
+        <tr><td class="mono">2.5 V</td><td class="mono">316.7 kΩ</td><td class="mono">330k → 2.58V</td></tr>
+        <tr><td class="mono">3.0 V</td><td class="mono">400 kΩ</td><td class="mono">390k → 2.94V</td></tr>
+        <tr><td class="mono">3.3 V</td><td class="mono">450 kΩ</td><td class="mono">430k → 3.18V ／ 470k → 3.42V</td></tr>
+      </tbody>
+    </table>
+    <div class="note">ぴったり合わせたいときはE96系列（例: 3.3V → 453kΩ）か、R1を2本直列で。</div>
+  </div>
+</div>
+
+<h2>💡 しくみ・設計メモ</h2>
+<div class="guide">
+  <div class="guide-item">
+    <div class="q">充電の4フェーズ（MCP73831-2）</div>
+    <div class="a">①<b>プリチャージ</b>: V<sub>BAT</sub>&lt;2.79V（VREGの66.5%）の間は設定の10%で慎重に充電 → ②<b>CC</b>: 設定電流で一気に充電 → ③<b>CV</b>: 4.20Vに達したら電圧一定で電流が自然に減少 → ④<b>終止</b>: 電流が設定の7.5%まで落ちたら完了。その後4.05V（96.5%）まで下がると自動で再充電。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">なぜ降圧を入れる？</div>
+    <div class="a">リチウム1セルは3.0〜4.2Vと大きく変動します。TLV62569で一定電圧に整えると回路が安定動作。降圧型なので効率90%前後とリニアレギュレータより高効率。V<sub>OUT</sub>=3.3Vだと電池が約3.4V以下でドロップアウトするので、電池を使い切りたいなら3.0V以下の出力がおすすめ。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">充電しながら使うのはNG？</div>
+    <div class="a">MCP73831は充電と負荷の分離（パワーパス）機能がありません。負荷をつないだまま充電すると終止電流検出が狂い、満充電を検出できない・充電が終わらないことがあります。同時運用したい場合はロードスイッチで分離するか、パワーパス内蔵のMCP73871等を検討。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">無負荷・軽負荷だとどうなる？（省電力モード）</div>
+    <div class="a">
+      TLV62569は軽負荷になると自動で<b>Power Save Mode（PSM）</b>に入ります。インダクタ電流が途切れる（不連続になる）ところが切り替わり目です。切り替えの操作は不要で、負荷が戻れば自動でPWMに復帰します。<br>
+      <b>変わること：</b>①スイッチング周波数が1.5MHzから下がり、必要なときだけパルスを出す間欠動作になる（＝スイッチングの損失が減り、<b>軽負荷での効率が保たれる</b>。数mAでも80〜90%程度）。
+      ②<b>出力電圧が公称よりわずかに高くなる</b>（1パルスで詰め込んだ分が抜けきらないため）。
+      ③その分<b>リップルが大きくなり、周波数も低く不規則</b>になる。IC自体の消費は無負荷で約35µAです。<br>
+      <b>設計上の注意：</b>リップルが気になる用途（ADC基準・アナログセンサー・無線）では、C<sub>OUT</sub>を増やすとPSM時の電圧上昇とリップルが抑えられます（データシートも「出力コンデンサを増やすと最小化できる」としています）。
+      可聴域に落ちる周波数で鳴く（コイル鳴き）ことがあるのもこのモード。常にPWMで動かしたい場合は「強制PWM」機能を持つ別品種を選ぶ必要があります（本ICにはモード固定ピンはありません）。<br>
+      なお本ページの効率・リップルの表示は<b>連続動作（PWM）前提の概算</b>なので、数mA以下の領域では実機のほうが効率が良く、リップルは大きめに出ます。
+    </div>
+  </div>
+  <div class="guide-item">
+    <div class="q">出力リップル電圧って？</div>
+    <div class="a">スイッチング電源は1.5MHzでONとOFFを繰り返すため、インダクタ電流は三角波状に揺れます（それがΔI<sub>L</sub>）。この揺れが出力コンデンサを充放電するので、出力電圧にもごく小さな揺れ＝<b>リップル</b>が残ります。概算式は <span class="mono">ΔV ≈ ΔI<sub>L</sub> ÷ (8×f<sub>SW</sub>×C<sub>OUT</sub>)</span>＋コンデンサのESRによる分。数mV程度ならマイコンやデジタル回路にはまったく問題ないレベルです。ADCの基準やセンサーのアナログ電源など「もっと静かに」したい場合は、C<sub>OUT</sub>を増やす／後段にLCフィルタやLDOを足します。</div>
+  </div>
+  <div class="guide-item">
+    <div class="q">部品選定のポイント</div>
+    <div class="a">標準はL=2.2µH＋C<sub>OUT</sub>=10µF。ただし<b>出力電圧が低いほど大きなC<sub>OUT</sub>が必要</b>（V<sub>OUT</sub>≥1.8V→10µF、1.2〜1.8V→22µF、1.2V未満→22µF×2。データシートTable 4の実証済み組み合わせ）。インダクタの飽和電流はピーク電流の1.2〜1.3倍以上を選ぶ。コンデンサはX5R/X7Rセラミック（DCバイアスで実効容量が半分程度になる前提で設計）。入力側には4.7µFを近くに配置。</div>
+  </div>
+</div>
+
+<div class="warnbox">
+  <b>⚠ リチウム電池は取り扱い注意。</b>必ず保護回路（過充電・過放電・過電流保護）付きの電池を使ってください。
+  本ページの計算・グラフは簡易モデルによる<b>目安</b>です。実設計では各データシート（MCP73831: DS20001984、TLV62569: SLVSDG1）と電池の仕様書を必ず確認してください。
+</div>
+
+<footer>
+  計算はすべてブラウザ内で完結します（送信なし）。数値は典型値ベースの目安です。<br>
+  @unyoooo ／ <a href="https://github.com/unyoooo/misc">汎用ブラウザツール置き場</a> — lipoPowerSim.html
+</footer>
+
+<script>
+'use strict';
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ===== 定数（データシート典型値） =====
+  const VREG = 4.20;            // MCP73831-2
+  const VPTH = VREG * 0.665;    // プリチャージしきい値 ≈2.79V
+  const PRE_RATIO = 0.10;       // プリチャージ電流比
+  const TERM_RATIO = 0.075;     // 終止電流比
+  const VUSB = 5.0;
+  const RINT = 0.13;            // 電池内部抵抗の目安 [Ω]
+  const FSW = 1.5e6;            // TLV62569
+  const VFB = 0.6;
+  const RDSON_HS = 0.10, DCR_L = 0.05;  // 100%デューティ時の直列抵抗目安
+  const ILIM = 3.0;
+
+  // OCVカーブ（SoC% → 開放電圧V、0%=2.5Vの深放電状態とする簡易モデル）
+  const OCV_PTS = [[0,2.50],[2,3.00],[5,3.30],[10,3.50],[20,3.60],[30,3.66],[40,3.70],[50,3.74],[60,3.78],[70,3.84],[80,3.90],[90,3.97],[100,4.17]];
+  function ocv(soc) {
+    if (soc <= 0) return OCV_PTS[0][1];
+    if (soc >= 100) return OCV_PTS[OCV_PTS.length - 1][1];
+    for (let i = 1; i < OCV_PTS.length; i++) {
+      if (soc <= OCV_PTS[i][0]) {
+        const [s0, v0] = OCV_PTS[i - 1], [s1, v1] = OCV_PTS[i];
+        return v0 + (v1 - v0) * (soc - s0) / (s1 - s0);
+      }
+    }
+    return OCV_PTS[OCV_PTS.length - 1][1];
+  }
+  function socFromOcv(v) {
+    if (v <= OCV_PTS[0][1]) return 0;
+    if (v >= OCV_PTS[OCV_PTS.length - 1][1]) return 100;
+    for (let i = 1; i < OCV_PTS.length; i++) {
+      if (v <= OCV_PTS[i][1]) {
+        const [s0, v0] = OCV_PTS[i - 1], [s1, v1] = OCV_PTS[i];
+        return s0 + (s1 - s0) * (v - v0) / (v1 - v0);
+      }
+    }
+    return 100;
+  }
+  // 効率カーブの目安（Vin≈3.7V、負荷A → 効率）データシート曲線の読み値
+  const EFF_PTS = [[0.001,0.80],[0.01,0.88],[0.05,0.92],[0.1,0.93],[0.3,0.94],[0.5,0.94],[1,0.93],[1.5,0.915],[2,0.90]];
+  function effOf(iA) {
+    if (iA <= EFF_PTS[0][0]) return EFF_PTS[0][1];
+    if (iA >= EFF_PTS[EFF_PTS.length - 1][0]) return EFF_PTS[EFF_PTS.length - 1][1];
+    for (let i = 1; i < EFF_PTS.length; i++) {
+      if (iA <= EFF_PTS[i][0]) {
+        const [a0, e0] = EFF_PTS[i - 1], [a1, e1] = EFF_PTS[i];
+        const t = (Math.log(iA) - Math.log(a0)) / (Math.log(a1) - Math.log(a0));
+        return e0 + (e1 - e0) * t;
+      }
+    }
+    return 0.9;
+  }
+  const E24 = [1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1];
+  function nearestE24(kohm) {
+    let best = null, bestErr = Infinity;
+    for (let dec = 1; dec <= 1000; dec *= 10) {
+      for (const m of E24) {
+        const v = m * dec;
+        const err = Math.abs(v - kohm);
+        if (err < bestErr) { bestErr = err; best = v; }
+      }
+    }
+    return best;
+  }
+  function fmtR(k) { return k >= 1000 ? (k / 1000).toFixed(2).replace(/\.?0+$/, '') + 'M' : (k >= 100 ? k.toFixed(0) : +k.toFixed(1)) + 'k'; }
+  // 出力コンデンサ推奨（データシートTable 4: L×COUTの実証済み組み合わせ）
+  // Voutが低いほど大きなCOUTが必要。標準推奨はL=2.2µHの行
+  function coutRec(vout) {
+    if (vout < 1.2) return { std: 44, ok: [44], label: '2×22µF（44µF）' };
+    if (vout < 1.8) return { std: 22, ok: [22, 44], label: '22µF（標準）／2×22µFも可' };
+    return { std: 10, ok: [10, 22, 44], label: '10µF（標準）／22・2×22µFも可' };
+  }
+  // R2=10k〜200kのE24値リスト
+  const R2_LIST = [];
+  for (const dec of [10, 100]) for (const m of E24) {
+    const v = +(m * dec).toFixed(1);
+    if (v >= 10 && v <= 200) R2_LIST.push(v);
+  }
+  // 目標Voutに対するE24ペア候補（誤差順、同比率はR2大を代表）
+  function findCombos(vout) {
+    const seen = new Map();
+    for (const r2 of R2_LIST) {
+      const r1x = r2 * (vout / VFB - 1);
+      if (r1x <= 0) continue;
+      const r1 = nearestE24(r1x);
+      if (r1 > 1000) continue;   // R1は1MΩまで
+      const va = VFB * (1 + r1 / r2);
+      const err = (va - vout) / vout * 100;
+      const key = (r1 / r2).toFixed(6);
+      const prev = seen.get(key);
+      if (!prev || r2 > prev.r2) seen.set(key, { r1, r2, va, err });
+    }
+    return [...seen.values()]
+      .sort((a, b) => Math.abs(a.err) - Math.abs(b.err) || b.r2 - a.r2)
+      .slice(0, 8);
+  }
+  function fmtTime(h) {
+    if (!Number.isFinite(h) || h < 0) return '--';
+    const m = Math.round(h * 60);
+    return Math.floor(m / 60) + '時間' + String(m % 60).padStart(2, '0') + '分';
+  }
+
+  // ===== 設定の保存・復元（URLパラメータ優先、なければlocalStorage） =====
+  // pair: スライダー+数値入力のペア（baseのID）、single: select/number単体
+  const PAIR_IDS = ['rprog', 'cap', 'startv', 'vout', 'iload', 'vbat', 'cutoff'];
+  const SINGLE_IDS = ['theta', 'r2', 'ind', 'cout', 'rcR1', 'rcR2'];
+  const LS_KEY = 'lipoPowerSim.settings';
+  let restoring = false;
+
+  function collectSettings() {
+    const s = {};
+    PAIR_IDS.forEach(id => { s[id] = $(id + 'N').value; });
+    SINGLE_IDS.forEach(id => { s[id] = $(id).value; });
+    return s;
+  }
+  function applySettings(s) {
+    if (!s) return;
+    restoring = true;
+    PAIR_IDS.forEach(id => {
+      const v = s[id];
+      if (v === undefined || v === '' || !Number.isFinite(parseFloat(v))) return;
+      $(id + 'N').value = v;
+      $(id).value = v;   // range側はmin/maxで自動クランプされる
+    });
+    SINGLE_IDS.forEach(id => {
+      const v = s[id];
+      if (v === undefined || v === '') return;
+      const el = $(id);
+      if (el.tagName === 'SELECT') {
+        if ([...el.options].some(o => o.value === String(v))) el.value = v;
+      } else {
+        el.value = v;
+      }
+    });
+    restoring = false;
+  }
+  function saveSettings() {
+    if (restoring) return;
+    const s = collectSettings();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (_) {}
+    const q = new URLSearchParams(s).toString();
+    history.replaceState(null, '', location.pathname + '?' + q);
+  }
+  function loadSettings() {
+    const q = new URLSearchParams(location.search);
+    if ([...q.keys()].length > 0) {
+      const s = {};
+      for (const [k, v] of q) s[k] = v;
+      return s;
+    }
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (_) { return null; }
+  }
+
+  // ===== 入力（スライダー＋数値の同期） =====
+  function bindPair(base, onChange) {
+    const r = $(base), n = $(base + 'N');
+    r.addEventListener('input', () => { n.value = r.value; onChange(); });
+    n.addEventListener('input', () => {
+      const v = parseFloat(n.value);
+      if (Number.isFinite(v)) { r.value = v; onChange(); }
+    });
+  }
+  function val(base) {
+    const v = parseFloat($(base + 'N').value);
+    return Number.isFinite(v) ? v : parseFloat($(base).value);
+  }
+
+  // ===== 充電シミュレーション =====
+  let chgSim = null;   // {pts:[{t,v,i,ph}], tFull, t80}
+  function simulateCharge() {
+    const capmAh = Math.max(50, val('cap'));
+    const iregmA = 1000 / Math.min(67, Math.max(2, val('rprog')));
+    const startV = val('startv');
+    let soc = socFromOcv(Math.min(startV, VREG));
+    const itermA = TERM_RATIO * iregmA / 1000;
+    const iregA = iregmA / 1000;
+    const pts = [];
+    let t = 0, tFull = null, t80 = null;
+    const dt = Math.max(0.002, (capmAh / iregmA) * 2 / 1200);  // [h] 全体を約1200step
+    for (let step = 0; step < 4000; step++) {
+      const e = ocv(soc);
+      let iA, ph;
+      if (e + PRE_RATIO * iregA * RINT < VPTH) { ph = 'pre'; iA = PRE_RATIO * iregA; }
+      else if (e + iregA * RINT < VREG)        { ph = 'cc';  iA = iregA; }
+      else                                      { ph = 'cv';  iA = Math.max((VREG - e) / RINT, 0); }
+      const vterm = Math.min(e + iA * RINT, VREG);
+      pts.push({ t, v: vterm, i: iA * 1000, ph });
+      if (t80 === null && soc >= 80) t80 = t;
+      if (ph === 'cv' && iA <= itermA) { tFull = t; break; }
+      soc = Math.min(100, soc + (iA * 1000) * dt / capmAh * 100);
+      t += dt;
+      if (soc >= 100) { tFull = t; break; }
+    }
+    chgSim = { pts, tFull, t80 };
+  }
+
+  // ===== ランタイムシミュレーション =====
+  let runSim = null;   // {pts:[{t,v}], tCut, tReg, vinmin}
+  function simulateRuntime() {
+    const capmAh = Math.max(50, val('cap'));
+    const voutV = buck().voutAct;
+    const iloadA = val('iload') / 1000;
+    const cutoff = val('cutoff');
+    const vinmin = voutV + iloadA * (RDSON_HS + DCR_L);
+    let soc = 100;
+    const pts = [];
+    let t = 0, tCut = null, tReg = null;
+    if (iloadA <= 0) { runSim = { pts: [], tCut: null, tReg: null, vinmin }; return; }
+    const dt = Math.max(0.002, (capmAh / (iloadA * 1000)) * 1.2 / 800);
+    for (let step = 0; step < 4000; step++) {
+      const e = ocv(soc);
+      const eff = effOf(iloadA);
+      const ibatA = voutV * iloadA / (Math.max(eff, 0.5) * Math.max(e, 2.5));
+      const vterm = e - ibatA * RINT;
+      pts.push({ t, v: vterm });
+      if (tReg === null && vterm < vinmin) tReg = t;
+      if (vterm <= cutoff || soc <= 0) { tCut = t; break; }
+      soc -= ibatA * 1000 * dt / capmAh * 100;
+      t += dt;
+    }
+    if (tCut === null) tCut = t;
+    if (tReg === null) tReg = tCut;
+    runSim = { pts, tCut, tReg, vinmin };
+  }
+
+  // ===== 降圧側の計算 =====
+  function buck() {
+    const vout = Math.max(0.6, val('vout'));
+    const r2 = parseFloat($('r2').value);
+    const r1 = r2 * (vout / VFB - 1);
+    const r1e = r1 > 0 ? nearestE24(r1) : 0;
+    const voutAct = r1 > 0 ? VFB * (1 + r1e / r2) : VFB;
+    const L = parseFloat($('ind').value) * 1e-6;
+    const coutEff = parseFloat($('cout').value) * 1e-6 * 0.5;   // DCバイアスで実効-50%想定
+    const iloadA = val('iload') / 1000;
+    const vbat = val('vbat');
+    const duty = Math.min(vout / Math.max(vbat, 0.1), 1);
+    const rip = vbat > vout ? vout * (1 - vout / vbat) / (L * FSW) : 0;
+    const ilmax = iloadA + rip / 2;
+    const vrip = rip / (8 * FSW * coutEff);
+    const eff = effOf(Math.max(iloadA, 0.001));
+    const ibatA = vbat > 0 ? vout * iloadA / (eff * vbat) : 0;
+    const vinmin = vout + iloadA * (RDSON_HS + DCR_L);
+    return { vout, r2, r1, r1e, voutAct, L, iloadA, vbat, duty, rip, ilmax, vrip, eff, ibatA, vinmin };
+  }
+
+  // ===== 表示更新 =====
+  function setChip(id, cls, text) {
+    const el = $(id);
+    el.className = 'state-chip ' + cls;
+    el.textContent = text;
+  }
+  function update() {
+    // --- 充電側 ---
+    const rprog = Math.min(67, Math.max(2, val('rprog')));
+    const iregmA = 1000 / rprog;
+    const capmAh = Math.max(50, val('cap'));
+    $('oIchg').textContent = iregmA.toFixed(0) + ' mA';
+    $('oIpre').textContent = (iregmA * PRE_RATIO).toFixed(1) + ' mA';
+    $('oIterm').textContent = (iregmA * TERM_RATIO).toFixed(1) + ' mA';
+    const crate = iregmA / capmAh;
+    $('oCrate').childNodes[0].textContent = crate.toFixed(2) + ' C ';
+    if (crate <= 0.55) setChip('chipCrate', 'chip-green', '◎');
+    else if (crate <= 1.0) setChip('chipCrate', 'chip-yellow', '△ 電池仕様を確認');
+    else setChip('chipCrate', 'chip-red', '✕ 大きすぎ');
+
+    const theta = parseFloat($('theta').value);
+    const pdis = (VUSB - 3.0) * iregmA / 1000;   // CC中の最悪ケース（VBAT≈3.0V）
+    const dT = pdis * theta;
+    const tj = 25 + dT;
+    $('oPdis').textContent = pdis.toFixed(2) + ' W';
+    $('oDt').textContent = '+' + dT.toFixed(0) + ' °C';
+    $('oTj').childNodes[0].textContent = tj.toFixed(0) + ' °C ';
+    if (tj < 85) setChip('chipTj', 'chip-green', '◎');
+    else if (tj < 150) setChip('chipTj', 'chip-yellow', '△ 熱くなる');
+    else setChip('chipTj', 'chip-red', '✕ 熱レギュレーション作動');
+
+    let chgNote;
+    if (tj >= 150) {
+      chgNote = '<b>この条件では発熱が大きすぎます。</b>ICの熱レギュレーションが働いて充電電流が自動で絞られ、想定より充電が大幅に遅くなります。R<sub>PROG</sub>を大きくして電流を下げるか、銅箔ベタを広げて放熱を改善してください。';
+    } else if (crate > 1) {
+      chgNote = '<b>充電電流が容量の1Cを超えています。</b>一般的なLi-Poの推奨は0.5C（急速対応品でも1C）まで。R<sub>PROG</sub>=' + Math.ceil(1000 / (capmAh * 0.5)) + 'kΩ程度にすると0.5C充電になります。';
+    } else if (tj >= 85) {
+      chgNote = '設定は充電可能な範囲ですが、CC充電中はICがかなり熱くなります（Tj≈' + tj.toFixed(0) + '°C）。<b>銅箔を広めに</b>とるのがおすすめ。5V入力のリニア充電では P=(5V−V<sub>BAT</sub>)×I<sub>CHG</sub> が全部熱になります。';
+    } else {
+      chgNote = 'バランスの良い設定です。満充電時間の目安は下のグラフのとおり（CVフェーズが全体の1/3ほどを占めるのがリチウム充電の特徴）。<b>0.5C以下</b>の充電は電池寿命にも優しい設定です。';
+    }
+    $('noteChg').innerHTML = chgNote;
+
+    // --- 降圧側 ---
+    const b = buck();
+    $('oR1').textContent = b.r1 > 0 ? fmtR(b.r1) + 'Ω' : '0（VOUT=0.6V時はFB直結）';
+    $('oR1e').textContent = b.r1 > 0 ? fmtR(b.r1e) + 'Ω' : '--';
+    $('oVoutAct').textContent = b.voutAct.toFixed(2) + ' V（誤差' + (b.vout > 0 ? ((b.voutAct - b.vout) / b.vout * 100).toFixed(1) : 0) + '%）';
+    // 出力コンデンサ推奨（Table 4）と現在の選択の判定
+    const rec = coutRec(b.vout);
+    const coutSel = parseFloat($('cout').value);
+    const Luh = parseFloat($('ind').value);
+    $('oCoutRec').childNodes[0].textContent = rec.label + ' ';
+    if (Luh > 2.2) setChip('chipCout', 'chip-yellow', '△ L=4.7µHは実証表外');
+    else if (rec.ok.includes(coutSel)) setChip('chipCout', coutSel === rec.std ? 'chip-green' : 'chip-teal', coutSel === rec.std ? '◎ 標準' : '○ 実証済み');
+    else if (coutSel > Math.max(...rec.ok)) setChip('chipCout', 'chip-teal', '○ 設計範囲内');
+    else setChip('chipCout', 'chip-red', '✕ 容量不足');
+    $('oDuty').textContent = (b.duty * 100).toFixed(0) + ' %' + (b.duty >= 1 ? '（100%デューティ）' : '');
+    $('oRip').textContent = (b.rip * 1000).toFixed(0) + ' mA';
+    $('oIlmax').childNodes[0].textContent = b.ilmax.toFixed(2) + ' A ';
+    if (b.ilmax < 2.0) setChip('chipIl', 'chip-green', '◎');
+    else if (b.ilmax < ILIM) setChip('chipIl', 'chip-yellow', '△ 飽和電流に注意');
+    else setChip('chipIl', 'chip-red', '✕ 電流制限');
+    $('oVrip').textContent = (b.vrip * 1000).toFixed(1) + ' mV + ESR分';
+    $('oEff').textContent = (b.eff * 100).toFixed(0) + ' %';
+    $('oIbat').textContent = (b.ibatA * 1000).toFixed(0) + ' mA';
+    $('oVinmin').childNodes[0].textContent = b.vinmin.toFixed(2) + ' V ';
+    if (b.vbat >= b.vinmin + 0.2) setChip('chipDrop', 'chip-green', '◎');
+    else if (b.vbat >= b.vinmin) setChip('chipDrop', 'chip-yellow', '△ ぎりぎり');
+    else setChip('chipDrop', 'chip-red', '✕ 維持不可');
+
+    let buckNote;
+    if (b.vout > 4.2) {
+      buckNote = '<b>V<sub>OUT</sub>が電池の最大電圧を超えています。</b>降圧コンバータでは電池電圧より高い出力は作れません（昇圧が必要）。';
+    } else if (b.vbat < b.vinmin) {
+      buckNote = '<b>この電池電圧ではV<sub>OUT</sub>を維持できません（ドロップアウト）。</b>100%デューティでも V<sub>IN(MIN)</sub>=' + b.vinmin.toFixed(2) + 'V が必要です。出力はほぼ入力に張り付いた電圧まで下がります。電池を使い切りたいならV<sub>OUT</sub>を下げてください。';
+    } else if (b.vout >= 3.3 && b.vinmin > 3.3) {
+      buckNote = 'V<sub>OUT</sub>=' + b.vout.toFixed(1) + 'V設定では、電池が約' + (b.vinmin + 0.05).toFixed(1) + 'Vを下回ると維持できなくなります（容量の一部が使えない）。<b>3.0V出力にすると電池をほぼ使い切れます。</b>リップルはΔI<sub>L</sub>=' + (b.rip * 1000).toFixed(0) + 'mAで適正範囲です。';
+    } else {
+      buckNote = '良い設定です。L=' + parseFloat($('ind').value) + 'µHでのリップル電流は負荷の' + (b.iloadA > 0 ? (b.rip / b.iloadA * 100).toFixed(0) : '--') + '%程度。インダクタの飽和電流は<b>' + (b.ilmax * 1.3).toFixed(1) + 'A以上</b>のものを選んでください。';
+    }
+    $('noteBuck').innerHTML = buckNote;
+    renderCombos(b);
+    renderRevCalc();   // 出力電力は負荷電流の設定を使うので連動更新
+    renderBom(b);
+    $('seqVinmin').innerHTML = 'V<sub>IN(MIN)</sub> ' + b.vinmin.toFixed(2) + 'V';
+    saveSettings();
+
+    // --- シミュレーション＋グラフ ---
+    simulateCharge();
+    simulateRuntime();
+    $('oTfull').textContent = fmtTime(chgSim.tFull);
+    $('oT80').textContent = fmtTime(chgSim.t80);
+    $('oRuntime').textContent = fmtTime(runSim.tCut);
+    $('oRegtime').textContent = fmtTime(runSim.tReg);
+    // 計算に使っている値（他パネルの設定と連動していることを明示）
+    const ibatNom = b.voutAct * b.iloadA / (b.eff * 3.7) * 1000;
+    $('runInputs').innerHTML =
+      '<b>計算に使っている値</b>（各パネルの設定と連動）: '
+      + '電池容量 <span class="mono">' + capmAh.toFixed(0) + ' mAh</span>〔🔌充電側〕 ／ '
+      + '実V<sub>OUT</sub> <span class="mono">' + b.voutAct.toFixed(2) + ' V</span>・'
+      + '負荷 <span class="mono">' + (b.iloadA * 1000).toFixed(0) + ' mA</span>・'
+      + '効率 <span class="mono">' + (b.eff * 100).toFixed(0) + ' %</span>〔⬇️降圧側〕'
+      + ' → 電池から引く電流 <span class="mono">約' + ibatNom.toFixed(0) + ' mA</span>（3.7V時）';
+    drawChgChart();
+    drawRunChart();
+
+    // --- 回路図ラベル ---
+    $('schIchg').textContent = iregmA.toFixed(0) + 'mA';
+    $('schRprog').textContent = rprog.toFixed(rprog < 10 ? 1 : 0).replace(/\.0$/, '') + 'kΩ';
+    $('schVbat').textContent = b.vbat.toFixed(2) + 'V';
+    $('schL').textContent = parseFloat($('ind').value) + 'µH';
+    $('schCout').textContent = $('cout').value + 'µF';
+    $('schR1').textContent = 'R1 ' + (b.r1 > 0 ? fmtR(b.r1e) : '0');
+    $('schR2').textContent = 'R2 ' + fmtR(b.r2);
+    $('schVout').textContent = b.voutAct.toFixed(2) + 'V';
+    $('schIload').textContent = val('iload').toFixed(0) + 'mA';
+    flowSpeed.chg = iregmA;
+    flowSpeed.dis = val('iload');
+  }
+
+  // ===== E24組み合わせテーブル =====
+  function renderCombos(b) {
+    $('comboVout').textContent = b.vout.toFixed(2) + 'V';
+    const tb = $('comboBody');
+    const bestEl = $('comboBest');
+    if (b.vout <= VFB + 0.001) {
+      tb.innerHTML = '<tr><td colspan="6">0.60V出力はR1=0Ω（FBをVOUTに直結）で、R2は省略できます。</td></tr>';
+      bestEl.innerHTML = '<span class="btitle">✨ ベスト:</span><span class="bval">R1 = 0Ω（直結）／ R2 なし</span>';
+      return;
+    }
+    const combos = findCombos(b.vout);
+    // ベストの組を目立たせて表示
+    const best = combos[0];
+    if (best) {
+      const usingBest = best.r2 === b.r2 && best.r1 === b.r1e;
+      bestEl.innerHTML =
+        '<span class="btitle">✨ ベスト:</span>'
+        + '<span class="bval">R1 = ' + fmtR(best.r1) + 'Ω ／ R2 = ' + fmtR(best.r2) + 'Ω</span>'
+        + '<span class="bsub">→ ' + best.va.toFixed(3) + ' V（誤差' + (best.err >= 0 ? '+' : '') + best.err.toFixed(2) + '%・分圧' + (best.va / (best.r1 + best.r2) * 1000).toFixed(1) + 'µA）</span>'
+        + (usingBest
+            ? '<span class="state-chip chip-green">✓ 使用中</span>'
+            : '<button class="btn btn-sm" data-usecombo="' + best.r2 + '">これを使う</button>');
+    }
+    tb.innerHTML = combos.map((c, idx) => {
+      const cur = c.r2 === b.r2 && c.r1 === b.r1e;
+      const idivUA = c.va / (c.r1 + c.r2) * 1000;   // V/kΩ=mA → µA
+      return '<tr' + (cur ? ' class="combo-cur"' : '') + '>'
+        + '<td class="mono">' + (idx === 0 ? '🥇 ' : '') + fmtR(c.r1) + 'Ω</td>'
+        + '<td class="mono">' + fmtR(c.r2) + 'Ω</td>'
+        + '<td class="mono">' + c.va.toFixed(3) + ' V</td>'
+        + '<td class="mono">' + (c.err >= 0 ? '+' : '') + c.err.toFixed(2) + '%</td>'
+        + '<td class="mono">' + idivUA.toFixed(1) + ' µA</td>'
+        + '<td>' + (cur ? '<span class="state-chip chip-teal">使用中</span>' : '<button class="btn btn-sm" data-usecombo="' + c.r2 + '">使う</button>') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  // ===== 逆算計算機（R1/R2 → VOUT・推奨部品） =====
+  function renderRevCalc() {
+    const r1 = parseFloat($('rcR1').value);
+    const r2 = parseFloat($('rcR2').value);
+    const ok = Number.isFinite(r1) && Number.isFinite(r2) && r1 >= 0 && r2 > 0;
+    if (!ok) {
+      $('rcVout').childNodes[0].textContent = '-- ';
+      setChip('rcChip', 'chip-yellow', '値を入力');
+      $('rcPout').textContent = $('rcL').textContent = $('rcCout').textContent = $('rcIdiv').textContent = '--';
+      return;
+    }
+    const v = VFB * (1 + r1 / r2);
+    $('rcVout').childNodes[0].textContent = v.toFixed(3) + ' V ';
+    if (v > 5.5) setChip('rcChip', 'chip-red', '✕ VIN上限5.5Vを超える');
+    else if (v > 4.2) setChip('rcChip', 'chip-yellow', '△ 1セル電池からは作れない');
+    else if (r2 > 200) setChip('rcChip', 'chip-yellow', '△ R2は200kΩ以下推奨');
+    else setChip('rcChip', 'chip-green', '◎ OK');
+    const ilA = val('iload') / 1000;
+    $('rcPout').textContent = (v * ilA).toFixed(2) + ' W（負荷' + val('iload').toFixed(0) + 'mA時）／ 最大 ' + (v * 2).toFixed(1) + ' W（2A時）';
+    $('rcL').textContent = '2.2 µH（標準推奨）／ 1 µHも可';
+    $('rcCout').textContent = coutRec(v).label;
+    $('rcIdiv').textContent = (v / (r1 + r2) * 1000).toFixed(1) + ' µA';
+  }
+
+  // ===== 部品リスト（BOM） =====
+  let bomRows = [];
+  function renderBom(b) {
+    const rprog = Math.min(67, Math.max(2, val('rprog')));
+    const rprogTxt = (rprog < 10 ? +rprog.toFixed(1) : Math.round(rprog)) + 'kΩ';
+    const iregmA = 1000 / rprog;
+    const coutSel = parseFloat($('cout').value);
+    const coutTxt = coutSel === 44 ? '22µF ×2' : coutSel + 'µF';
+    bomRows = [
+      ['U1', 'リチウム充電IC MCP73831T-2ACI/OT', 'SOT-23-5', '4.2V版。銅箔ベタを広めに'],
+      ['U2', '降圧DC-DC TLV62569DBVR', 'SOT-23-5', '2A・1.5MHz'],
+      ['R1', 'チップ抵抗 1%', b.r1 > 0 ? fmtR(b.r1e) + 'Ω' : '0Ω（FB直結）', 'FB上側。0603推奨'],
+      ['R2', 'チップ抵抗 1%', fmtR(b.r2) + 'Ω', 'FB下側。VOUT=' + b.voutAct.toFixed(2) + 'V'],
+      ['R3', 'チップ抵抗 R_PROG 1%', rprogTxt, '充電電流 ' + iregmA.toFixed(0) + 'mA'],
+      ['R4', 'チップ抵抗（STAT LED用）', '1kΩ', 'LED電流 約2mA'],
+      ['L1', 'パワーインダクタ', parseFloat($('ind').value) + 'µH', '飽和電流 ' + (b.ilmax * 1.3).toFixed(1) + 'A以上'],
+      ['C1', 'セラミックコンデンサ X5R/X7R', '4.7µF / 10V', 'USB入力側。VBUS直近に配置'],
+      ['C2', 'セラミックコンデンサ X5R/X7R', '10µF / 10V', '充電IC出力（電池側）'],
+      ['C3', 'セラミックコンデンサ X5R/X7R', coutTxt + ' / 10V', '降圧出力。DCバイアス減衰を見込む'],
+      ['D1', 'LED（充電表示）', '赤・2mA品', 'STATピンへ。低電流品が明るい'],
+      ['BT1', 'リチウムポリマー電池 1S', val('cap').toFixed(0) + 'mAh', '保護回路(PCM)付きを使うこと'],
+      ['J1', 'USBコネクタ + TVSダイオード', 'Type-C推奨', 'CC端子に5.1kΩ×2（Type-C時）'],
+      ['J2', '電池コネクタ', 'JST PH 2ピン等', '逆挿し不可の極性付きを選ぶ'],
+    ];
+    $('bomBody').innerHTML = bomRows.map(r =>
+      '<tr><td class="mono">' + r[0] + '</td><td>' + r[1] + '</td><td class="mono">' + r[2] + '</td><td>' + r[3] + '</td></tr>'
+    ).join('');
+  }
+  function bomText() {
+    const head = '記号\t部品\t値\t備考';
+    return [head, ...bomRows.map(r => r.join('\t'))].join('\n');
+  }
+  function bomCsv() {
+    const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+    const lines = [['記号', '部品', '値', '備考'], ...bomRows].map(r => r.map(esc).join(','));
+    return String.fromCharCode(0xFEFF) + lines.join('\r\n');
+  }
+
+  // ===== グラフ描画（共通ヘルパ） =====
+  function setupCanvas(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, w, h);
+    return { c, w, h };
+  }
+  function drawChgChart() {
+    const { c, w, h } = setupCanvas($('chgChart'));
+    const pts = chgSim.pts;
+    if (!pts || pts.length < 2) return;
+    const padL = 42, padR = 52, padT = 10, padB = 24;
+    const pw = w - padL - padR, ph = h - padT - padB;
+    const tMax = pts[pts.length - 1].t || 0.1;
+    const vMin = 2.4, vMax = 4.4;
+    const iMax = Math.max(...pts.map(p => p.i)) * 1.15 || 100;
+    const x = t => padL + t / tMax * pw;
+    const yV = v => padT + (vMax - v) / (vMax - vMin) * ph;
+    const yI = i => padT + (iMax - i) / iMax * ph;
+    // フェーズ背景帯
+    const phColor = { pre: '#a6adc8', cc: '#a6e3a1', cv: '#cba6f7' };
+    let segStart = 0;
+    for (let i = 1; i <= pts.length; i++) {
+      if (i === pts.length || pts[i].ph !== pts[segStart].ph) {
+        c.fillStyle = phColor[pts[segStart].ph];
+        c.globalAlpha = 0.08;
+        c.fillRect(x(pts[segStart].t), padT, x(pts[i - 1].t) - x(pts[segStart].t), ph);
+        c.globalAlpha = 1;
+        segStart = i;
+      }
+    }
+    // グリッド・軸
+    c.font = '11px Consolas, monospace';
+    c.strokeStyle = '#313244';
+    c.lineWidth = 1;
+    c.textBaseline = 'middle';
+    for (let v = 2.6; v <= 4.4; v += 0.4) {
+      c.beginPath(); c.moveTo(padL, yV(v)); c.lineTo(w - padR, yV(v)); c.stroke();
+      c.fillStyle = '#f9e2af'; c.textAlign = 'right';
+      c.fillText(v.toFixed(1), padL - 5, yV(v));
+    }
+    c.fillStyle = '#89b4fa'; c.textAlign = 'left';
+    for (let k = 0; k <= 4; k++) {
+      const i = iMax * k / 4;
+      c.fillText(i.toFixed(0), w - padR + 5, yI(i));
+    }
+    c.fillStyle = '#a6adc8'; c.textAlign = 'center'; c.textBaseline = 'top';
+    const tstep = tMax > 4 ? 1 : (tMax > 1.5 ? 0.5 : 0.25);
+    for (let t = 0; t <= tMax + 1e-9; t += tstep) {
+      c.fillText(t.toFixed(tstep < 0.5 ? 2 : 1) + 'h', x(t), h - padB + 5);
+    }
+    c.textBaseline = 'middle';
+    // 4.2Vライン
+    c.strokeStyle = '#f38ba8'; c.setLineDash([4, 4]);
+    c.beginPath(); c.moveTo(padL, yV(VREG)); c.lineTo(w - padR, yV(VREG)); c.stroke();
+    c.setLineDash([]);
+    // 電圧・電流ライン
+    c.strokeStyle = '#f9e2af'; c.lineWidth = 2; c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(x(p.t), yV(p.v)) : c.moveTo(x(p.t), yV(p.v)));
+    c.stroke();
+    c.strokeStyle = '#89b4fa'; c.lineWidth = 2; c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(x(p.t), yI(p.i)) : c.moveTo(x(p.t), yI(p.i)));
+    c.stroke();
+    // 軸ラベル
+    c.fillStyle = '#f9e2af'; c.textAlign = 'left';
+    c.fillText('V', padL + 4, padT + 8);
+    c.fillStyle = '#89b4fa'; c.textAlign = 'right';
+    c.fillText('mA', w - padR - 4, padT + 8);
+  }
+  function drawRunChart() {
+    const { c, w, h } = setupCanvas($('runChart'));
+    const pts = runSim.pts;
+    const padL = 42, padR = 12, padT = 10, padB = 24;
+    const pw = w - padL - padR, ph = h - padT - padB;
+    if (!pts || pts.length < 2) {
+      c.fillStyle = '#585b70'; c.font = '14px "Segoe UI", sans-serif'; c.textAlign = 'center';
+      c.fillText('負荷電流を設定するとグラフが描かれます', w / 2, h / 2);
+      return;
+    }
+    const tMax = pts[pts.length - 1].t || 0.1;
+    const vMin = 2.4, vMax = 4.3;
+    const x = t => padL + t / tMax * pw;
+    const y = v => padT + (vMax - v) / (vMax - vMin) * ph;
+    c.font = '11px Consolas, monospace';
+    c.strokeStyle = '#313244'; c.lineWidth = 1; c.textBaseline = 'middle';
+    for (let v = 2.6; v <= 4.2; v += 0.4) {
+      c.beginPath(); c.moveTo(padL, y(v)); c.lineTo(w - padR, y(v)); c.stroke();
+      c.fillStyle = '#a6adc8'; c.textAlign = 'right';
+      c.fillText(v.toFixed(1), padL - 5, y(v));
+    }
+    c.fillStyle = '#a6adc8'; c.textAlign = 'center'; c.textBaseline = 'top';
+    const tstep = tMax > 8 ? 2 : (tMax > 3 ? 1 : 0.5);
+    for (let t = 0; t <= tMax + 1e-9; t += tstep) c.fillText(t.toFixed(tstep < 1 ? 1 : 0) + 'h', x(t), h - padB + 5);
+    c.textBaseline = 'middle';
+    // カットオフ・ドロップアウト線
+    c.setLineDash([4, 4]);
+    c.strokeStyle = '#f38ba8';
+    c.beginPath(); c.moveTo(padL, y(val('cutoff'))); c.lineTo(w - padR, y(val('cutoff'))); c.stroke();
+    if (runSim.vinmin > vMin && runSim.vinmin < vMax) {
+      c.strokeStyle = '#fab387';
+      c.beginPath(); c.moveTo(padL, y(runSim.vinmin)); c.lineTo(w - padR, y(runSim.vinmin)); c.stroke();
+    }
+    c.setLineDash([]);
+    // 電池電圧
+    c.strokeStyle = '#a6e3a1'; c.lineWidth = 2; c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(x(p.t), y(p.v)) : c.moveTo(x(p.t), y(p.v)));
+    c.stroke();
+  }
+
+  // ===== 粒アニメ（rAF、画面外では停止） =====
+  const flowSpeed = { chg: 500, dis: 500 };
+  const dots = [];
+  {
+    const g = $('flowDots');
+    const mk = (pathId, color, n) => {
+      const path = $(pathId);
+      const len = path.getTotalLength();
+      for (let i = 0; i < n; i++) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        el.setAttribute('r', '3.2');
+        el.setAttribute('fill', color);
+        g.appendChild(el);
+        dots.push({ el, path, len, off: i / n, kind: pathId.startsWith('flowChg') ? 'chg' : 'dis' });
+      }
+    };
+    mk('flowChg1', '#fab387', 3);
+    mk('flowChg2', '#fab387', 4);
+    mk('flowDis1', '#a6e3a1', 3);
+    mk('flowDis2', '#a6e3a1', 7);
+  }
+  let svgVisible = true;
+  new IntersectionObserver(es => { svgVisible = es[0].isIntersecting; }).observe($('schemSvg'));
+  let lastT = 0;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min((now - lastT) / 1000, 0.1);
+    lastT = now;
+    if (!svgVisible) return;
+    for (const d of dots) {
+      const mA = flowSpeed[d.kind];
+      if (mA <= 0.5) { d.el.setAttribute('opacity', '0'); continue; }
+      d.el.setAttribute('opacity', '1');
+      const px = 14 + Math.min(mA, 1000) * 0.08;   // mA → px/s
+      d.off = (d.off + px * dt / d.len) % 1;
+      const p = d.path.getPointAtLength(d.off * d.len);
+      d.el.setAttribute('cx', p.x);
+      d.el.setAttribute('cy', p.y);
+    }
+  }
+  requestAnimationFrame(frame);
+
+  // ===== イベント =====
+  {
+    // R2セレクトにE24値（10k〜200k）を生成
+    const sel = $('r2');
+    for (const v of R2_LIST) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v + ' kΩ';
+      if (v === 100) o.selected = true;
+      sel.appendChild(o);
+    }
+  }
+  const onUseCombo = e => {
+    const btn = e.target.closest('[data-usecombo]');
+    if (!btn) return;
+    $('r2').value = btn.dataset.usecombo;
+    update();
+  };
+  $('comboBody').addEventListener('click', onUseCombo);
+  $('comboBest').addEventListener('click', onUseCombo);
+  ['rcR1', 'rcR2'].forEach(id => $(id).addEventListener('input', () => { renderRevCalc(); saveSettings(); }));
+  $('btnCopyBom').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(bomText());
+      $('bomMsg').textContent = 'コピーしました';
+    } catch (_) {
+      $('bomMsg').textContent = 'コピーできませんでした（表を選択して手動コピーしてください）';
+    }
+    setTimeout(() => { $('bomMsg').textContent = ''; }, 2500);
+  });
+  $('btnCsvBom').addEventListener('click', () => {
+    const blob = new Blob([bomCsv()], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lipo_bom.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  ['rprog', 'cap', 'startv', 'vout', 'iload', 'vbat', 'cutoff'].forEach(b => bindPair(b, update));
+  ['theta', 'r2', 'ind', 'cout'].forEach(id => $(id).addEventListener('input', update));
+  document.querySelectorAll('[data-rprog]').forEach(btn => btn.addEventListener('click', () => {
+    $('rprog').value = $('rprogN').value = btn.dataset.rprog;
+    update();
+  }));
+  document.querySelectorAll('[data-vout]').forEach(btn => btn.addEventListener('click', () => {
+    $('vout').value = $('voutN').value = btn.dataset.vout;
+    update();
+  }));
+  window.addEventListener('resize', () => { drawChgChart(); drawRunChart(); });
+
+  const DEFAULTS = collectSettings();   // HTMLに書かれた初期値を控えておく
+  $('btnResetAll').addEventListener('click', () => {
+    applySettings(DEFAULTS);
+    try { localStorage.removeItem(LS_KEY); } catch (_) {}
+    update();
+  });
+
+  applySettings(loadSettings());   // R2セレクト生成後に復元する必要がある
+  update();
+})();
+</script>
+</body>
+</html>
