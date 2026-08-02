@@ -733,11 +733,18 @@
     if (restoring) return;
     const s = collectSettings();
     try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (_) {}
-    const q = new URLSearchParams(s).toString();
-    history.replaceState(null, '', location.pathname + '?' + q);
+    // htmlpreview経由（?https://github.com/... 形式）では<base>の影響でreplaceStateが
+    // 別オリジン扱いになり例外を投げる。またURLを書き換えるとプレビュー先の指定も壊れるのでスキップ。
+    // URL共有はおまけ機能なので、失敗しても以降の処理（グラフ描画）は止めない
+    if (/^\?https?:/i.test(location.search)) return;
+    try {
+      const q = new URLSearchParams(s).toString();
+      history.replaceState(null, '', location.pathname + '?' + q);
+    } catch (_) {}
   }
   function loadSettings() {
-    const q = new URLSearchParams(location.search);
+    // htmlpreview経由のURL（?https://github.com/...）は設定パラメータではないので無視
+    const q = new URLSearchParams(/^\?https?:/i.test(location.search) ? '' : location.search);
     if ([...q.keys()].length > 0) {
       const s = {};
       for (const [k, v] of q) s[k] = v;
@@ -1063,6 +1070,7 @@
   function setupCanvas(cv) {
     const dpr = window.devicePixelRatio || 1;
     const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return null;   // レイアウト未確定時は描かない（load/resizeで再描画）
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const c = cv.getContext('2d');
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1070,7 +1078,9 @@
     return { c, w, h };
   }
   function drawChgChart() {
-    const { c, w, h } = setupCanvas($('chgChart'));
+    const cx = setupCanvas($('chgChart'));
+    if (!cx) return;
+    const { c, w, h } = cx;
     const pts = chgSim.pts;
     if (!pts || pts.length < 2) return;
     const padL = 42, padR = 52, padT = 10, padB = 24;
@@ -1132,7 +1142,9 @@
     c.fillText('mA', w - padR - 4, padT + 8);
   }
   function drawRunChart() {
-    const { c, w, h } = setupCanvas($('runChart'));
+    const cx = setupCanvas($('runChart'));
+    if (!cx) return;
+    const { c, w, h } = cx;
     const pts = runSim.pts;
     const padL = 42, padR = 12, padT = 10, padB = 24;
     const pw = w - padL - padR, ph = h - padT - padB;
@@ -1262,6 +1274,7 @@
     update();
   }));
   window.addEventListener('resize', () => { drawChgChart(); drawRunChart(); });
+  window.addEventListener('load', () => { drawChgChart(); drawRunChart(); });
 
   const DEFAULTS = collectSettings();   // HTMLに書かれた初期値を控えておく
   $('btnResetAll').addEventListener('click', () => {
