@@ -224,10 +224,13 @@
 
     <!-- 粒アニメ用ガイド（不可視） -->
     <path id="flowIn" d="M116 70 L360 70" fill="none" stroke="none"/>
+    <path id="flowInRet" d="M400 285 L68 285 L68 101" fill="none" stroke="none"/>
+    <path id="flowVin" d="M200 70 L200 118 L360 118" fill="none" stroke="none"/>
     <path id="flowOut" d="M510 70 L920 70 L920 110" fill="none" stroke="none"/>
+    <path id="flowOutRet" d="M920 168 L920 285 L400 285" fill="none" stroke="none"/>
     <g id="flowDots"></g>
   </svg>
-  <div class="note">概念図です（ENの接続・保護部品などは省略。常時ONならENはV<sub>IN</sub>に直結）。青の粒＝入力電流、緑の粒＝出力電流。粒の速さは電流値に連動します。</div>
+  <div class="note">概念図です（ENの接続・保護部品などは省略。常時ONならENはV<sub>IN</sub>に直結）。<b style="color:#89b4fa;">青の粒</b>＝入力電流（電源→L→SW→GND→電源に戻る）、<b style="color:#a6e3a1;">緑の粒</b>＝出力電流（VOUT→負荷→GND）。<b>粒の速さ＝電圧の高さ</b>（昇圧後は少し速い）、<b>粒の大きさ＝電流の大きさ</b>（昇圧では入力電流のほうが大きいので入力側が太い）。<b style="color:#89dceb;">水色の薄い粒</b>はV<sub>IN</sub>ピンへ入るIC自身の電源で、電流が数µAしかないため粒がいちばん小さくなっています（<b>パワーはLとSWを通り、V<sub>IN</sub>ピンは通りません</b>）。</div>
 
   <div class="guide" style="margin-top:14px;">
     <div class="guide-item">
@@ -945,8 +948,9 @@
     $('schR1').textContent = 'R1 ' + (c.r1 > 0 ? fmtR(c.r1e) : '0');
     $('schR2').textContent = 'R2 ' + fmtR(c.r2);
     $('schIload').textContent = (iloadA * 1000).toFixed(0) + 'mA';
-    flowSpeed.in = c.iLdc * 1000;
-    flowSpeed.out = iloadA * 1000;
+    flowSpeed.in = { mA: c.iLdc * 1000, v: c.vin };
+    flowSpeed.out = { mA: iloadA * 1000, v: c.voutAct };
+    flowSpeed.vin = { mA: 0.02, v: c.vin };   // VINピンはICが動いている限り常に微小電流
   }
 
   // ===== 逆算計算機（R1/R2 → VOUT） =====
@@ -1167,7 +1171,8 @@
   window.addEventListener('load', () => { const c = calc(val('iload') / 1000); drawEffChart(c); });
 
   // ===== 粒アニメ =====
-  const flowSpeed = { in: 500, out: 500 };
+  // 粒の速さ＝電圧の高さ、粒の大きさ＝電流の大きさ で表現する
+  const flowSpeed = { in: {mA: 500, v: 3.7}, out: {mA: 500, v: 5.0}, vin: {mA: 0.02, v: 3.7} };
   const dots = [];
   {
     const g = $('flowDots');
@@ -1182,8 +1187,11 @@
         dots.push({ el, path, len, off: i / n, kind });
       }
     };
-    mk('flowIn', '#89b4fa', 6, 'in');
-    mk('flowOut', '#a6e3a1', 8, 'out');
+    mk('flowIn', '#89b4fa', 5, 'in');       // 入力→L→SW（パワー経路）
+    mk('flowInRet', '#89b4fa', 7, 'in');    // GND経由で電源へ戻る
+    mk('flowVin', '#89dceb', 2, 'vin');     // VINピン＝IC自身の電源（数µA）
+    mk('flowOut', '#a6e3a1', 6, 'out');     // VOUT→負荷
+    mk('flowOutRet', '#a6e3a1', 5, 'out');  // 負荷→GND
   }
   let svgVisible = true;
   new IntersectionObserver(es => { svgVisible = es[0].isIntersecting; }).observe($('schemSvg'));
@@ -1194,10 +1202,14 @@
     lastT = now;
     if (!svgVisible) return;
     for (const d of dots) {
-      const mA = flowSpeed[d.kind];
-      if (mA <= 0.5) { d.el.setAttribute('opacity', '0'); continue; }
-      d.el.setAttribute('opacity', '1');
-      const px = 14 + Math.min(mA, 2000) * 0.05;
+      const { mA, v } = flowSpeed[d.kind];
+      const isVin = d.kind === 'vin';
+      // 電流が流れていない経路は非表示（VINピンだけはICの静止電流で常に流れる）
+      if (mA <= 0.5 && !isVin) { d.el.setAttribute('opacity', '0'); continue; }
+      d.el.setAttribute('opacity', isVin ? '0.5' : '1');
+      // 速さ＝電圧（昇圧後のほうが速い）／大きさ＝電流（入力側のほうが太い）
+      const px = 10 + Math.max(v, 0) * 8;
+      d.el.setAttribute('r', (2.0 + Math.min(mA, 2400) / 900).toFixed(2));
       d.off = (d.off + px * dt / d.len) % 1;
       const p = d.path.getPointAtLength(d.off * d.len);
       d.el.setAttribute('cx', p.x);
