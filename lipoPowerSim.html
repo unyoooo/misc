@@ -1218,7 +1218,7 @@
   let svgVisible = true;
   new IntersectionObserver(es => { svgVisible = es[0].isIntersecting; }).observe($('schemSvg'));
   let lastT = 0;
-  function frame(now) {
+  function frame(now = performance.now()) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - lastT) / 1000, 0.1);
     lastT = now;

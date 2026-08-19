@@ -580,8 +580,57 @@
 
 <h2>📈 負荷電流と効率・最大出力</h2>
 <div class="panel">
-  <canvas id="effChart" class="chart"></canvas>
-  <div class="note">緑=効率（左軸）、桃=インダクタのピーク電流（右軸）。赤破線=電流制限3.7A、橙縦線=現在の負荷電流。ピーク電流が電流制限に達するところが、その入力電圧で取り出せる上限です。</div>
+  <div class="note-dyn" id="effInputs" style="margin-top:0; margin-bottom:12px;"></div>
+  <canvas id="effChart" class="chart" style="height:290px;"></canvas>
+  <div class="note">
+    <b>横軸＝負荷電流（0〜2A）を振ったときに何が起きるか</b>を1枚にしたグラフです。入力電圧と出力電圧は上の設定で固定しています。<br>
+    <b style="color:#a6e3a1;">緑の線＝効率</b>（左軸）：軽負荷ほど下がり、重負荷でもじわじわ下がります。<br>
+    <b style="color:#f38ba8;">桃の線＝インダクタのピーク電流</b>（右軸）：負荷に比例して増えます。<b style="color:#f38ba8;">赤い破線＝電流制限3.7A</b>で、<b>桃の線が赤破線に達する負荷が、そのときの入力電圧で取り出せる上限</b>です。（そのときの<b>入力電圧・出力電圧はグラフ上部中央の枠</b>に表示しています。上の設定で固定されている値です）<br>
+    <b style="color:#fab387;">橙の縦線＝いま設定している負荷電流</b>。この線と各カーブの交点が、上の計算結果に対応します。<br>
+    入力電圧を下げると桃の線が急になり（同じ負荷でもピーク電流が増える）、赤破線に早く到達＝取り出せる電流が減ることが見て取れます。
+  </div>
+</div>
+
+<h2>⏱️ ランタイム（電池のもち）</h2>
+<div class="panel">
+  <div class="note-dyn" id="runInputs" style="margin-top:0; margin-bottom:12px;"></div>
+  <div class="slider-row">
+    <label>電池の種類</label>
+    <select id="batt">
+      <option value="lipo" selected>リチウムポリマー 1S</option>
+      <option value="alk2">アルカリ 単3×2</option>
+      <option value="alk1">アルカリ 単3×1</option>
+      <option value="nimh2">ニッケル水素 単3×2</option>
+      <option value="cr2032">コイン電池 CR2032</option>
+    </select>
+    <label style="width:auto;">容量</label>
+    <input type="number" id="battCap" min="10" max="20000" step="10" value="1000">
+    <span class="unit">mAh</span>
+  </div>
+  <div class="slider-row">
+    <label>放電終止（カットオフ）</label>
+    <input type="range" id="cutoff" min="0.5" max="3.5" step="0.05" value="3.0">
+    <input type="number" id="cutoffN" min="0.5" max="3.5" step="0.05" value="3.0">
+    <span class="unit">V</span>
+  </div>
+
+  <div class="cols" style="margin-top:6px;">
+    <div class="readout">
+      <div class="row"><span class="k">ランタイム（満充電から）</span><span class="v" id="oRuntime">-- <span class="state-chip chip-green" id="chipRun">◎</span></span></div>
+      <div class="row"><span class="k">止まる原因</span><span class="v" id="oRunStop">--</span></div>
+      <div class="row"><span class="k">取り出せる電力量</span><span class="v" id="oRunWh">--</span></div>
+    </div>
+    <div class="readout">
+      <div class="row"><span class="k">開始時の入力電流</span><span class="v" id="oRunIstart">--</span></div>
+      <div class="row"><span class="k">終了間際の入力電流</span><span class="v" id="oRunIend">--</span></div>
+      <div class="row"><span class="k">電流制限に当たる電池電圧</span><span class="v" id="oRunVlim">--</span></div>
+    </div>
+  </div>
+  <div class="note-dyn" id="runNote"></div>
+  <div style="margin-top:12px;">
+    <canvas id="runChart" class="chart" style="height:210px;"></canvas>
+    <div class="note">緑=電池電圧、桃=入力電流（右軸）。赤破線=カットオフ、紫破線=電流制限に当たる電圧。<b>昇圧では電池が減るほど入力電流が増える</b>ので、終盤は加速度的に消耗します。内部抵抗と放電カーブを含む簡易モデルによる目安です。</div>
+  </div>
 </div>
 
 <h2>🧾 部品リスト（BOM）</h2>
@@ -747,8 +796,8 @@
   }
 
   // ===== 設定の保存・復元 =====
-  const PAIR_IDS = ['vout', 'vin', 'iload'];
-  const SINGLE_IDS = ['r2', 'ind', 'cout', 'theta', 'rcR1', 'rcR2', 'enRa', 'enRb'];
+  const PAIR_IDS = ['vout', 'vin', 'iload', 'cutoff'];
+  const SINGLE_IDS = ['r2', 'ind', 'cout', 'theta', 'rcR1', 'rcR2', 'enRa', 'enRb', 'batt', 'battCap'];
   const LS_KEY = 'boostPowerSim.settings';
   let restoring = false;
   function collectSettings() {
@@ -813,9 +862,9 @@
   }
 
   // ===== 昇圧計算 =====
-  function calc(iloadA) {
+  function calc(iloadA, vinOverride) {
     const vout = Math.max(VOUT_MIN, val('vout'));
-    const vin = Math.max(0.1, val('vin'));
+    const vin = Math.max(0.1, vinOverride !== undefined ? vinOverride : val('vin'));
     const r2 = parseFloat($('r2').value);
     const r1 = r2 * (vout / VREF - 1);
     const r1e = r1 > 0 ? nearestE24(r1) : 0;
@@ -917,6 +966,13 @@
     renderRevCalc();   // 出力電力は負荷電流の設定を使うので連動更新
     renderEnCalc(c.vin, c.voutAct);
     renderBom(c);
+    renderRuntime(c);
+    $('effInputs').innerHTML = '<b>計算に使っている値</b>（グラフは負荷電流だけを振っています）: '
+      + '入力 <span class="mono">' + c.vin.toFixed(2) + 'V</span> ／ 出力 <span class="mono">' + c.voutAct.toFixed(2) + 'V</span>'
+      + ' ／ L <span class="mono">' + parseFloat($('ind').value) + 'µH</span>'
+      + ' ／ 現在の負荷 <span class="mono">' + (c.iloadA * 1000).toFixed(0) + 'mA</span>'
+      + '（このとき 効率 <span class="mono">' + (c.eff * 100).toFixed(0) + '%</span>・ピーク電流 <span class="mono">'
+      + c.ipk.toFixed(2) + 'A</span>・取り出せる上限 <span class="mono">' + c.imax.toFixed(2) + 'A</span>）';
     drawEffChart(c);
     saveSettings();
 
@@ -1033,6 +1089,176 @@
     $('enNote').innerHTML = note;
   }
 
+  // ===== 電池モデル・ランタイム =====
+  // ocv: [SoC%, 1セルあたりの開放電圧]、cells: 直列数、rint: 内部抵抗[Ω/全体]
+  const BATTERIES = {
+    lipo:   { name: 'リチウムポリマー 1S', cells: 1, rint: 0.13, defCap: 1000, defCut: 3.0,
+              ocv: [[0,3.00],[5,3.30],[10,3.50],[20,3.60],[40,3.70],[60,3.78],[80,3.90],[100,4.17]] },
+    alk2:   { name: 'アルカリ 単3×2', cells: 2, rint: 0.6, defCap: 2000, defCut: 1.8,
+              ocv: [[0,0.90],[10,1.05],[20,1.12],[40,1.22],[60,1.30],[80,1.40],[100,1.60]] },
+    alk1:   { name: 'アルカリ 単3×1', cells: 1, rint: 0.3, defCap: 2000, defCut: 0.9,
+              ocv: [[0,0.90],[10,1.05],[20,1.12],[40,1.22],[60,1.30],[80,1.40],[100,1.60]] },
+    nimh2:  { name: 'ニッケル水素 単3×2', cells: 2, rint: 0.1, defCap: 1900, defCut: 2.0,
+              ocv: [[0,1.00],[10,1.15],[30,1.22],[70,1.25],[90,1.30],[100,1.42]] },
+    cr2032: { name: 'コイン電池 CR2032', cells: 1, rint: 15, defCap: 225, defCut: 2.0,
+              ocv: [[0,2.00],[10,2.60],[30,2.85],[60,2.95],[90,3.00],[100,3.20]] },
+  };
+  function ocvOf(b, soc) {
+    const pts = b.ocv;
+    if (soc <= pts[0][0]) return pts[0][1] * b.cells;
+    if (soc >= pts[pts.length - 1][0]) return pts[pts.length - 1][1] * b.cells;
+    for (let i = 1; i < pts.length; i++) {
+      if (soc <= pts[i][0]) {
+        const [s0, v0] = pts[i - 1], [s1, v1] = pts[i];
+        return (v0 + (v1 - v0) * (soc - s0) / (s1 - s0)) * b.cells;
+      }
+    }
+    return pts[pts.length - 1][1] * b.cells;
+  }
+  // その負荷を供給できなくなる電池電圧（電流制限に当たる点）を数値探索
+  function vinAtCurrentLimit(iloadA) {
+    if (iloadA <= 0) return null;
+    for (let v = 5.5; v >= 0.5; v -= 0.01) {
+      if (calc(iloadA, v).imax < iloadA) return v;
+    }
+    return null;
+  }
+  let runSim = null;
+  function simulateRuntime() {
+    const b = BATTERIES[$('batt').value];
+    const capmAh = Math.max(10, parseFloat($('battCap').value) || b.defCap);
+    const cutoff = val('cutoff');
+    const iloadA = val('iload') / 1000;
+    if (iloadA <= 0) { runSim = { pts: [], t: 0, stop: 'load0', b, vLim: null, capmAh, cutoff, iloadA }; return; }
+    const vLim = vinAtCurrentLimit(iloadA);
+    const pts = [];
+    let soc = 100, t = 0, stop = 'cutoff', istart = null, iend = null;
+    const dt = Math.max(0.002, (capmAh / (iloadA * 1000)) * 2 / 900);   // [h]
+    let vterm = ocvOf(b, 100);
+    for (let step = 0; step < 4000; step++) {
+      const e = ocvOf(b, soc);
+      const c = calc(iloadA, Math.max(vterm, 0.3));
+      // 入力電流は端子電圧に依存するため、前ステップの端子電圧で近似
+      const ibat = c.passThrough ? iloadA : c.iLdc;
+      vterm = e - ibat * b.rint;
+      if (istart === null) istart = ibat;
+      iend = ibat;
+      pts.push({ t, v: Math.max(vterm, 0), i: ibat });
+      // 満充電でも内部抵抗による電圧降下で使えない＝そもそも供給できない負荷
+      if (step === 0 && vterm <= cutoff) { stop = 'collapse'; break; }
+      if (vterm <= cutoff) { stop = 'cutoff'; break; }
+      if (vterm < 0.5) { stop = 'uvlo'; break; }
+      if (vLim !== null && vterm <= vLim) { stop = 'ilimit'; break; }
+      soc -= ibat * 1000 * dt / capmAh * 100;
+      if (soc <= 0) { soc = 0; stop = 'empty'; break; }
+      t += dt;
+    }
+    runSim = { pts, t, stop, b, vLim, istart, iend, capmAh, cutoff, iloadA };
+  }
+  function fmtTime(h) {
+    if (!Number.isFinite(h) || h <= 0) return '--';
+    if (h >= 24) return (h / 24).toFixed(1) + ' 日（' + h.toFixed(0) + '時間）';
+    const m = Math.round(h * 60);
+    return Math.floor(m / 60) + '時間' + String(m % 60).padStart(2, '0') + '分';
+  }
+  function renderRuntime(c) {
+    simulateRuntime();
+    const r = runSim, b = r.b;
+    $('runInputs').innerHTML = '<b>計算に使っている値</b>（各パネルの設定と連動）: '
+      + '電池 <span class="mono">' + b.name + ' ' + r.capmAh + 'mAh</span>（内部抵抗' + b.rint + 'Ω）／ '
+      + '出力 <span class="mono">' + c.voutAct.toFixed(2) + 'V</span>・負荷 <span class="mono">'
+      + (c.iloadA * 1000).toFixed(0) + 'mA</span>・効率 <span class="mono">' + (c.eff * 100).toFixed(0) + '%</span>〔⚙️定数を決める〕';
+    if (!r.pts.length) {
+      $('oRuntime').childNodes[0].textContent = '-- ';
+      setChip('chipRun', 'chip-yellow', '負荷を設定してください');
+      ['oRunStop', 'oRunWh', 'oRunIstart', 'oRunIend', 'oRunVlim'].forEach(id => $(id).textContent = '--');
+      $('runNote').innerHTML = '負荷電流を設定するとランタイムを計算します。';
+      drawRunChart();
+      return;
+    }
+    const stopTxt = { cutoff: 'カットオフ電圧に到達', ilimit: '電流制限（電圧不足で負荷を賄えない）',
+                      uvlo: 'UVLO 0.5Vで停止', empty: '容量を使い切った',
+                      collapse: '内部抵抗による電圧降下（起動できない）' }[r.stop];
+    $('oRuntime').childNodes[0].textContent = (r.stop === 'collapse' ? '起動できません' : fmtTime(r.t)) + ' ';
+    $('oRunStop').textContent = stopTxt;
+    $('oRunWh').textContent = r.stop === 'collapse' ? '0 Wh' : (c.voutAct * c.iloadA * r.t).toFixed(2) + ' Wh';
+    $('oRunIstart').textContent = (r.istart * 1000).toFixed(0) + ' mA';
+    $('oRunIend').textContent = (r.iend * 1000).toFixed(0) + ' mA（開始時の' + (r.iend / r.istart).toFixed(2) + '倍）';
+    $('oRunVlim').textContent = r.vLim !== null ? r.vLim.toFixed(2) + ' V 以下' : 'なし（全域で供給可）';
+    if (r.stop === 'collapse') setChip('chipRun', 'chip-red', '✕ この電池では賄えない負荷');
+    else if (r.stop === 'cutoff' || r.stop === 'empty') setChip('chipRun', 'chip-green', '◎ 電池を使い切れる');
+    else setChip('chipRun', 'chip-yellow', '△ 容量を残して停止');
+
+    let note;
+    const ratio = r.istart / Math.max(c.iloadA, 1e-9);
+    if (r.stop === 'collapse') {
+      const drop = r.istart * b.rint;
+      note = '<b>この電池ではこの負荷を賄えません。</b>必要な入力電流' + (r.istart * 1000).toFixed(0)
+        + 'mAを流すと、内部抵抗' + b.rint + 'Ωで <span class="mono">' + (r.istart * 1000).toFixed(0) + 'mA × ' + b.rint + 'Ω ＝ '
+        + drop.toFixed(1) + 'V</span> も電圧が下がり、満充電でも電圧が足りなくなります。'
+        + '負荷を減らすか、内部抵抗の小さい電池（リチウムポリマー等）に変えてください。';
+    } else if (r.stop === 'ilimit') {
+      note = '<b>電池を使い切る前に電流制限で停止します。</b>電池が' + r.vLim.toFixed(2) + 'Vまで下がると、この負荷（'
+        + (c.iloadA * 1000).toFixed(0) + 'mA）を供給できなくなります。負荷を減らすか、セル数の多い電池にすると最後まで使えます。';
+    } else if (b.rint >= 5) {
+      note = '<b>' + b.name + 'は内部抵抗が大きい（' + b.rint + 'Ω）</b>ため、電流を流すと電圧が大きく落ちます。'
+        + '昇圧では入力電流が出力の約' + ratio.toFixed(1) + '倍になるので、コイン電池では<b>数mA程度の負荷</b>が現実的です。';
+    } else {
+      note = '入力電流は開始時' + (r.istart * 1000).toFixed(0) + 'mA →終了間際' + (r.iend * 1000).toFixed(0)
+        + 'mAへ増えます。<b>昇圧は電池が減るほど入力電流が増える</b>ため、後半ほど消耗が速くなります。'
+        + 'カットオフを下げれば長く使えますが、電池の寿命とのトレードオフです。';
+    }
+    $('runNote').innerHTML = note;
+    drawRunChart();
+  }
+  function drawRunChart() {
+    const cx = setupCanvas($('runChart'));
+    if (!cx) return;
+    const { c, w, h } = cx;
+    const r = runSim;
+    const padL = 46, padR = 50, padT = 12, padB = 26;
+    const pw = w - padL - padR, ph = h - padT - padB;
+    if (!r || r.pts.length < 2) {
+      c.fillStyle = '#585b70'; c.font = '14px "Segoe UI", sans-serif'; c.textAlign = 'center';
+      c.fillText('負荷電流を設定するとグラフが描かれます', w / 2, h / 2);
+      return;
+    }
+    const tMax = r.pts[r.pts.length - 1].t || 0.1;
+    const vMax = Math.max(...r.pts.map(p => p.v)) * 1.1;
+    const iMax = Math.max(...r.pts.map(p => p.i)) * 1.15;
+    const x = t => padL + t / tMax * pw;
+    const yV = v => padT + (1 - v / vMax) * ph;
+    const yI = i => padT + (1 - i / iMax) * ph;
+    c.font = '11px Consolas, monospace'; c.textBaseline = 'middle';
+    c.strokeStyle = '#313244'; c.lineWidth = 1;
+    for (let k = 0; k <= 4; k++) {
+      const v = vMax * k / 4;
+      c.beginPath(); c.moveTo(padL, yV(v)); c.lineTo(w - padR, yV(v)); c.stroke();
+      c.fillStyle = '#a6e3a1'; c.textAlign = 'right'; c.fillText(v.toFixed(1) + 'V', padL - 5, yV(v));
+      c.fillStyle = '#f38ba8'; c.textAlign = 'left'; c.fillText((iMax * k / 4 * 1000).toFixed(0), w - padR + 5, yI(iMax * k / 4));
+    }
+    c.fillStyle = '#a6adc8'; c.textAlign = 'center'; c.textBaseline = 'top';
+    const tstep = tMax > 8 ? 2 : (tMax > 3 ? 1 : (tMax > 1 ? 0.5 : 0.1));
+    for (let t = 0; t <= tMax + 1e-9; t += tstep) c.fillText(t.toFixed(tstep < 1 ? 1 : 0) + 'h', x(t), h - padB + 5);
+    c.textBaseline = 'middle';
+    c.setLineDash([4, 4]);
+    c.strokeStyle = '#f38ba8';
+    c.beginPath(); c.moveTo(padL, yV(r.cutoff)); c.lineTo(w - padR, yV(r.cutoff)); c.stroke();
+    if (r.vLim !== null && r.vLim < vMax) {
+      c.strokeStyle = '#cba6f7';
+      c.beginPath(); c.moveTo(padL, yV(r.vLim)); c.lineTo(w - padR, yV(r.vLim)); c.stroke();
+    }
+    c.setLineDash([]);
+    c.strokeStyle = '#a6e3a1'; c.lineWidth = 2; c.beginPath();
+    r.pts.forEach((p, i) => i ? c.lineTo(x(p.t), yV(p.v)) : c.moveTo(x(p.t), yV(p.v)));
+    c.stroke();
+    c.strokeStyle = '#f38ba8'; c.lineWidth = 1.8; c.beginPath();
+    r.pts.forEach((p, i) => i ? c.lineTo(x(p.t), yI(p.i)) : c.moveTo(x(p.t), yI(p.i)));
+    c.stroke();
+    c.fillStyle = '#a6e3a1'; c.textAlign = 'left'; c.fillText('電池電圧', padL + 6, padT + 8);
+    c.fillStyle = '#f38ba8'; c.textAlign = 'right'; c.fillText('入力電流(mA)', w - padR - 6, padT + 8);
+  }
+
   // ===== E24組み合わせ =====
   function renderCombos(c) {
     $('comboVout').textContent = c.vout.toFixed(2) + 'V';
@@ -1111,7 +1337,7 @@
     const cx = setupCanvas($('effChart'));
     if (!cx) return;
     const { c, w, h } = cx;
-    const padL = 44, padR = 48, padT = 12, padB = 26;
+    const padL = 44, padR = 48, padT = 40, padB = 42;   // 上=条件枠、下=軸ラベルのぶん広げる
     const pw = w - padL - padR, ph = h - padT - padB;
     const iMax = 2.0;
     const x = i => padL + i / iMax * pw;
@@ -1128,7 +1354,7 @@
     c.fillStyle = '#f38ba8'; c.textAlign = 'left';
     for (let a = 0; a <= 4.5; a += 1) c.fillText(a.toFixed(0) + 'A', w - padR + 5, yI(a));
     c.fillStyle = '#a6adc8'; c.textAlign = 'center'; c.textBaseline = 'top';
-    for (let i = 0; i <= iMax + 1e-9; i += 0.5) c.fillText(i.toFixed(1) + 'A', x(i), h - padB + 5);
+    for (let i = 0; i <= iMax + 1e-9; i += 0.5) c.fillText(i.toFixed(1) + 'A', x(i), h - padB + 6);
     c.textBaseline = 'middle';
 
     // 電流制限ライン
@@ -1165,11 +1391,34 @@
       c.beginPath(); c.moveTo(x(il), padT); c.lineTo(x(il), h - padB); c.stroke();
       c.setLineDash([]);
     }
-    c.fillStyle = '#a6e3a1'; c.textAlign = 'left'; c.fillText('効率', padL + 6, padT + 8);
-    c.fillStyle = '#f38ba8'; c.textAlign = 'right'; c.fillText('ピーク電流', w - padR - 6, padT + 8);
+    // 凡例（プロット領域の外・上部の左右）
+    c.textBaseline = 'middle';
+    c.fillStyle = '#a6e3a1'; c.textAlign = 'left'; c.fillText('― 効率(左軸)', padL, 14);
+    c.fillStyle = '#f38ba8'; c.textAlign = 'right'; c.fillText('― ピーク電流(右軸)', w - padR, 14);
+    // 条件はプロット領域の外・上部中央に枠付きで
+    const cond = '入力 ' + cur.vin.toFixed(2) + 'V → 出力 ' + cur.voutAct.toFixed(2) + 'V ／ L ' + (cur.L * 1e6).toFixed(2).replace(/\.?0+$/, '') + 'µH';
+    c.font = 'bold 12px Consolas, monospace';
+    const cw = c.measureText(cond).width;
+    const cxx = padL + pw / 2;
+    c.fillStyle = '#181825';
+    c.fillRect(cxx - cw / 2 - 8, 3, cw + 16, 22);
+    c.strokeStyle = '#585b70'; c.lineWidth = 1;
+    c.strokeRect(cxx - cw / 2 - 8, 3, cw + 16, 22);
+    c.fillStyle = '#cdd6f4'; c.textAlign = 'center';
+    c.fillText(cond, cxx, 14);
+    c.font = '11px Consolas, monospace';
+    // 「負荷電流」は目盛りの1段下に置く（目盛り数字と重ねない）
+    c.fillStyle = '#a6adc8'; c.textAlign = 'center'; c.textBaseline = 'bottom';
+    c.fillText('← 負荷電流 →', padL + pw / 2, h - 3);
+    c.textBaseline = 'middle';
+    // 現在の負荷位置はプロット領域の上端に表示（線やカーブと重なりにくい）
+    if (il <= iMax) {
+      c.fillStyle = '#fab387'; c.textAlign = il > iMax * 0.75 ? 'right' : 'left';
+      c.fillText('▼いまの負荷 ' + (il * 1000).toFixed(0) + 'mA', x(il) + (il > iMax * 0.75 ? -5 : 5), padT + 9);
+    }
   }
-  window.addEventListener('resize', () => { const c = calc(val('iload') / 1000); drawEffChart(c); });
-  window.addEventListener('load', () => { const c = calc(val('iload') / 1000); drawEffChart(c); });
+  window.addEventListener('resize', () => { const c = calc(val('iload') / 1000); drawEffChart(c); drawRunChart(); });
+  window.addEventListener('load', () => { const c = calc(val('iload') / 1000); drawEffChart(c); drawRunChart(); });
 
   // ===== 粒アニメ =====
   // 粒の速さ＝電圧の高さ、粒の大きさ＝電流の大きさ で表現する
@@ -1197,7 +1446,7 @@
   let svgVisible = true;
   new IntersectionObserver(es => { svgVisible = es[0].isIntersecting; }).observe($('schemSvg'));
   let lastT = 0;
-  function frame(now) {
+  function frame(now = performance.now()) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - lastT) / 1000, 0.1);
     lastT = now;
@@ -1253,6 +1502,12 @@
   $('comboBody').addEventListener('click', onUseCombo);
   $('comboBest').addEventListener('click', onUseCombo);
   PAIR_IDS.forEach(b => bindPair(b, update));
+  $('batt').addEventListener('change', () => {
+    const b = BATTERIES[$('batt').value];
+    $('battCap').value = b.defCap;
+    $('cutoff').value = $('cutoffN').value = b.defCut;
+    update();
+  });
   SINGLE_IDS.forEach(id => $(id).addEventListener('input', update));
   document.querySelectorAll('[data-vout]').forEach(btn => btn.addEventListener('click', () => {
     $('vout').value = $('voutN').value = btn.dataset.vout;

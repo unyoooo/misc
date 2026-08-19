@@ -671,7 +671,7 @@
       win.setTimeout(secTick, 1000);
     };
     win.setTimeout(secTick, 1000);
-    const heartAnim = now => {
+    const heartAnim = (now = performance.now()) => {
       if (!alive()) return;
       const h = doc.getElementById('pHeart');
       if (h) {
@@ -1032,7 +1032,7 @@
     heartEl.style.transform = 'scale(' + s.toFixed(3) + ')';
   }
   const tickers = [heartTick];
-  function frame(now) {
+  function frame(now = performance.now()) {
     requestAnimationFrame(frame);
     for (const t of tickers) t(now);
   }
