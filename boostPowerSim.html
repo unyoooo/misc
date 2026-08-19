@@ -132,7 +132,8 @@
     <text x="176" y="190" fill="#f9e2af" font-size="12" font-weight="bold">10µF</text>
 
     <!-- インダクタ（入力→SW） -->
-    <path d="M230 70 a9 9 0 0 1 18 0 a9 9 0 0 1 18 0 a9 9 0 0 1 18 0" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <path id="indCoil" d="M230 70 a9 9 0 0 1 18 0 a9 9 0 0 1 18 0 a9 9 0 0 1 18 0" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+    <text x="257" y="100" fill="#f9e2af" font-size="10" text-anchor="middle" font-weight="bold">⚡ここで昇圧</text>
     <line x1="284" y1="70" x2="360" y2="70" stroke="#585b70" stroke-width="2"/>
     <text x="257" y="30" fill="#f9e2af" font-size="11" text-anchor="middle" font-weight="bold">L（インダクタ）</text>
     <text id="schL" x="257" y="46" fill="#f9e2af" font-size="12" text-anchor="middle" font-weight="bold">1µH</text>
@@ -224,13 +225,13 @@
 
     <!-- 粒アニメ用ガイド（不可視） -->
     <path id="flowIn" d="M116 70 L360 70" fill="none" stroke="none"/>
-    <path id="flowInRet" d="M400 285 L68 285 L68 101" fill="none" stroke="none"/>
+    <path id="flowInRet" d="M400 150 L400 285 L68 285 L68 101" fill="none" stroke="none"/>
     <path id="flowVin" d="M200 70 L200 118 L360 118" fill="none" stroke="none"/>
     <path id="flowOut" d="M510 70 L920 70 L920 110" fill="none" stroke="none"/>
     <path id="flowOutRet" d="M920 168 L920 285 L400 285" fill="none" stroke="none"/>
     <g id="flowDots"></g>
   </svg>
-  <div class="note">概念図です（ENの接続・保護部品などは省略。常時ONならENはV<sub>IN</sub>に直結）。<b style="color:#89b4fa;">青の粒</b>＝入力電流（電源→L→SW→GND→電源に戻る）、<b style="color:#a6e3a1;">緑の粒</b>＝出力電流（VOUT→負荷→GND）。<b>粒の速さ＝電圧の高さ</b>（昇圧後は少し速い）、<b>粒の大きさ＝電流の大きさ</b>（昇圧では入力電流のほうが大きいので入力側が太い）。<b style="color:#89dceb;">水色の薄い粒</b>はV<sub>IN</sub>ピンへ入るIC自身の電源で、電流が数µAしかないため粒がいちばん小さくなっています（<b>パワーはLとSWを通り、V<sub>IN</sub>ピンは通りません</b>）。</div>
+  <div class="note">概念図です（ENの接続・保護部品などは省略。常時ONならENはV<sub>IN</sub>に直結）。<b style="color:#89b4fa;">青の粒</b>＝入力電流（電源→L→SW→GND→電源に戻る）、<b style="color:#a6e3a1;">緑の粒</b>＝出力電流（VOUT→負荷→GND）。<b>粒の速さ＝電圧の高さ</b>（<b>コイルを通るところで加速＝ここで昇圧されている</b>）、<b>粒の大きさ＝電流の大きさ</b>（昇圧では入力電流のほうが大きいので入力側が太い）。<b style="color:#89dceb;">水色の薄い粒</b>はV<sub>IN</sub>ピンへ入るIC自身の電源で、電流が数µAしかないため粒がいちばん小さくなっています（<b>パワーはLとSWを通り、V<sub>IN</sub>ピンは通りません</b>）。</div>
 
   <div class="guide" style="margin-top:14px;">
     <div class="guide-item">
@@ -1176,7 +1177,7 @@
   const dots = [];
   {
     const g = $('flowDots');
-    const mk = (pathId, color, n, kind) => {
+    const mk = (pathId, color, n, kind, ramp) => {
       const path = $(pathId);
       const len = path.getTotalLength();
       for (let i = 0; i < n; i++) {
@@ -1184,10 +1185,10 @@
         el.setAttribute('r', '3.2');
         el.setAttribute('fill', color);
         g.appendChild(el);
-        dots.push({ el, path, len, off: i / n, kind });
+        dots.push({ el, path, len, off: i / n, kind, ramp });
       }
     };
-    mk('flowIn', '#89b4fa', 5, 'in');       // 入力→L→SW（パワー経路）
+    mk('flowIn', '#89b4fa', 5, 'in', [(257-116)/244, (295-116)/244]);   // 入力→L→SW。コイルに入ってから加速＝昇圧
     mk('flowInRet', '#89b4fa', 7, 'in');    // GND経由で電源へ戻る
     mk('flowVin', '#89dceb', 2, 'vin');     // VINピン＝IC自身の電源（数µA）
     mk('flowOut', '#a6e3a1', 6, 'out');     // VOUT→負荷
@@ -1202,18 +1203,32 @@
     lastT = now;
     if (!svgVisible) return;
     for (const d of dots) {
-      const { mA, v } = flowSpeed[d.kind];
+      const { mA } = flowSpeed[d.kind];
       const isVin = d.kind === 'vin';
+      // コイル区間では入力電圧→出力電圧へなめらかに加速させ「Lで昇圧される」ことを表す
+      let v = flowSpeed[d.kind].v;
+      if (d.ramp) {
+        const t = Math.min(1, Math.max(0, (d.off - d.ramp[0]) / (d.ramp[1] - d.ramp[0])));
+        v = flowSpeed.in.v + (flowSpeed.out.v - flowSpeed.in.v) * t;
+      }
       // 電流が流れていない経路は非表示（VINピンだけはICの静止電流で常に流れる）
       if (mA <= 0.5 && !isVin) { d.el.setAttribute('opacity', '0'); continue; }
       d.el.setAttribute('opacity', isVin ? '0.5' : '1');
       // 速さ＝電圧（昇圧後のほうが速い）／大きさ＝電流（入力側のほうが太い）
-      const px = 10 + Math.max(v, 0) * 8;
+      // 電圧差を強調（基準を下げて係数を上げる＝昇圧前後の速度差を約3倍に）
+      const px = 4 + Math.max(v, 0) * 22;
       d.el.setAttribute('r', (2.0 + Math.min(mA, 2400) / 900).toFixed(2));
       d.off = (d.off + px * dt / d.len) % 1;
       const p = d.path.getPointAtLength(d.off * d.len);
       d.el.setAttribute('cx', p.x);
       d.el.setAttribute('cy', p.y);
+    }
+    // コイル＝エネルギーをためて放出する部品、と分かるように明滅させる
+    const coil = $('indCoil');
+    if (coil) {
+      const boosting = flowSpeed.out.v > flowSpeed.in.v && flowSpeed.out.mA > 0.5;
+      coil.setAttribute('stroke', boosting ? '#f9e2af' : '#cdd6f4');
+      coil.setAttribute('stroke-width', boosting ? (2 + 1.2 * (0.5 + 0.5 * Math.sin(now / 200))).toFixed(2) : '2');
     }
   }
   requestAnimationFrame(frame);
