@@ -26,6 +26,7 @@
 | **NFC 13.56MHz コイル共振計算機** (`nfcCoilCalc.html`) | NFCで電池レスLEDを光らせるLC共振タグの設計用。コイル直径・巻き数・線径・コンデンサから共振周波数をリアルタイム計算、13.56MHz一致判定・逆算C・定番レシピ・作り方ガイドつき | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/nfcCoilCalc.html) |
 | **リチウム電源降圧設計シミュレータ** (`lipoPowerSim.html`) | MCP73831(リニア充電)＋TLV62569(同期整流降圧)で1セルLi-Poの電源を設計する。Rprogから充電電流・充電カーブ・IC発熱、R1/R2から出力電圧(E24最適組み合わせ探索つき)・リップル・ドロップアウト・ランタイムを計算。充電4フェーズの解説図・部品リスト(BOM)出力・保護回路の注意つき。(自作基板UU06の説明用) | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/lipoPowerSim.html) |
 | **昇圧回路 設計シミュレータ** (`boostPowerSim.html`) | TPS61023(同期整流ブースト・0.5〜5.5V入力/最大3.7A)で電池より高い電圧を作る回路の設計用。R1/R2から出力電圧(E24最適組み合わせ探索・逆算計算機)、L/Coutからリップルとピーク電流、電流制限で取り出せる最大出力、効率・発熱(Tj)を計算。EN分圧による起動電圧設定とON/OFFスイッチ配線・CFFの要否判定・部品リスト(BOM)出力つき | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/boostPowerSim.html) |
+| **充電しながら使える電源シミュレータ** (`powerPathSim.html`) | MP2636(パワーパス充電＋昇圧・最大3A)で「USB接続中は入力から給電しながら充電、抜いたら電池から昇圧」する電源を設計する。RISET/RILIM/ROLIM/R1R2をデータシートの式から計算(E24・E96近似)、入力電流の取り合い(負荷優先で充電が絞られる挙動)をグラフ化。充電カーブ・ランタイム・発熱、ステータスLEDとNTC温度窓の抵抗計算、電源スイッチの入れ方、保護回路(過放電は非対応)の解説つき | [起動](https://htmlpreview.github.io/?https://github.com/unyoooo/misc/blob/master/powerPathSim.html) |
 
 ---
 
