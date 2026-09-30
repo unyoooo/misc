@@ -435,6 +435,19 @@
 <div class="panel">
   <div class="note-dyn" id="runInputs" style="margin-top:0; margin-bottom:12px;"></div>
   <div class="slider-row">
+    <label>負荷電流</label>
+    <input type="range" id="iloadRun" min="1" max="2000" step="1" value="200">
+    <input type="number" id="iloadRunN" min="0" max="2000" step="1" value="200">
+    <span class="unit">mA</span>
+  </div>
+  <div class="slider-row">
+    <label>電池容量</label>
+    <input type="range" id="capRun" min="100" max="3000" step="50" value="700">
+    <input type="number" id="capRunN" min="50" max="10000" step="50" value="700">
+    <span class="unit">mAh</span>
+  </div>
+  <div class="note" style="margin-top:-2px;">負荷電流は降圧側パネル、電池容量は充電側パネルの設定と連動しています（どちらを動かしても同じ設定です）。</div>
+  <div class="slider-row">
     <label>放電終止電圧（カットオフ）</label>
     <input type="range" id="cutoff" min="2.5" max="3.5" step="0.05" value="3.0">
     <input type="number" id="cutoffN" min="2.5" max="3.5" step="0.05" value="3.0">
@@ -864,6 +877,14 @@
     el.textContent = text;
   }
   function update() {
+    // ランタイムパネルの負荷・容量スライダーを本体設定（iload / cap）と同期
+    // 値が同じときは書き込まない（数値入力中のカーソル飛びを防ぐ）
+    [['iload', 'iloadRun'], ['cap', 'capRun']].forEach(([src, dst]) => {
+      const v = $(src + 'N').value;
+      if ($(dst + 'N').value !== v) $(dst + 'N').value = v;
+      if ($(dst).value !== v) $(dst).value = v;
+    });
+
     // --- 充電側 ---
     const rprog = Math.min(67, Math.max(2, val('rprog')));
     const iregmA = 1000 / rprog;
@@ -1275,6 +1296,11 @@
     URL.revokeObjectURL(a.href);
   });
   ['rprog', 'cap', 'startv', 'vout', 'iload', 'vbat', 'cutoff'].forEach(b => bindPair(b, update));
+  // ランタイムパネル側のスライダー → 本体設定へ反映（双方向同期）
+  [['iloadRun', 'iload'], ['capRun', 'cap']].forEach(([src, dst]) => bindPair(src, () => {
+    $(dst).value = $(dst + 'N').value = $(src + 'N').value;
+    update();
+  }));
   ['theta', 'r2', 'ind', 'cout'].forEach(id => $(id).addEventListener('input', update));
   document.querySelectorAll('[data-rprog]').forEach(btn => btn.addEventListener('click', () => {
     $('rprog').value = $('rprogN').value = btn.dataset.rprog;

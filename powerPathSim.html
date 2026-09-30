@@ -587,6 +587,19 @@
 <div class="panel">
   <div class="note-dyn" id="runInputs" style="margin-top:0; margin-bottom:12px;"></div>
   <div class="slider-row">
+    <label>負荷電流（SYS）</label>
+    <input type="range" id="iloadRun" min="0" max="3" step="0.01" value="0.5">
+    <input type="number" id="iloadRunN" min="0" max="3" step="0.01" value="0.5">
+    <span class="unit">A</span>
+  </div>
+  <div class="slider-row">
+    <label>電池容量</label>
+    <input type="range" id="capRun" min="100" max="5000" step="50" value="2000">
+    <input type="number" id="capRunN" min="100" max="20000" step="50" value="2000">
+    <span class="unit">mAh</span>
+  </div>
+  <div class="note" style="margin-top:-2px;">負荷電流・電池容量は「⚙️ 定数を決める」パネルの設定と連動しています（どちらを動かしても同じ設定です）。</div>
+  <div class="slider-row">
     <label>放電終止（カットオフ）</label>
     <input type="range" id="cutoff" min="2.7" max="3.6" step="0.05" value="3.0">
     <input type="number" id="cutoffN" min="2.5" max="3.6" step="0.05" value="3.0">
@@ -1303,6 +1316,13 @@
 
   // ===== 表示更新 =====
   function update() {
+    // ランタイムパネルの負荷・容量スライダーを「定数を決める」パネル（iload / cap）と同期
+    // 値が同じときは書き込まない（数値入力中のカーソル飛びを防ぐ）
+    [[$('iloadN').value, 'iloadRun'], [$('cap').value, 'capRun']].forEach(([v, dst]) => {
+      if ($(dst + 'N').value !== v) $(dst + 'N').value = v;
+      if ($(dst).value !== v) $(dst).value = v;
+    });
+
     const c = calc();
     const boost = c.boost;
 
@@ -2056,6 +2076,15 @@
   // ===== イベント =====
   PAIR_IDS.forEach(b => bindPair(b, update));
   SINGLE_IDS.forEach(id => $(id).addEventListener('input', update));
+  // ランタイムパネル側のスライダー → 「定数を決める」パネルへ反映（双方向同期）
+  bindPair('iloadRun', () => {
+    $('iload').value = $('iloadN').value = $('iloadRunN').value;
+    update();
+  });
+  bindPair('capRun', () => {
+    $('cap').value = $('capRunN').value;
+    update();
+  });
   $('modeChg').addEventListener('click', () => { mode = 'chg'; update(); });
   $('modeBoost').addEventListener('click', () => { mode = 'boost'; update(); });
   $('fbBest').addEventListener('click', e => {

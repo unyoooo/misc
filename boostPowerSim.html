@@ -595,6 +595,13 @@
 <div class="panel">
   <div class="note-dyn" id="runInputs" style="margin-top:0; margin-bottom:12px;"></div>
   <div class="slider-row">
+    <label>負荷電流 I<sub>OUT</sub></label>
+    <input type="range" id="iloadRun" min="1" max="2000" step="1" value="500">
+    <input type="number" id="iloadRunN" min="0" max="3000" step="1" value="500">
+    <span class="unit">mA</span>
+  </div>
+  <div class="note" style="margin-top:-2px;">上の「負荷電流 I<sub>OUT</sub>」と連動しています（どちらを動かしても同じ設定です）。</div>
+  <div class="slider-row">
     <label>電池の種類</label>
     <select id="batt">
       <option value="lipo" selected>リチウムポリマー 1S</option>
@@ -894,6 +901,12 @@
   }
 
   function update() {
+    // ランタイムパネルの負荷スライダー（iloadRun）を上の設定と同期
+    // 値が同じときは書き込まない（数値入力中のカーソル飛びを防ぐ）
+    const iloadStr = $('iloadN').value;
+    if ($('iloadRunN').value !== iloadStr) $('iloadRunN').value = iloadStr;
+    if ($('iloadRun').value !== iloadStr) $('iloadRun').value = iloadStr;
+
     const iloadA = val('iload') / 1000;
     const c = calc(iloadA);
 
@@ -1502,6 +1515,11 @@
   $('comboBody').addEventListener('click', onUseCombo);
   $('comboBest').addEventListener('click', onUseCombo);
   PAIR_IDS.forEach(b => bindPair(b, update));
+  // ランタイムパネル側の負荷スライダー → 上の負荷電流へ反映（双方向同期）
+  bindPair('iloadRun', () => {
+    $('iload').value = $('iloadN').value = $('iloadRunN').value;
+    update();
+  });
   $('batt').addEventListener('change', () => {
     const b = BATTERIES[$('batt').value];
     $('battCap').value = b.defCap;
